@@ -1,8 +1,17 @@
-# Discovery dan habit
-Sumber awal: PRD/GOALS Bakso asli. Usaha keluarga mobile menjual bakso Rp5.000 per mangkuk (harga jual, bukan HPP). Alur Purchase → Inventory → Production → Sales → Evaluation → Planning. Masalah: profit tidak jelas, harga bahan berubah, pembelian berbeda dari pemakaian, waste, produksi intuitif. Simple dan analytical user perlu pengalaman berbeda dengan data sama.
+# Discovery: user habit dan business habit
+Status: reference case + hypotheses. Tidak ada klaim wawancara baru.
 
-Hipotesis lain (belum observasi): fashion restock SKU/warna/ukuran dan dead stock; barbershop booking/antrean dan utilisasi; laundry berat/status/tenggat; freelancer quotation/milestone/invoice; rental aset/durasi/deposit; digital delivery/lisensi. Jangan memperlakukan ini sebagai hasil wawancara.
+## Evidence yang tersedia
+Lima dokumen Bakso asli menjelaskan konteks usaha keluarga, menu, harga jual, purchase–inventory–production–sale–evaluation–planning, kebutuhan membedakan kas/laba dan menjaga daily operation sederhana. GOALS asli berisi contoh dashboard ilustratif, bukan telemetry. Shared chat lengkap dan DESIGN.md lama belum tersedia. Jangan mengarang persona, kutipan atau jumlah responden.
 
-Riset: amati satu siklus kerja, wawancara tentang keputusan dan kendala, catat bukti dan counterexample, validasi prototype. Bedakan industry, business model, revenue model. Pengguna dapat memilih beberapa capability. Habit pengguna (shortcut, waktu penggunaan, laporan favorit) berbeda dari business habit (restock, penjualan, kapasitas). Personalisasi harus transparan, opt-in bila perlu, dapat diubah/reset; minimalkan event data dan retention. Jangan mengubah data finansial otomatis.
+## Dua jenis habit
+Business habit adalah pola operasi: kapan restock, produksi, jam ramai, pembatalan, reorder dan seasonality. User habit adalah pola interaksi aplikasi: shortcut, screen yang sering dipakai, field yang berulang, pilihan density. Keduanya tidak boleh dicampur. Data historis menunjukkan korelasi, bukan sebab otomatis. Personalization harus bisa dimatikan/reset; jangan mengubah transaksi atau harga otomatis.
 
-Shared chat belum terbaca lengkap; minta export jika diperlukan. Jangan mengarang kutipan atau temuan.
+## Research plan
+Rekrut owner/operator makanan, fashion/retail, jasa dan hybrid secara sukarela. Observasi satu siklus kerja nyata; tanyakan bagaimana mencatat, memperbaiki kesalahan, menutup hari, menentukan harga dan menangani stok/jadwal. Catat konteks, task, friction, workaround, evidence, confidence dan follow-up. Jangan menyimpan PII yang tidak perlu. Pisahkan observation, interpretation, hypothesis dan decision. Validasi prototipe melalui task completion, error, waktu, pemahaman metric dan feedback kualitatif. Sampel dan target belum ditetapkan.
+
+## Hypothesis per domain
+Food: batch expiry, produksi harian, pencatatan cepat dan waste penting. Fashion: variant ukuran/warna, return, foto dan channel listing penting. Retail: barcode, reorder dan supplier price history mungkin penting. Jasa: jadwal, kapasitas, durasi, deposit, cancellation dan labor cost mungkin lebih penting daripada stok. Rental: availability per waktu, condition dan deposit. Digital: delivery entitlement, version dan refund. Hybrid: gabungkan capability tanpa menggandakan offering. Semua ini perlu validasi; bukan hasil riset empiris.
+
+## Adaptive workspace
+Onboarding menanyakan jenis offering dan aktivitas, bukan hanya label industri. Capability inventory, production, booking, project, rental, subscription, digital delivery dapat diaktifkan sesuai kebutuhan. Hide UI bukan authorization; backend tetap memeriksa permission. Menonaktifkan capability tidak menghapus histori. Simple dan analytical mode memakai data yang sama; perbedaan hanya presentation. Jangan memaksa user mengisi data yang tidak relevan.

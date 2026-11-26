@@ -17,3 +17,6 @@ Codex: discovery/architecture/review; Gemini: implementasi/test (preferensi, fle
 4. Pilih satu MCP read-only jika kebutuhan nyata.
 5. Verifikasi permission dan smoke test; catat config location tanpa secret.
 6. Baru pertimbangkan cross-harness automation. Jangan menghambat MVP lomba dengan tooling berlebihan.
+
+## Verification protocol V2
+Inventory installed binary/version, authentication status tanpa token, model list, supported noninteractive execution, output format, permission model, worktree support, skill discovery dan MCP transport. Catat source/version/date. Jangan mengasumsikan Orca plugin atau CLI flags. Adapter candidate: start(task, workspace, policy), poll(session), cancel(session), collect_evidence(session); capability unsupported harus eksplisit. Test timeout, crash, cancellation dan duplicate execution. MCP allowlist per role; default read-only; write/publish/deploy perlu approval. Review server provenance, license, tool schema, network scope, secret storage, prompt injection dan revocation. Jangan memasang server komunitas tanpa review. Manual handoff jika integrasi belum tersedia.

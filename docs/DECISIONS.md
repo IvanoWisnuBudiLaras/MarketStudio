@@ -18,3 +18,13 @@ Status: APPROVED = persetujuan eksplisit; DIRECTION = preferensi/visi; PROPOSED 
 | D13 | OPEN | Klarifikasi unsur promosi dan eligibility karya lama kepada panitia |
 
 Tambahkan tanggal, alasan, alternatif, dampak, status, persetujuan Product Owner untuk keputusan baru. Jangan mengubah status hanya karena agent menyukai suatu solusi.
+
+| ID | Status | Keputusan |
+|---|---|---|
+| D14 | DIRECTION | Tiga teammate Atlas, Forge, Nexus; spesialisasi melalui skills, bukan 15 bot |
+| D15 | APPROVED | Dokumentasi lebih informatif dan panjang, eksekusi tidak ambigu |
+| D16 | PROPOSED | Orca-first; manual handoff sebagai fallback; maksimal 2–3 sesi aktif awal |
+| D17 | OPEN | Model ID, reasoning effort, native Orca config, MCP permissions dan budget aktual |
+| D18 | PROPOSED | Kontrak teknis dan acceptance criteria V2 sebagai candidate baseline, belum approval implementasi |
+
+Catatan: D14 mencerminkan koreksi owner atas jumlah bot; nama dan role berasal dari usulan yang kemudian dipakai dalam diskusi. Tidak ada bukti persetujuan untuk setiap detail teknis V2. D15 tidak mengizinkan AI mengubah keputusan bisnis tanpa approval. Dokumen history/v1 hanya untuk audit.

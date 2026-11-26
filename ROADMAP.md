@@ -1,10 +1,4 @@
-# Roadmap — proposal, bukan janji deadline
-26 Nov 2026 → 18 Des 2026 23:59 WIB: waktu sangat terbatas. Prioritaskan vertical slice, bukan enam studio matang.
+# Roadmap kandidat dan gate
+P0: read-only bootstrap, confirm competition eligibility/promotion, stack spike, shared core, one Business vertical slice, deterministic metric dan Intelligence review. P1: Spreadsheet scenario dan Creative draft/export. P2: Commerce/Social demo atau live sesuai izin. Full product setelah lomba. Tidak semua phase wajib sebelum deadline.
 
-- 27–29 Nov: discovery timebox, klarifikasi lomba, audit repo, scope, proof of concept Astryx/Univer dan deployment.
-- 30 Nov–5 Des: P0 auth/workspace, offering barang/jasa, transaksi, financial engine, tests.
-- 6–10 Des: P0 AI Review dengan data nyata; P1 simulasi Univer jika stabil.
-- 11–14 Des: P1 creative draft; P2 adapter demonstrator hanya jika waktu/aturan/API mengizinkan.
-- 15–18 Des: freeze, security, accessibility, performance, deployment, video, repository, buffer.
-
-Demo kandidat: Bakso (produksi), fashion (SKU), barbershop (jasa). Jika waktu kurang, pilih satu alur end-to-end dan satu pembanding jasa; jangan membuat fitur palsu. P2 live integration tergantung approval. Roadmap setelah lomba: sync order/stok, booking/project/rental mendalam, entrepreneurship, collaboration, automation, offline. Semua scope perlu persetujuan.
+Gate 0: owner approve scope, target reference case, valuation/rounding dan API/demo policy. Gate 1: auth/tenant isolation, purchase→sale→report tests. Gate 2: AI review grounded metric dan no-data state. Gate 3: UI accessibility, staging smoke, demo video, accessible links. Gate 4: submission verification. Deadline rulebook 18 Desember 2026 23:59 WIB; sisakan buffer, jangan menjanjikan jadwal tanpa capacity estimate. Agent tooling timebox: satu manual handoff dulu, automation hanya jika menghemat kerja nyata.

@@ -1,0 +1,2 @@
+# Package validation
+Generated V2 documentation, not application code. Before this manifest: 73 files, 71 Markdown files, approximately 18168 whitespace-delimited words including preserved sources and V1 archive. No runtime tests, MCP connections, deployment or external API verification performed. Original Bakso files and competition PDF preserved from V1; shared chat not recovered. Product requirements and technical contracts are proposed unless decision log says otherwise. This is a substantive expansion, not the previously discussed 161k–315k word target.

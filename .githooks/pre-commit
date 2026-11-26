@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+git_dir=$(git rev-parse --absolute-git-dir)
+index=$(git rev-parse --path-format=absolute --git-path index)
+snapshot=$(mktemp -d)
+trap 'rm -rf -- "$snapshot"' EXIT
+trap 'exit 1' HUP INT TERM
+
+git checkout-index --all --prefix="$snapshot/"
+GIT_DIR="$git_dir" GIT_INDEX_FILE="$index" GIT_WORK_TREE="$snapshot" \
+    python3 "$root/scripts/check_repository.py" --root "$snapshot"

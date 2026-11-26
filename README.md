@@ -1,8 +1,19 @@
-# MarketStudio — Codex Handoff
-Snapshot 26 November 2026. Paket discovery dan perencanaan, bukan aplikasi siap deploy atau BRD final.
+# MarketStudio — Master Documentation V2
 
-Ekstrak **isi** ZIP ke `/mnt/windows/dev/web/MarketStudio` setelah memeriksa konflik dengan file yang sudah ada. Jangan overwrite AGENTS.md atau dokumen lama tanpa review. Buka folder tersebut di Codex. Prompt pertama tersedia di `START_CODEX.md`. Gemini dapat membaca `GEMINI.md`. Tidak perlu menyalin ulang percakapan.
+**Status:** working knowledge base; bukan release aplikasi. **Bahasa:** Indonesia dengan English technical terminology. **Entry point:** START_CODEX.md.
 
-Urutan baca: AGENTS → PROJECT_CONTEXT → docs/DECISIONS → BRD → GOALS → ROADMAP → TSD → dokumen domain yang relevan. Sumber asli berada di docs/discovery/reference-cases dan docs/competition. Jangan memuat seluruh dokumen setiap ticket.
+MarketStudio adalah satu platform AI Business Operating System dengan arah jangka panjang AI Entrepreneurship Platform. Enam studio berbagi workspace dan data, bukan enam aplikasi independen. Tujuannya membantu usaha barang, jasa dan hybrid memahami kondisi usaha, mengelola operasi, merencanakan pertumbuhan dan menjangkau pasar.
 
-Status: visi C+D disetujui; rincian MVP, arsitektur, monetisasi dan integrasi masih proposal. Tidak ada kode aplikasi, MCP aktif, kredensial atau skill terpasang dalam paket ini.
+## Peta baca
+- AGENTS.md: aturan eksekusi dan prioritas sumber.
+- PROJECT_CONTEXT.md: sejarah, alasan dan batas pengetahuan.
+- BRD.md / GOALS.md: business intent dan outcome.
+- TSD.md: rancangan teknis global; keputusan teknis belum otomatis approved.
+- docs/DECISIONS.md: status keputusan; docs/history/v1 hanya arsip.
+- docs/products/*: PRD, TSD dan skenario per studio.
+- docs/platform: kontrak lintas domain; docs/discovery: riset dan hipotesis.
+- docs/design-system: identitas dan UX; docs/engineering: agent infrastructure.
+- .teammates: Atlas, Forge, Nexus; konfigurasi konseptual, bukan native Orca.
+- docs/competition: rulebook asli dan compliance; docs/exploration: ide non-binding.
+
+Jangan menjalankan semua roadmap sekaligus. Baca ticket yang disetujui dan dependency relevan. Jangan menimpa repo lokal tanpa diff. Tidak ada source aplikasi, API key atau instalasi MCP di paket ini.
