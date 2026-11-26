@@ -1,0 +1,4 @@
+# TECHCOMFEST 2027
+Sumber: rulebook PDF asli di folder ini. Subtema Economy & Digital Empowerment, SDG 8. Deadline 18 Desember 2026 23:59 WIB. Penilaian: kesesuaian tema/solusi 25%, functionality/performance 30%, UI/UX 25%, video 20%. Tim maksimal tiga dari institusi sama. Framework bebas, website builder Wix/WordPress dan template dilarang. AI boleh dengan tanggung jawab keamanan, pemahaman dan kemampuan menjelaskan source. Wajib video demo, web publik, GitHub monorepo jika frontend/backend terpisah.
+
+Blocker: rulebook melarang “unsur promosi”; tanyakan panitia apakah fitur pembuatan materi promosi/publishing UMKM diperbolehkan. Jangan menganggap sudah lolos. Konfirmasi eligibility terkait karya Bakso sebelumnya (originalitas/publikasi/lomba lain). Gunakan demo data dan label sandbox; tidak perlu mempublikasikan promosi nyata untuk demo. Verifikasi aturan terbaru sebelum submit.

@@ -1,0 +1,2 @@
+# Workflow
+Discovery → decision → BRD/GOALS → product PRD → TSD/ADR → ticket → implementation → tests → review → release. Traceability contoh BR-003 → FR-BUS-001 → TS-BUS-001 → BUS-001 → TEST-BUS-001. Satu ticket approved pada satu waktu. Ticket memuat problem, scope/non-scope, source, acceptance criteria, dependencies, test plan, rollback, status. Agent melaporkan hasil nyata. Git branch/worktree terpisah bila paralel, review diff sebelum merge. Jangan overwrite pekerjaan agent lain.

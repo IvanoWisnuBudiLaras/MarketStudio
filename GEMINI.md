@@ -1,0 +1,2 @@
+# Gemini harness
+Baca AGENTS.md sebagai kontrak utama, PROJECT_CONTEXT.md sebagai konteks, lalu ticket yang disetujui. Jangan menduplikasi aturan. Gemini diharapkan membantu implementasi, debugging dan testing; Codex membantu discovery, architecture, skills dan review. Pembagian ini fleksibel. Nama model yang diinginkan Product Owner: Gemini 3.8 Flash High; ketersediaan dan model ID belum diverifikasi. Jangan mengunci konfigurasi sebelum audit CLI/model aktual. Gunakan Git sebagai shared source of truth dan jangan mengedit file yang sedang dikerjakan agent lain.

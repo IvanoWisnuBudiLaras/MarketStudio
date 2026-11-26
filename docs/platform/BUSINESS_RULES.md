@@ -1,0 +1,4 @@
+# Business rules — sumber dan generalisasi
+Baca PRD asli bagian 6–8 untuk 32 formula dan inventory references. Jangan menyalin rumus tanpa memahami satuan dan asumsi. Revenue bukan profit; pembelian masuk inventory sebelum konsumsi; inventory usable bernilai; waste berbiaya. Weighted average, FIFO/LIFO valuation berbeda dari FEFO physical rotation; LIFO bukan asumsi kepatuhan akuntansi. BEP units dibulatkan ke atas; contribution margin nonpositif berarti tidak ada BEP finite. Markup berbeda dari margin. Rekonsiliasi stock quantity/value dan cash secara terpisah. Forecast adalah estimasi, bukan jaminan.
+
+Jasa: usulan biaya tenaga kerja, material, overhead, durasi, kapasitas dan margin per order/project; validasi definisi sebelum implementasi. Jangan memaksakan HPP resep pada jasa. Uji zero denominator, rounding, retur, waste, negative stock policy, perubahan harga, transaksi ganda, tenant isolation. Kebijakan pajak dan akuntansi resmi belum ditetapkan.

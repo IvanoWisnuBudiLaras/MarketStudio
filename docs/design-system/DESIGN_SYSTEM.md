@@ -1,0 +1,6 @@
+# Design System — arah dan draft tokens
+Disetujui: Modern Minimalist × Enterprise Commerce, satu accent #2563EB, navy/putih/coffee dark, customizable. Studio dibedakan dengan icon, nama dan layout, bukan pelangi warna. Logo referensi disertakan; jangan membuat ulang tanpa approval.
+
+Token kandidat: primary #2563EB, navy #142B52, soft blue #EFF6FF, white #FFFFFF, canvas #F7F8FA, border #E2E6EC, text #172033; coffee #141210, espresso #1C1917, mocha #292524, ivory #F5F5F4. Geist Sans/Mono, body 14, heading 24, section 18, spacing 4, radius 8, rail 64, sidebar 240, header 56, AI panel 360, mobile target 44px. Semua ukuran proposal. Semantic status colors independen dari accent. Primitive → semantic → component tokens. Theme system/light/coffee dark, custom accent dengan contrast validation WCAG 2.2 AA; keyboard/focus, reduced motion, accessible charts. Simpan preferensi lokal dan sync jika dibutuhkan.
+
+Astryx dan Univer: audit API/theme/version/license aktual. Jangan mengarang token mapping. Gunakan UI sendiri, bukan website template. Simple mode untuk operasi, advanced mode untuk analisis, data sama. Responsive/PWA usulan. UX spec per studio, empty/loading/error states, data source, AI uncertainty, approval dialog dan status publishing. SVG master, favicon dan mono variants belum dibuat.

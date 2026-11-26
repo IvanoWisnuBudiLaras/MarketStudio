@@ -1,0 +1,52 @@
+# Environment lokal dan kredensial
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
+!.env.*.sample
+!.env.*.template
+.aws/
+.ssh/
+.gnupg/
+.docker/config.json
+.kube/config
+.npmrc
+.pypirc
+.netrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+service-account*.json
+credentials*.json
+secrets/
+
+# Konfigurasi lokal dan log sesi agent
+/.codex/
+/.gemini/
+/.mcp.json
+
+# Data lokal, dump dan materi privat
+/.private/
+/backups/
+/dumps/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.log
+
+# Dependensi dan hasil build lokal
+node_modules/
+.next/
+.vercel/
+.venv/
+__pycache__/
+.pytest_cache/
+coverage/
