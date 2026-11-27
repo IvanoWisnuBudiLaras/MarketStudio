@@ -25,6 +25,7 @@ _RE_SIMULATIONS = re.compile(r"^/v1/workspaces/([^/]+)/simulations$")
 _RE_BENCHMARK_SNAPSHOTS = re.compile(r"^/v1/workspaces/([^/]+)/price-benchmarks/snapshots$")
 _RE_BENCHMARK_COMPARE = re.compile(r"^/v1/workspaces/([^/]+)/price-benchmarks/compare$")
 _RE_REPORT_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily$")
+_RE_AI_REVIEW_CONFIG = re.compile(r"^/v1/workspaces/([^/]+)/ai-review/config$")
 
 
 class BaselineHTTPHandler(BaseHTTPRequestHandler):
@@ -138,6 +139,14 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 ws_id = m_bench_snaps.group(1)
                 items = self.service.list_benchmark_snapshots(ws_id, actor_id=actor_id)
                 self._send_json(200, {"items": items, "request_id": request_id})
+                return
+
+            m_ai_cfg = _RE_AI_REVIEW_CONFIG.match(path)
+            if m_ai_cfg:
+                actor_id = self._require_actor()
+                ws_id = m_ai_cfg.group(1)
+                item = self.service.get_ai_review_config(ws_id, actor_id=actor_id)
+                self._send_json(200, {"item": item, "request_id": request_id})
                 return
 
             self._send_error_envelope(DomainError(404, "not_found", "Endpoint tidak ditemukan."), request_id)

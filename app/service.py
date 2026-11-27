@@ -1043,3 +1043,17 @@ class BaselineService:
                 "catalog_unchanged": True,
                 "benchmark_note": "Benchmark bersifat read-only dan tidak mengubah harga katalog (unit_price_idr), stok, atau ledger.",
             }
+
+    def get_ai_review_config(
+        self,
+        workspace_id: str,
+        actor_id: str | None,
+    ) -> dict[str, Any]:
+        from app.ai_review import get_ai_provider_config_status
+
+        with db_transaction(self.db_path) as conn:
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+        return {
+            "workspace_id": workspace_id,
+            **get_ai_provider_config_status(),
+        }
