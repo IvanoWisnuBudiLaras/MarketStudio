@@ -15,9 +15,9 @@ async function run() {
   page.on("pageerror", error => errors.push(error.message));
   const el = selector => page.locator(selector);
   const visible = selector => el(selector).waitFor({ state: "visible" });
-  const screenshot = async state => {
+  const screenshot = async (state, fullPage = true) => {
     await page.mouse.move(0, 0);
-    await page.screenshot({ path: `${evidence}/after-${state}-${width}.png`, fullPage: true, animations: "disabled" });
+    await page.screenshot({ path: `${evidence}/after-${state}-${width}.png`, fullPage, animations: "disabled" });
   };
   const primary = '.top-bar .btn-primary:visible, main .btn-primary:visible';
 
@@ -90,6 +90,8 @@ async function run() {
     assert.match(await el("#stockValue").innerText(), /174\.000/);
     assert(await el(".stock-summary").evaluate(table => table.scrollWidth <= table.clientWidth));
     assert.equal(await el("#homeRecentList li").count(), 3);
+    assert.match(await el("#quickRevenue").innerText(), /60\.000/);
+    assert.match(await el("#quickCash").innerText(), /150\.000/);
     await layout(1);
     await screenshot("demo");
 
@@ -142,13 +144,70 @@ async function run() {
     assert.match(download.suggestedFilename(), /\.svg$/);
     assert.equal(await download.failure(), null);
 
+    const settingsButton = el("#openSummaryBtn");
+    const drawer = el("#summaryDrawer");
+    const closeDrawer = page.getByRole("button", { name: "Tutup pengaturan ringkasan" });
+    const recentToggle = el('[data-summary-module="homeRecentCard"]');
+    await navigate("ringkasan");
+    await settingsButton.focus();
+    await page.keyboard.press("Enter");
+    await drawer.waitFor();
+    assert(await closeDrawer.evaluate(button => button === document.activeElement && button.matches(":focus-visible")));
+    await screenshot("drawer", false);
+    if (width === 390) {
+      await page.setViewportSize({ width, height: 340 });
+      assert(await drawer.evaluate(panel => panel.scrollHeight > panel.clientHeight));
+      await closeDrawer.click();
+      await page.setViewportSize({ width, height: 844 });
+      await settingsButton.click();
+    }
+    await recentToggle.focus();
+    await page.keyboard.press("Space");
+    assert(await el("#homeRecentCard").isHidden());
+    assert.equal(await recentToggle.isChecked(), false);
+    await page.keyboard.press("Escape");
+    await drawer.waitFor({state: "hidden"});
+    await page.waitForFunction(() => document.activeElement?.id === "openSummaryBtn");
+    await page.reload();
+    await visible("#kpiGrid .kpi:first-child");
+    assert(await el("#homeRecentCard").isHidden());
+
     await navigate("profil");
     await el("#workspaceSelect").selectOption(owner.workspace_id);
     await navigate("ringkasan");
     await el("#homeRecentList li").filter({ hasText: /Belum ada transaksi/ }).waitFor();
     assert(await el("#demoContextBanner").isHidden());
+    await settingsButton.click();
+    assert(await recentToggle.isChecked());
+    const quickToggle = el('[data-summary-module="quickMetrics"]');
+    await quickToggle.uncheck();
+    await closeDrawer.click();
+    assert(await el("#quickMetrics").isHidden());
+
+    await navigate("profil");
+    await el("#workspaceSelect").selectOption(demo.workspace.workspace_id);
+    await navigate("ringkasan");
+    await visible("#quickMetrics");
+    assert(await el("#homeRecentCard").isHidden());
+    await settingsButton.click();
+    await el("#restoreSummaryBtn").click();
+    assert(await recentToggle.isChecked());
+    await closeDrawer.click();
+    await visible("#homeRecentCard");
+
+    await navigate("profil");
+    await el("#workspaceSelect").selectOption(owner.workspace_id);
+    await navigate("katalog");
+    await el("#offName").fill("Beras uji");
+    await el("#offPrice").fill("14500");
+    await el("#offUnit").fill("kg");
+    await el("#offSubmitBtn").click();
+    await el("#offStatus").filter({ hasText: /tersimpan/ }).waitFor();
+    await navigate("ringkasan");
+    await el("#homeStockAlert").filter({ hasText: "Stok habis saat ini · Beras uji" }).waitFor();
+    assert(await el("#quickMetrics").isHidden());
     assert.deepEqual(errors, []);
-    console.log(`PASS ${width}px: empty, demo, replay, sale validation and report update, navigation, poster SVG export, workspace switch`);
+    console.log(`PASS ${width}px: empty, demo and replay, sale and report, navigation, poster SVG, drawer focus, preferences and workspace isolation, out-of-stock`);
   } finally {
     await browser.close();
   }

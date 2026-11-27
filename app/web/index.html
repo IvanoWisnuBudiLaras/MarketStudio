@@ -574,6 +574,32 @@
       border-top: 3px solid var(--accent);
     }
 
+    .quick-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+
+    .quick-metrics > div {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .quick-metrics dt {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .quick-metrics dd {
+      margin: 2px 0 0;
+      color: var(--brand-navy);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
     .report-metrics {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -614,6 +640,85 @@
       white-space: normal;
     }
 
+    .stock-alert {
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: var(--warn-bg);
+      color: var(--warn);
+    }
+
+    .summary-drawer {
+      position: fixed;
+      inset: 0 0 0 auto;
+      width: min(420px, 100%);
+      max-width: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      margin: 0;
+      padding: 20px;
+      border: 0;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .summary-drawer::backdrop {
+      background: rgba(15, 23, 42, 0.45);
+    }
+
+    .drawer-icon-btn {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+    }
+
+    .module-picker {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .module-option {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) 20px;
+      align-items: center;
+      gap: 12px;
+      min-height: 64px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+    }
+
+    .module-option:hover {
+      background: var(--canvas);
+    }
+
+    .module-option .ui-icon {
+      color: var(--accent);
+    }
+
+    .module-option small {
+      display: block;
+      color: var(--muted);
+    }
+
+    .module-option input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      min-width: 0;
+      min-height: 0;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
     .recent-list {
       list-style: none;
       margin: 0;
@@ -648,6 +753,11 @@
       #dailyReport, #reportDetailsCard {
         grid-column: 1 / -1;
       }
+
+      #homeStockCard:has(+ #homeRecentCard.hidden),
+      #homeStockCard.hidden + #homeRecentCard {
+        grid-column: 1 / -1;
+      }
     }
 
     @media (max-width: 900px) {
@@ -666,6 +776,10 @@
     }
 
     @media (max-width: 540px) {
+      .quick-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .report-metrics {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -1192,6 +1306,41 @@
   <div id="globalLiveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
   <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
 
+  <dialog id="summaryDrawer" class="summary-drawer" aria-labelledby="summaryDrawerTitle">
+    <div class="card-header">
+      <div>
+        <h2 id="summaryDrawerTitle">Atur ringkasan</h2>
+        <p id="summaryDrawerContext" class="muted"></p>
+      </div>
+      <form method="dialog">
+        <button type="submit" class="btn btn-secondary drawer-icon-btn" aria-label="Tutup pengaturan ringkasan" autofocus>
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg>
+        </button>
+      </form>
+    </div>
+    <p class="muted">Pilih modul yang ingin ditampilkan. Kas dan laba kotor selalu tersedia.</p>
+    <fieldset class="module-picker">
+      <legend class="sr-only">Modul opsional</legend>
+      <label class="module-option">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-chart"/></svg>
+        <span><strong>Angka ringkas</strong><small>Omzet, laba kotor, arus kas bersih, dan nilai stok akhir.</small></span>
+        <input type="checkbox" data-summary-module="quickMetrics" />
+      </label>
+      <label class="module-option">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-box"/></svg>
+        <span><strong>Stok dan stok habis</strong><small>Nilai persediaan akhir dan barang dengan stok saat ini nol.</small></span>
+        <input type="checkbox" data-summary-module="homeStockCard" />
+      </label>
+      <label class="module-option">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-card"/></svg>
+        <span><strong>Transaksi terbaru</strong><small>Tiga transaksi terakhir pada tanggal laporan.</small></span>
+        <input type="checkbox" data-summary-module="homeRecentCard" />
+      </label>
+    </fieldset>
+    <button id="restoreSummaryBtn" type="button" class="btn btn-secondary">Pulihkan tampilan</button>
+    <p id="summaryPreferenceStatus" class="status" aria-live="polite"></p>
+  </dialog>
+
   <div class="app-shell">
     <aside id="appSidebar" class="sidebar" aria-label="Menu utama studio">
       <div>
@@ -1326,6 +1475,7 @@
         </div>
         <div class="top-bar-actions">
           <a href="#transaksi" class="btn btn-primary hidden" id="homeTransactionBtn"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg><span>Catat transaksi</span></a>
+          <button id="openSummaryBtn" type="button" class="btn btn-secondary hidden" aria-haspopup="dialog" aria-controls="summaryDrawer">Atur ringkasan</button>
         </div>
       </header>
 
@@ -1383,12 +1533,18 @@
                 </div>
               </div>
 
+              <dl id="quickMetrics" class="quick-metrics" aria-label="Angka ringkas">
+                <div><dt>Omzet</dt><dd id="quickRevenue"></dd></div>
+                <div><dt>Laba kotor</dt><dd id="quickProfit"></dd></div>
+                <div><dt>Arus kas bersih</dt><dd id="quickCash"></dd></div>
+                <div><dt>Nilai stok akhir</dt><dd id="quickInventory"></dd></div>
+              </dl>
               <div id="kpiGrid" class="report-metrics"></div>
               <p id="cashVsProfitNote" class="report-note hidden"></p>
               <div id="reportStatus" class="status" aria-live="polite"></div>
             </div>
 
-            <div class="card">
+            <div class="card" id="homeStockCard">
               <div class="card-header">
                 <div>
                   <h2>Stok akhir</h2>
@@ -1397,6 +1553,7 @@
                 </div>
                 <a href="#katalog" class="btn btn-secondary">Kelola Katalog &amp; Stok</a>
               </div>
+              <div id="homeStockAlert" class="stock-alert hidden"></div>
               <div class="table-wrap stock-summary">
                 <table>
                   <thead>
@@ -1411,7 +1568,7 @@
               </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="homeRecentCard">
               <div class="card-header">
                 <h2>Transaksi terbaru</h2>
                 <a href="#transaksi" class="btn btn-secondary">Buka transaksi</a>
@@ -2317,6 +2474,10 @@
 
     const pageTitle = document.getElementById("pageTitle");
     const homeTransactionBtn = document.getElementById("homeTransactionBtn");
+    const openSummaryBtn = document.getElementById("openSummaryBtn");
+    const summaryDrawer = document.getElementById("summaryDrawer");
+    const summaryModules = Array.from(summaryDrawer.querySelectorAll("[data-summary-module]"));
+    const summaryPreferenceStatus = document.getElementById("summaryPreferenceStatus");
 
     const wsStatus = document.getElementById("wsStatus");
     const onbWsStatus = document.getElementById("onbWsStatus");
@@ -2569,11 +2730,61 @@
 
     let currentRoute = "ringkasan";
 
+    function summaryPreferenceKey() {
+      return `marketstudio_summary_hidden:${activeWorkspaceId}`;
+    }
+
+    function renderSummaryPreferences() {
+      let hidden = [];
+      try {
+        const saved = JSON.parse(localStorage.getItem(summaryPreferenceKey()));
+        if (Array.isArray(saved)) hidden = saved;
+      } catch {
+        // An unreadable preference falls back to the default layout.
+      }
+      for (const checkbox of summaryModules) {
+        const moduleId = checkbox.dataset.summaryModule;
+        checkbox.checked = !hidden.includes(moduleId);
+        document.getElementById(moduleId).classList.toggle("hidden", !checkbox.checked);
+      }
+    }
+
+    function saveSummaryPreferences(restore = false) {
+      if (!activeWorkspaceId) return;
+      const key = summaryPreferenceKey();
+      try {
+        if (restore) {
+          localStorage.removeItem(key);
+        } else {
+          const hidden = summaryModules.filter(input => !input.checked).map(input => input.dataset.summaryModule);
+          localStorage.setItem(key, JSON.stringify(hidden));
+        }
+        setStatus(summaryPreferenceStatus, restore ? "Tampilan bawaan dipulihkan." : "Pilihan modul tersimpan.");
+      } catch {
+        setStatus(summaryPreferenceStatus, "Pilihan gagal disimpan. Periksa pengaturan penyimpanan browser.", "err");
+      }
+      renderSummaryPreferences();
+    }
+
+    openSummaryBtn.addEventListener("click", () => {
+      document.getElementById("summaryDrawerContext").textContent = getActiveWorkspace()?.name || "";
+      setStatus(summaryPreferenceStatus, "");
+      summaryDrawer.showModal();
+    });
+    summaryDrawer.addEventListener("close", () => {
+      if (!openSummaryBtn.classList.contains("hidden")) openSummaryBtn.focus();
+    });
+    summaryModules.forEach(input => input.addEventListener("change", () => saveSummaryPreferences()));
+    document.getElementById("restoreSummaryBtn").addEventListener("click", () => saveSummaryPreferences(true));
+
     function updateHomeAction() {
       const hasOfferings = offeringsCache.length > 0;
       homeTransactionBtn.href = hasOfferings ? "#transaksi" : "#katalog";
       homeTransactionBtn.querySelector("span").textContent = hasOfferings ? "Catat transaksi" : "Tambah produk atau jasa";
       homeTransactionBtn.classList.toggle("hidden", currentRoute !== "ringkasan" || !activeWorkspaceId || catalogWorkspaceId !== activeWorkspaceId);
+      const showSummaryButton = currentRoute === "ringkasan" && Boolean(getActiveWorkspace());
+      openSummaryBtn.classList.toggle("hidden", !showSummaryButton);
+      if (!showSummaryButton && summaryDrawer.open) summaryDrawer.close();
     }
 
     function applyRoute(routeInfo, updateHash = false) {
@@ -2702,6 +2913,7 @@
 
       const hasWs = Boolean(ws);
       updateHomeAction();
+      renderSummaryPreferences();
       document.getElementById("posterNoWorkspace").classList.toggle("hidden", hasWs);
       document.getElementById("posterMain").classList.toggle("hidden", !hasWs);
       if (currentRoute === "studio-creative" && hasWs) loadPosterStudio();
@@ -2748,11 +2960,13 @@
       catalogWorkspaceId = "";
       offeringsCache = [];
       activeReportCache = null;
-      for (const id of ["kpiGrid", "stockValue", "ringkasanStockBody", "homeRecentList", "txRecentBody",
+      for (const id of ["kpiGrid", "quickRevenue", "quickProfit", "quickCash", "quickInventory",
+        "stockValue", "ringkasanStockBody", "homeRecentList", "txRecentBody",
         "drillTxBody", "drillStockBody", "drillAuditBody", "drillDownPre", "taxNote", "offeringTableBody"]) {
         document.getElementById(id).textContent = "";
       }
       document.getElementById("cashVsProfitNote").classList.add("hidden");
+      document.getElementById("homeStockAlert").classList.add("hidden");
       document.getElementById("reportPeriodLabel").textContent = "Memuat tanggal laporan…";
       document.getElementById("transactionPeriodLabel").textContent = "";
       for (const id of ["saleForm", "purchaseForm"]) {
@@ -3080,6 +3294,14 @@
       offeringsCache = data.items || [];
       catalogWorkspaceId = reqWsId;
       updateHomeAction();
+      const stockAlert = document.getElementById("homeStockAlert");
+      const soldOut = offeringsCache.filter(item => item.requires_stock_movement && item.qty_on_hand === "0");
+      stockAlert.classList.toggle("hidden", soldOut.length === 0);
+      if (soldOut.length) {
+        const names = soldOut.slice(0, 3).map(item => item.name).join(", ");
+        const remaining = soldOut.length > 3 ? ` dan ${soldOut.length - 3} lainnya` : "";
+        stockAlert.textContent = `Stok habis saat ini · ${names}${remaining}`;
+      }
       offBody.textContent = "";
       purOffering.textContent = "";
       saleOffering.textContent = "";
@@ -3431,11 +3653,16 @@
 
         const { cash_in_idr, cash_out_idr, net_cash_flow_idr, revenue_idr, cogs_idr, gross_profit_idr } = report;
         const inventory = report.ending_inventory?.total_value_idr ?? 0;
+        const grossProfit = gross_profit_idr === null ? "Belum dinilai" : fmtIdr(gross_profit_idr);
+        document.getElementById("quickRevenue").textContent = fmtIdr(revenue_idr);
+        document.getElementById("quickProfit").textContent = grossProfit;
+        document.getElementById("quickCash").textContent = fmtIdr(net_cash_flow_idr);
+        document.getElementById("quickInventory").textContent = fmtIdr(inventory);
         const grid = document.getElementById("kpiGrid");
         grid.replaceChildren(
           makeKpiCard("Arus kas bersih", fmtIdr(net_cash_flow_idr), "", "",
             `Kas masuk ${fmtIdr(cash_in_idr)} · Kas keluar ${fmtIdr(cash_out_idr)}`),
-          makeKpiCard("Laba kotor", gross_profit_idr === null ? "Belum dinilai" : fmtIdr(gross_profit_idr), "", "",
+          makeKpiCard("Laba kotor", grossProfit, "", "",
             `Omzet ${fmtIdr(revenue_idr)} · HPP ${cogs_idr === null ? "belum dinilai" : fmtIdr(cogs_idr)}`)
         );
         const cashNote = document.getElementById("cashVsProfitNote");

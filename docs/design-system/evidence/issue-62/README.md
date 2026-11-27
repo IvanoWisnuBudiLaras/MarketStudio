@@ -8,11 +8,13 @@ Pembanding memakai `origin/main` pada `e3f35e9` setelah Creative Studio digabung
 | Beranda dengan demo | [Sebelum](before-demo-390.png) · [Sesudah](after-demo-390.png) | [Sebelum](before-demo-1440.png) · [Sesudah](after-demo-1440.png) |
 | Validasi jumlah melebihi stok | [Ponsel](after-validation-390.png) | [Desktop](after-validation-1440.png) |
 | Beranda setelah penjualan | [Ponsel](after-result-390.png) | [Desktop](after-result-1440.png) |
+| Panel Atur ringkasan | [Ponsel](after-drawer-390.png) | [Desktop](after-drawer-1440.png) |
 
 ## Hasil
 
 - Playwright lulus pada kedua lebar. Uji mencakup CTA sesuai state, logo lokal, ukuran kontrol ponsel, fokus keyboard, menu dan tab, identitas demo, replay idempoten, error stok dan isian yang tetap, serta penjualan dan pembaruan laporan. Uji juga membuka Katalog, Analisis dan input survei manual, membuat draft poster, membuka pratinjau, mengunduh SVG dari Creative Studio, dan beralih kembali ke usaha tanpa transaksi.
 - Fixture menunjukkan arus kas bersih −Rp150.000, laba kotor Rp24.000, dan stok akhir Rp174.000. Penjualan barang Rp15.000 muncul pertama di transaksi terbaru dan mengubah arus kas bersih menjadi −Rp135.000.
+- Kedua lebar lulus pengujian panel Atur ringkasan. Enter membuka dialog, Escape menutupnya dan mengembalikan fokus, dan panel dapat digulir pada viewport ponsel yang dipendekkan. Pilihan demo bertahan setelah muat ulang, tampilan usaha pemilik memiliki pilihan sendiri, dan pemulihan tampilan demo hanya mengatur ulang preferensi demo. Barang baru yang jumlahnya nol tampil sebagai “Stok habis saat ini”.
 - `python3 -W error::ResourceWarning -m unittest discover -s tests -v` selesai dengan exit 0. Ada 47 kasus, dengan 8 kasus PostgreSQL dilewati karena URL pengujian PostgreSQL belum dikonfigurasi.
 - `python3 scripts/check_repository.py` dan `git diff --check` selesai dengan exit 0.
 
