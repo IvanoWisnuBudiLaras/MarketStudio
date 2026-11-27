@@ -48,12 +48,27 @@ def parse_positive_decimal(value: Any, field: str, errors: dict[str, str]) -> De
     return dec
 
 
+MAX_DERIVED_IDR = 10**15
+
+
 def round_idr(value: Decimal) -> int:
     """Round a Decimal Rupiah value half-up to integer."""
-    return int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-
-
-MAX_DERIVED_IDR = 10**15
+    if not value.is_finite() or abs(value) > Decimal(MAX_DERIVED_IDR):
+        raise DomainError(
+            422,
+            "value_overflow",
+            f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR.",
+            {"total_idr": f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR."},
+        )
+    try:
+        return int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    except (InvalidOperation, OverflowError) as exc:
+        raise DomainError(
+            422,
+            "value_overflow",
+            f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR.",
+            {"total_idr": f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR."},
+        ) from exc
 
 
 def ensure_idr_bound(value: int, field: str = "total_idr") -> int:

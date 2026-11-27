@@ -207,3 +207,81 @@ class SimulationIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(s_sale, 422)
         self.assertEqual(d_sale["code"], "value_overflow")
+
+        # Double 6e14 purchase rejected on 2nd purchase with 422 value_overflow
+        s_g, d_g = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/offerings",
+            token=self.token_a,
+            body={"name": "Barang Besar", "offering_type": "goods", "unit_price_idr": 1000, "unit": "pcs"},
+        )
+        self.assertEqual(s_g, 201)
+        goods_id = d_g["item"]["offering_id"]
+
+        s_p1, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/purchases",
+            token=self.token_a,
+            body={"offering_id": goods_id, "qty": "1", "total_cost_idr": 6 * 10**14},
+        )
+        self.assertEqual(s_p1, 201)
+
+        s_p2, d_p2 = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/purchases",
+            token=self.token_a,
+            body={"offering_id": goods_id, "qty": "1", "total_cost_idr": 6 * 10**14},
+        )
+        self.assertEqual(s_p2, 422)
+        self.assertEqual(d_p2["code"], "value_overflow")
+
+        # 1e-16 qty with 10^15 cost followed by POST /simulations -> 422 value_overflow (no crash)
+        s_g2, d_g2 = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/offerings",
+            token=self.token_a,
+            body={"name": "Barang Mikro", "offering_type": "goods", "unit_price_idr": 1000, "unit": "pcs"},
+        )
+        self.assertEqual(s_g2, 201)
+        micro_id = d_g2["item"]["offering_id"]
+
+        s_pm, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/purchases",
+            token=self.token_a,
+            body={"offering_id": micro_id, "qty": "0.0000000000000001", "total_cost_idr": 10**15},
+        )
+        self.assertEqual(s_pm, 201)
+
+        s_sim_ov, d_sim_ov = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/simulations",
+            token=self.token_a,
+            body={"offering_id": micro_id},
+        )
+        self.assertEqual(s_sim_ov, 422)
+        self.assertEqual(d_sim_ov["code"], "value_overflow")
+
+    def test_simulation_auth_order_for_non_member_and_revoked_actor(self) -> None:
+        ws_a = self._create_workspace(self.token_a, "Auth Order WS")
+
+        # Non-member sending {} -> 404 workspace_not_found (not 422)
+        s_non, d_non = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/simulations",
+            token=self.token_b,
+            body={},
+        )
+        self.assertEqual(s_non, 404)
+        self.assertEqual(d_non["code"], "workspace_not_found")
+
+        # Revoked actor sending {} -> 404 workspace_not_found
+        self.server.RequestHandlerClass.service.revoke_membership(ws_a, "actor_a")
+        s_rev, d_rev = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a}/simulations",
+            token=self.token_a,
+            body={},
+        )
+        self.assertEqual(s_rev, 404)
+        self.assertEqual(d_rev["code"], "workspace_not_found")

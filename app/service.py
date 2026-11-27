@@ -503,6 +503,7 @@ class BaselineService:
             if pool:
                 new_qty = Decimal(pool["qty_on_hand"]) + validated.qty
                 new_val = int(pool["total_value_idr"]) + validated.total_cost_idr
+                ensure_idr_bound(new_val, "total_value_idr")
                 conn.execute(
                     "UPDATE inventory_pools SET qty_on_hand = ?, total_value_idr = ? WHERE workspace_id = ? AND offering_id = ?",
                     (str(new_qty), new_val, workspace_id, validated.offering_id),
@@ -945,9 +946,9 @@ class BaselineService:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         """Read-only price & discount simulation; never mutates offerings, stock, or ledger."""
-        validated = validate_simulation_input(payload)
         with db_transaction(self.db_path) as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
+            validated = validate_simulation_input(payload)
             offering_name: str | None = None
             offering_type: str | None = None
             base_price_idr = validated.selling_price_idr

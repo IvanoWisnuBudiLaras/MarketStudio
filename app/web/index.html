@@ -412,6 +412,7 @@
         const optSim = document.createElement("option");
         optSim.value = item.offering_id;
         optSim.textContent = `${item.name} (${item.offering_type})`;
+        optSim.dataset.price = String(item.unit_price_idr);
         simOffering.appendChild(optSim);
 
         if (item.requires_stock_movement) {
@@ -467,6 +468,9 @@
       pendingSaleKey = "";
       localStorage.removeItem(PUR_KEY_STORAGE);
       localStorage.removeItem(SALE_KEY_STORAGE);
+      simReqSeq++;
+      simResultGrid.textContent = "";
+      simStatus.textContent = "";
       await Promise.all([loadOfferings(), loadReport()]);
     });
 
@@ -605,12 +609,24 @@
       lbl.className = "label";
       lbl.textContent = label;
       const val = document.createElement("div");
-      val.className = "value";
+      val.className = "val";
       val.textContent = value;
       box.appendChild(lbl);
       box.appendChild(val);
       return box;
     }
+
+    document.getElementById("simOffering").addEventListener("change", (e) => {
+      const sel = e.target;
+      if (sel.value !== "") {
+        const opt = sel.options[sel.selectedIndex];
+        document.getElementById("simCost").value = "";
+        document.getElementById("simPrice").value = (opt && opt.dataset.price) ? opt.dataset.price : "";
+      } else {
+        document.getElementById("simPrice").value = "5000";
+        document.getElementById("simCost").value = "3000";
+      }
+    });
 
     document.getElementById("simForm").addEventListener("submit", async (e) => {
       e.preventDefault();
