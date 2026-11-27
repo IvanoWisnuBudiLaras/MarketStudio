@@ -229,6 +229,20 @@ CREATE TABLE IF NOT EXISTS poster_drafts (
 CREATE INDEX IF NOT EXISTS idx_poster_drafts_workspace
     ON poster_drafts (workspace_id, updated_at);
 
+CREATE TABLE IF NOT EXISTS catalog_versions (
+    version_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    state TEXT NOT NULL CHECK (state IN ('draft', 'active', 'revoked')),
+    public_token TEXT UNIQUE,
+    selection_json TEXT NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    CHECK ((state = 'draft' AND public_token IS NULL) OR
+           (state IN ('active', 'revoked') AND public_token IS NOT NULL))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_current_state
+    ON catalog_versions (workspace_id, state) WHERE state IN ('draft', 'active');
+
 CREATE TABLE IF NOT EXISTS audit_events (
     event_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,

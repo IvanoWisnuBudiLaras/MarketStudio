@@ -6,6 +6,7 @@ import base64
 import hashlib
 import hmac
 import json
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -13,12 +14,14 @@ from pathlib import Path
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
+from app.catalog import render_catalog
 from app.creative import (
     BUILTIN_ASSET_MAP,
     DEFAULT_ASSETS_DIR,
     LICENSED_LOCAL_ASSETS,
     SUPPORTED_EXPORT_FORMATS,
     compute_draft_revision_hash,
+    encode_png_rgb,
     load_and_verify_asset,
     render_poster_artifact,
     validate_export_request,
@@ -1904,8 +1907,8 @@ class BaselineService:
                     "title": f"Promo {off['name']}"[:120],
                     "headline": f"Sedia {off['name']} Siap Pesan"[:140],
                     "caption": (
-                        f"Draft poster contoh untuk {off['name']} ({price_fmt}/{off['unit']}) "
-                        "menggunakan aset lokal berizin CC0-1.0. Siap ditinjau sebelum ekspor."
+                        f"{off['name']} siap dipesan dengan harga {price_fmt} per {off['unit']}. "
+                        "Hubungi kami untuk pemesanan."
                     ),
                     "cta_text": "Pesan Sekarang",
                     "price_label": f"{price_fmt} / {off['unit']}"[:60],
@@ -1922,8 +1925,7 @@ class BaselineService:
                     "title": "Promo Bakso Urat Spesial",
                     "headline": "Hangat, Gurih & Siap Saji",
                     "caption": (
-                        "Draft poster contoh sintetis MarketStudio menggunakan aset lokal "
-                        "berizin CC0-1.0. Sunting teks atau unggah aset pada rilis berikutnya."
+                        "Nikmati Bakso Urat Spesial yang hangat dan gurih. Pesan langsung di outlet."
                     ),
                     "cta_text": "Pesan di Outlet",
                     "price_label": "Rp 15.000 / pcs",
@@ -2313,3 +2315,128 @@ class BaselineService:
                 "publish_mutated": False,
                 "ledger_unchanged": True,
             }
+
+    def _assert_catalog_owner(self, conn: Any, workspace_id: str, actor_id: str) -> None:
+        self._assert_poster_access(conn, workspace_id, actor_id)
+        membership = conn.execute(
+            """SELECT 1 FROM workspace_memberships WHERE workspace_id = ?
+               AND actor_id = ? AND role = 'owner' AND revoked_at IS NULL""",
+            (workspace_id, actor_id),
+        ).fetchone()
+        if not membership:
+            raise DomainError(404, "workspace_not_found", "Workspace tidak ditemukan atau akses ditolak.")
+
+    def _catalog_state(self, conn: Any, workspace_id: str) -> dict[str, Any]:
+        rows = conn.execute(
+            """SELECT version_id, state, public_token, selection_json, snapshot_json
+               FROM catalog_versions WHERE workspace_id = ? AND state IN ('draft', 'active')""",
+            (workspace_id,),
+        ).fetchall()
+        result = {"draft": None, "public_path": None}
+        for row in rows:
+            if row["state"] == "active":
+                result["public_path"] = f'/katalog/{row["public_token"]}'
+            else:
+                result["draft"] = {
+                    "version_id": row["version_id"],
+                    "selection": json.loads(row["selection_json"]),
+                    "html": render_catalog(json.loads(row["snapshot_json"])),
+                }
+        return result
+
+    def get_catalog(self, workspace_id: str, actor_id: str) -> dict[str, Any]:
+        with self._tx() as conn:
+            self._assert_catalog_owner(conn, workspace_id, actor_id)
+            return self._catalog_state(conn, workspace_id)
+
+    def preview_catalog(self, workspace_id: str, actor_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._tx(immediate=True) as conn:
+            self._assert_catalog_owner(conn, workspace_id, actor_id)
+            ids = payload.get("offering_ids")
+            asset_id = payload.get("asset_id")
+            if (not isinstance(ids, list) or not 1 <= len(ids) <= 100
+                    or any(not isinstance(value, str) or not 1 <= len(value) <= 128 for value in ids)
+                    or len(set(ids)) != len(ids)):
+                raise DomainError(422, "invalid_selection", "Pilih 1–100 produk atau jasa yang berbeda.")
+            if asset_id is not None and (not isinstance(asset_id, str) or not 1 <= len(asset_id) <= 128):
+                raise DomainError(422, "invalid_selection", "Pilihan gambar tidak valid.")
+
+            offerings = []
+            for offering_id in ids:
+                row = conn.execute(
+                    """SELECT name, offering_type, unit, unit_price_idr FROM offerings
+                       WHERE workspace_id = ? AND offering_id = ?""",
+                    (workspace_id, offering_id),
+                ).fetchone()
+                if not row:
+                    raise DomainError(404, "offering_not_found", "Produk atau jasa tidak ditemukan.")
+                offerings.append(dict(row))
+
+            asset = None
+            if asset_id:
+                record = self._resolve_asset_record(conn, workspace_id, asset_id)
+                image = load_and_verify_asset(record, self.creative_assets_dir)
+                # Re-encode pixels so source file metadata cannot become public.
+                png = encode_png_rgb(image.width, image.height, image.rgb_bytes)
+                asset = {
+                    "image": base64.b64encode(png).decode("ascii"),
+                    "title": image.title,
+                    "license": image.asset_license,
+                    "attribution": image.attribution_text,
+                }
+
+            workspace = conn.execute("SELECT name FROM workspaces WHERE workspace_id = ?", (workspace_id,)).fetchone()
+            selection = {"offering_ids": ids, "asset_id": asset_id}
+            snapshot = {"name": workspace["name"], "offerings": offerings, "asset": asset}
+            conn.execute("DELETE FROM catalog_versions WHERE workspace_id = ? AND state = 'draft'", (workspace_id,))
+            conn.execute(
+                """INSERT INTO catalog_versions (version_id, workspace_id, state, selection_json, snapshot_json)
+                   VALUES (?, ?, 'draft', ?, ?)""",
+                (uuid.uuid4().hex, workspace_id, json.dumps(selection), json.dumps(snapshot)),
+            )
+            return self._catalog_state(conn, workspace_id)
+
+    def publish_catalog(self, workspace_id: str, actor_id: str, version_id: Any) -> dict[str, Any]:
+        with self._tx(immediate=True) as conn:
+            self._assert_catalog_owner(conn, workspace_id, actor_id)
+            if not isinstance(version_id, str):
+                raise DomainError(422, "preview_required", "Tampilkan pratinjau katalog terlebih dahulu.")
+            version = conn.execute(
+                "SELECT state FROM catalog_versions WHERE workspace_id = ? AND version_id = ?",
+                (workspace_id, version_id),
+            ).fetchone()
+            if not version or version["state"] == "revoked":
+                raise DomainError(409, "stale_preview", "Pratinjau berubah. Tampilkan pratinjau baru.")
+            if version["state"] == "draft":
+                conn.execute("UPDATE catalog_versions SET state = 'revoked' WHERE workspace_id = ? AND state = 'active'",
+                             (workspace_id,))
+                conn.execute("UPDATE catalog_versions SET state = 'active', public_token = ? WHERE version_id = ?",
+                             (secrets.token_urlsafe(24), version_id))
+                _record_audit(conn, workspace_id, actor_id, "catalog.published", "catalog", version_id, {})
+            return self._catalog_state(conn, workspace_id)
+
+    def unpublish_catalog(self, workspace_id: str, actor_id: str, token: Any) -> dict[str, Any]:
+        with self._tx(immediate=True) as conn:
+            self._assert_catalog_owner(conn, workspace_id, actor_id)
+            if not isinstance(token, str):
+                raise DomainError(422, "invalid_catalog", "Versi publik tidak valid.")
+            version = conn.execute(
+                """SELECT version_id, state FROM catalog_versions
+                   WHERE workspace_id = ? AND public_token = ?""",
+                (workspace_id, token),
+            ).fetchone()
+            if not version:
+                raise DomainError(404, "catalog_not_found", "Katalog tidak ditemukan.")
+            if version["state"] == "active":
+                conn.execute("UPDATE catalog_versions SET state = 'revoked' WHERE version_id = ?", (version["version_id"],))
+                _record_audit(conn, workspace_id, actor_id, "catalog.unpublished", "catalog", version["version_id"], {})
+            return self._catalog_state(conn, workspace_id)
+
+    def get_public_catalog(self, token: str) -> str | None:
+        if self.backend != "sqlite":
+            return None
+        with self._tx() as conn:
+            row = conn.execute(
+                "SELECT snapshot_json FROM catalog_versions WHERE public_token = ? AND state = 'active'", (token,)
+            ).fetchone()
+        return render_catalog(json.loads(row["snapshot_json"])) if row else None
