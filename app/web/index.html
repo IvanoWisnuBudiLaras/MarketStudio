@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketStudio — Baseline #5</title>
+  <style>
+    :root {
+      --accent: #2563EB;
+      --navy: #0F172A;
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #1E293B;
+      --muted: #64748B;
+      --danger: #DC2626;
+      --ok: #16A34A;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { margin: 0; font-size: 1.15rem; }
+    header span { font-size: 0.85rem; color: #94A3B8; }
+    main {
+      max-width: 960px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: end; }
+    label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; flex: 1; min-width: 160px; }
+    input, select, button {
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { opacity: 0.92; }
+    .status { font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2rem; }
+    .status.err { color: var(--danger); }
+    .status.ok { color: var(--ok); }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.55rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      background: #EFF6FF;
+      color: var(--accent);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MarketStudio — Baseline #5</h1>
+    <span>Data Sintetis Lokal • Tenant-Isolated</span>
+  </header>
+  <main>
+    <section class="card">
+      <h2>1. Profil Bisnis (Workspace)</h2>
+      <div class="row">
+        <label>
+          Pilih Workspace Aktif
+          <select id="workspaceSelect"></select>
+        </label>
+      </div>
+      <form id="workspaceForm" class="row" style="margin-top: 0.75rem;">
+        <label>
+          Nama Workspace Baru
+          <input id="wsName" type="text" placeholder="Contoh: Warung Kopi Sintetis" required />
+        </label>
+        <label>
+          Tipe Bisnis
+          <select id="wsType">
+            <option value="umkm_hybrid">UMKM Hybrid (Barang & Jasa)</option>
+            <option value="goods_retail">Barang / Retail</option>
+            <option value="service_studio">Jasa / Layanan</option>
+          </select>
+        </label>
+        <button type="submit">Buat Workspace</button>
+      </form>
+      <div id="wsStatus" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>2. Katalog Produk &amp; Jasa (Offering)</h2>
+      <form id="offeringForm" class="row">
+        <label>
+          Nama Produk / Jasa
+          <input id="offName" type="text" placeholder="Contoh: Bakso Urat / Jasa Desain" required />
+        </label>
+        <label>
+          Tipe
+          <select id="offType">
+            <option value="goods">goods (Barang)</option>
+            <option value="service">service (Jasa - tanpa stok)</option>
+            <option value="hybrid">hybrid</option>
+          </select>
+        </label>
+        <label>
+          Harga Satuan (IDR)
+          <input id="offPrice" type="number" min="0" step="1" value="15000" required />
+        </label>
+        <label>
+          Satuan
+          <input id="offUnit" type="text" value="pcs" required />
+        </label>
+        <button type="submit">Tambah Offering</button>
+      </form>
+      <div id="offStatus" class="status"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Tipe</th>
+            <th>Harga (IDR)</th>
+            <th>Stok Movement</th>
+            <th>Status Pajak</th>
+          </tr>
+        </thead>
+        <tbody id="offeringTableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "marketstudio_active_workspace_id";
+    let activeWorkspaceId = localStorage.getItem(STORAGE_KEY) || "";
+
+    const wsSelect = document.getElementById("workspaceSelect");
+    const wsStatus = document.getElementById("wsStatus");
+    const offStatus = document.getElementById("offStatus");
+    const offBody = document.getElementById("offeringTableBody");
+
+    function setStatus(el, msg, isErr = false) {
+      el.textContent = msg;
+      el.className = "status " + (isErr ? "err" : "ok");
+    }
+
+    async function loadWorkspaces() {
+      const res = await fetch("/v1/workspaces");
+      const data = await res.json();
+      wsSelect.innerHTML = "";
+      if (!data.items || data.items.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "-- Belum ada workspace --";
+        wsSelect.appendChild(opt);
+        activeWorkspaceId = "";
+        localStorage.removeItem(STORAGE_KEY);
+        offBody.innerHTML = "";
+        return;
+      }
+      data.items.forEach((ws) => {
+        const opt = document.createElement("option");
+        opt.value = ws.workspace_id;
+        opt.textContent = `${ws.name} (${ws.workspace_id})`;
+        wsSelect.appendChild(opt);
+      });
+      const exists = data.items.some((w) => w.workspace_id === activeWorkspaceId);
+      activeWorkspaceId = exists ? activeWorkspaceId : data.items[0].workspace_id;
+      wsSelect.value = activeWorkspaceId;
+      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      await loadOfferings();
+    }
+
+    async function loadOfferings() {
+      if (!activeWorkspaceId) {
+        offBody.innerHTML = "";
+        return;
+      }
+      const res = await fetch(`/v1/workspaces/${activeWorkspaceId}/offerings`, {
+        headers: { "X-Workspace-Id": activeWorkspaceId }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(offStatus, data.message || "Gagal memuat katalog", true);
+        return;
+      }
+      offBody.innerHTML = "";
+      (data.items || []).forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td><span class="badge">${item.offering_type}</span></td>
+          <td>Rp ${Number(item.unit_price_idr).toLocaleString("id-ID")} / ${item.unit}</td>
+          <td>${item.requires_stock_movement ? "Ya (" + (item.valuation_method || "WA") + ")" : "Tidak"}</td>
+          <td>${item.tax_status} (amount: null)</td>
+        `;
+        offBody.appendChild(tr);
+      });
+    }
+
+    wsSelect.addEventListener("change", async () => {
+      activeWorkspaceId = wsSelect.value;
+      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      await loadOfferings();
+    });
+
+    document.getElementById("workspaceForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("wsName").value;
+      const business_type = document.getElementById("wsType").value;
+      const res = await fetch("/v1/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, business_type })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(wsStatus, data.message || "Gagal membuat workspace", true);
+        return;
+      }
+      activeWorkspaceId = data.item.workspace_id;
+      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      document.getElementById("wsName").value = "";
+      setStatus(wsStatus, `Workspace '${data.item.name}' dibuat.`);
+      await loadWorkspaces();
+    });
+
+    document.getElementById("offeringForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeWorkspaceId) {
+        setStatus(offStatus, "Pilih atau buat workspace terlebih dahulu.", true);
+        return;
+      }
+      const payload = {
+        name: document.getElementById("offName").value,
+        offering_type: document.getElementById("offType").value,
+        unit_price_idr: parseInt(document.getElementById("offPrice").value, 10),
+        unit: document.getElementById("offUnit").value
+      };
+      const res = await fetch(`/v1/workspaces/${activeWorkspaceId}/offerings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Workspace-Id": activeWorkspaceId
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(offStatus, data.message || "Gagal menambah offering", true);
+        return;
+      }
+      document.getElementById("offName").value = "";
+      setStatus(offStatus, `Offering '${data.item.name}' tersimpan.`);
+      await loadOfferings();
+    });
+
+    loadWorkspaces();
+  </script>
+</body>
+</html>

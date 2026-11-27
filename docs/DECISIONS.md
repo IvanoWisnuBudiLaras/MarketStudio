@@ -26,5 +26,8 @@ Tambahkan tanggal, alasan, alternatif, dampak, status, persetujuan Product Owner
 | D16 | PROPOSED | Orca-first; manual handoff sebagai fallback; maksimal 2–3 sesi aktif awal |
 | D17 | OPEN | Model ID, reasoning effort, native Orca config, MCP permissions dan budget aktual |
 | D18 | PROPOSED | Kontrak teknis dan acceptance criteria V2 sebagai candidate baseline, belum approval implementasi |
+| D19 | APPROVED | (2026-11-27) PO mengotorisasi implementasi Issue #5 dan milestone slice #12/#10/#11/#32/#36/#38/#39/#20 tanpa menunggu approval lama; data sintetis lokal, tanpa merge/deploy publik |
+| D20 | APPROVED | (2026-11-27) Domain scope: `goods` (barang), `service` (jasa), dan `hybrid`; Weighted Average (WA) khusus untuk fixture; jasa tidak memerlukan stock movement; pajak berstatus `not_assessed`/`unknown` dengan alasan dan tanpa `tax_amount` (bukan default `tax=0`); wajib tenant isolation, idempotency, atomicity, dan audit |
+| D21 | APPROVED | (2026-11-27) Stack baseline #5: Python 3 stdlib modular monolith (`http.server` + `sqlite3` + `unittest`) dengan single browser entry point (`GET /`) dan local SQLite storage; siap migrasi bertahap ke FastAPI/PostgreSQL |
 
 Catatan: D14 mencerminkan koreksi owner atas jumlah bot; nama dan role berasal dari usulan yang kemudian dipakai dalam diskusi. Tidak ada bukti persetujuan untuk setiap detail teknis V2. D15 tidak mengizinkan AI mengubah keputusan bisnis tanpa approval. Dokumen history/v1 hanya untuk audit.
