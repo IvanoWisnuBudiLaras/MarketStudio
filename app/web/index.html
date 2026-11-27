@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketStudio — MVP Baseline</title>
+  <style>
+    :root {
+      --accent: #2563EB;
+      --navy: #0F172A;
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #1E293B;
+      --muted: #64748B;
+      --danger: #DC2626;
+      --ok: #16A34A;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { margin: 0; font-size: 1.15rem; }
+    header span { font-size: 0.85rem; color: #94A3B8; }
+    main {
+      max-width: 1024px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: end; }
+    label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; flex: 1; min-width: 150px; }
+    input, select, button {
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { opacity: 0.92; }
+    .status { font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2rem; }
+    .status.err { color: var(--danger); }
+    .status.ok { color: var(--ok); }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.88rem; }
+    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      background: #EFF6FF;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .kpi {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      background: #F8FAFC;
+    }
+    .kpi .label { font-size: 0.78rem; color: var(--muted); }
+    .kpi .val { font-size: 1.05rem; font-weight: 700; margin-top: 0.2rem; }
+    pre {
+      background: #0F172A;
+      color: #E2E8F0;
+      padding: 0.75rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      max-height: 240px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MarketStudio — MVP Baseline</h1>
+    <span>Data Sintetis Lokal • Tenant-Isolated • WA Valuation</span>
+  </header>
+  <main>
+    <section class="card">
+      <h2>1. Profil Bisnis (Workspace)</h2>
+      <div class="row">
+        <label>
+          Pilih Workspace Aktif
+          <select id="workspaceSelect"></select>
+        </label>
+      </div>
+      <form id="workspaceForm" class="row" style="margin-top: 0.75rem;">
+        <label>
+          Nama Workspace Baru
+          <input id="wsName" type="text" placeholder="Contoh: Warung Bakso Sintetis" required />
+        </label>
+        <label>
+          Tipe Bisnis
+          <select id="wsType">
+            <option value="umkm_hybrid">UMKM Hybrid (Barang &amp; Jasa)</option>
+            <option value="goods_retail">Barang / Retail</option>
+            <option value="service_studio">Jasa / Layanan</option>
+          </select>
+        </label>
+        <button type="submit">Buat Workspace</button>
+      </form>
+      <div id="wsStatus" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>2. Katalog Produk &amp; Jasa (Offering)</h2>
+      <form id="offeringForm" class="row">
+        <label>
+          Nama Produk / Jasa
+          <input id="offName" type="text" placeholder="Contoh: Bakso Urat / Jasa Katering" required />
+        </label>
+        <label>
+          Tipe
+          <select id="offType">
+            <option value="goods">goods (Barang)</option>
+            <option value="service">service (Jasa - tanpa stok)</option>
+            <option value="hybrid">hybrid</option>
+          </select>
+        </label>
+        <label>
+          Harga Satuan (IDR)
+          <input id="offPrice" type="number" min="0" step="1" value="15000" required />
+        </label>
+        <label>
+          Satuan
+          <input id="offUnit" type="text" value="pcs" required />
+        </label>
+        <button type="submit">Tambah Offering</button>
+      </form>
+      <div id="offStatus" class="status"></div>
+      <table>
+        <thead>
+          <tr><th>Nama</th><th>Tipe</th><th>Harga (IDR)</th><th>Stok</th><th>Pajak</th></tr>
+        </thead>
+        <tbody id="offeringTableBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>3. Pembelian Tunai (Purchase)</h2>
+      <form id="purchaseForm" class="row">
+        <label>
+          Offering (Barang/Hybrid)
+          <select id="purOffering"></select>
+        </label>
+        <label>
+          Qty
+          <input id="purQty" type="text" value="2" required />
+        </label>
+        <label>
+          Total Biaya (IDR)
+          <input id="purCost" type="number" min="0" step="1" value="20000" required />
+        </label>
+        <button type="submit">Catat Pembelian</button>
+      </form>
+      <div id="purStatus" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>4. Penjualan Tunai (Idempotent Sale)</h2>
+      <form id="saleForm" class="row">
+        <label>
+          Offering
+          <select id="saleOffering"></select>
+        </label>
+        <label>
+          Qty
+          <input id="saleQty" type="text" value="0.5" required />
+        </label>
+        <label>
+          Total Harga Jual (IDR)
+          <input id="salePrice" type="number" min="0" step="1" value="8000" required />
+        </label>
+        <button type="submit">Catat Penjualan</button>
+      </form>
+      <div id="saleStatus" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>5. Laporan Harian (Omzet, HPP, Laba, Kas) &amp; Drill-down</h2>
+      <div class="row">
+        <label>
+          Tanggal (Asia/Jakarta)
+          <input id="reportDate" type="date" />
+        </label>
+        <button type="button" id="refreshReportBtn">Muat Laporan</button>
+      </div>
+      <div id="kpiGrid" class="kpi-grid"></div>
+      <details style="margin-top: 0.75rem;">
+        <summary style="cursor:pointer; font-weight:600; font-size:0.9rem;">Drill-down Transaksi, Mutasi Stok &amp; Audit</summary>
+        <pre id="drillDownPre">{}</pre>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "marketstudio_active_workspace_id";
+    const SESSION_KEY = "marketstudio_session_token";
+    const PUR_KEY_STORAGE = "marketstudio_pending_pur_key";
+    const SALE_KEY_STORAGE = "marketstudio_pending_sale_key";
+    let activeWorkspaceId = localStorage.getItem(STORAGE_KEY) || "";
+    let sessionToken = localStorage.getItem(SESSION_KEY) || "";
+    let catalogReqSeq = 0;
+    let reportReqSeq = 0;
+    let pendingPurKey = localStorage.getItem(PUR_KEY_STORAGE) || "";
+    let pendingSaleKey = localStorage.getItem(SALE_KEY_STORAGE) || "";
+
+    const wsSelect = document.getElementById("workspaceSelect");
+    const wsStatus = document.getElementById("wsStatus");
+    const offStatus = document.getElementById("offStatus");
+    const purStatus = document.getElementById("purStatus");
+    const saleStatus = document.getElementById("saleStatus");
+    const offBody = document.getElementById("offeringTableBody");
+    const purOffering = document.getElementById("purOffering");
+    const saleOffering = document.getElementById("saleOffering");
+
+    function setStatus(el, msg, isErr = false) {
+      el.textContent = msg;
+      el.className = "status " + (isErr ? "err" : "ok");
+    }
+
+    function fmtIdr(val) {
+      if (val === null || val === undefined) return "open / unavailable";
+      return "Rp " + Number(val).toLocaleString("id-ID");
+    }
+
+    async function ensureSession() {
+      if (sessionToken) return sessionToken;
+      const res = await fetch("/v1/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actor_id: "synthetic_owner", passcode: "dev-owner-pass" })
+      });
+      if (!res.ok) {
+        throw new Error("Gagal autentikasi sesi lokal.");
+      }
+      const data = await res.json();
+      sessionToken = data.item.token;
+      localStorage.setItem(SESSION_KEY, sessionToken);
+      return sessionToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      await ensureSession();
+      const headers = Object.assign({}, options.headers || {}, {
+        "Authorization": "Bearer " + sessionToken
+      });
+      const res = await fetch(url, Object.assign({}, options, { headers }));
+      if (res.status === 401) {
+        sessionToken = "";
+        localStorage.removeItem(SESSION_KEY);
+        setStatus(wsStatus, "Sesi tidak valid (401). Muat ulang halaman untuk login ulang.", true);
+      }
+      return res;
+    }
+
+    function getScopedKey(storageKey, workspaceId, payload) {
+      const canonical = JSON.stringify(payload);
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+        if (saved && saved.workspaceId === workspaceId && saved.payload === canonical && saved.key) {
+          return saved.key;
+        }
+      } catch {}
+      const key = "ui-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem(storageKey, JSON.stringify({ workspaceId, payload: canonical, key }));
+      return key;
+    }
+
+    async function loadWorkspaces() {
+      const res = await apiFetch("/v1/workspaces");
+      if (res.status === 401) return;
+      const data = await res.json();
+      wsSelect.textContent = "";
+      if (!data.items || data.items.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "-- Belum ada workspace --";
+        wsSelect.appendChild(opt);
+        activeWorkspaceId = "";
+        localStorage.removeItem(STORAGE_KEY);
+        offBody.textContent = "";
+        return;
+      }
+      data.items.forEach((ws) => {
+        const opt = document.createElement("option");
+        opt.value = ws.workspace_id;
+        opt.textContent = `${ws.name} (${ws.workspace_id})`;
+        wsSelect.appendChild(opt);
+      });
+      const exists = data.items.some((w) => w.workspace_id === activeWorkspaceId);
+      activeWorkspaceId = exists ? activeWorkspaceId : data.items[0].workspace_id;
+      wsSelect.value = activeWorkspaceId;
+      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      await Promise.all([loadOfferings(), loadReport()]);
+    }
+
+    async function loadOfferings() {
+      if (!activeWorkspaceId) return;
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++catalogReqSeq;
+      const res = await apiFetch(`/v1/workspaces/${reqWsId}/offerings`);
+      const data = await res.json();
+      if (reqWsId !== activeWorkspaceId || reqSeq !== catalogReqSeq || !res.ok) return;
+
+      offBody.textContent = "";
+      purOffering.textContent = "";
+      saleOffering.textContent = "";
+      (data.items || []).forEach((item) => {
+        const tr = document.createElement("tr");
+
+        const tdName = document.createElement("td");
+        tdName.textContent = item.name;
+        tr.appendChild(tdName);
+
+        const tdType = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = item.offering_type;
+        tdType.appendChild(badge);
+        tr.appendChild(tdType);
+
+        const tdPrice = document.createElement("td");
+        tdPrice.textContent = `${fmtIdr(item.unit_price_idr)} / ${item.unit}`;
+        tr.appendChild(tdPrice);
+
+        const tdStock = document.createElement("td");
+        tdStock.textContent = item.requires_stock_movement
+          ? `Ya (${item.valuation_method || "WA"})`
+          : "Tidak";
+        tr.appendChild(tdStock);
+
+        const tdTax = document.createElement("td");
+        tdTax.textContent = `${item.tax_status} (nominal absen)`;
+        tr.appendChild(tdTax);
+
+        offBody.appendChild(tr);
+
+        const optSale = document.createElement("option");
+        optSale.value = item.offering_id;
+        optSale.textContent = `${item.name} (${item.offering_type})`;
+        saleOffering.appendChild(optSale);
+
+        if (item.requires_stock_movement) {
+          const optPur = document.createElement("option");
+          optPur.value = item.offering_id;
+          optPur.textContent = `${item.name} (${item.unit})`;
+          purOffering.appendChild(optPur);
+        }
+      });
+    }
+
+    async function loadReport() {
+      if (!activeWorkspaceId) return;
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++reportReqSeq;
+      const dateVal = document.getElementById("reportDate").value;
+      const qs = dateVal ? `?date=${encodeURIComponent(dateVal)}` : "";
+      const res = await apiFetch(`/v1/workspaces/${reqWsId}/reports/daily${qs}`);
+      const data = await res.json();
+      if (reqWsId !== activeWorkspaceId || reqSeq !== reportReqSeq || !res.ok) return;
+
+      const r = data.report;
+      const grid = document.getElementById("kpiGrid");
+      grid.textContent = "";
+      const kpis = [
+        ["Omzet", fmtIdr(r.revenue_idr)],
+        [`HPP (${r.cogs_status})`, fmtIdr(r.cogs_idr)],
+        [`Laba Kotor (${r.gross_profit_status})`, fmtIdr(r.gross_profit_idr)],
+        ["Arus Kas Bersih", fmtIdr(r.net_cash_flow_idr)],
+        ["Nilai Stok Akhir", fmtIdr(r.ending_inventory.total_value_idr)],
+        ["Pajak", r.tax_status]
+      ];
+      kpis.forEach(([label, val]) => {
+        const box = document.createElement("div");
+        box.className = "kpi";
+        const lbl = document.createElement("div");
+        lbl.className = "label";
+        lbl.textContent = label;
+        const v = document.createElement("div");
+        v.className = "val";
+        v.textContent = val;
+        box.appendChild(lbl);
+        box.appendChild(v);
+        grid.appendChild(box);
+      });
+      document.getElementById("drillDownPre").textContent = JSON.stringify(r.drill_down, null, 2);
+    }
+
+    wsSelect.addEventListener("change", async () => {
+      activeWorkspaceId = wsSelect.value;
+      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      pendingPurKey = "";
+      pendingSaleKey = "";
+      localStorage.removeItem(PUR_KEY_STORAGE);
+      localStorage.removeItem(SALE_KEY_STORAGE);
+      await Promise.all([loadOfferings(), loadReport()]);
+    });
+
+    document.getElementById("purchaseForm").addEventListener("input", () => {
+      pendingPurKey = "";
+      localStorage.removeItem(PUR_KEY_STORAGE);
+    });
+    document.getElementById("saleForm").addEventListener("input", () => {
+      pendingSaleKey = "";
+      localStorage.removeItem(SALE_KEY_STORAGE);
+    });
+
+    document.getElementById("workspaceForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const res = await apiFetch("/v1/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: document.getElementById("wsName").value,
+          business_type: document.getElementById("wsType").value
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) return setStatus(wsStatus, data.message || "Gagal", true);
+      activeWorkspaceId = data.item.workspace_id;
+      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      document.getElementById("wsName").value = "";
+      setStatus(wsStatus, `Workspace '${data.item.name}' dibuat.`);
+      await loadWorkspaces();
+    });
+
+    document.getElementById("offeringForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeWorkspaceId) return setStatus(offStatus, "Pilih workspace dulu.", true);
+      const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/offerings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: document.getElementById("offName").value,
+          offering_type: document.getElementById("offType").value,
+          unit_price_idr: parseInt(document.getElementById("offPrice").value, 10),
+          unit: document.getElementById("offUnit").value
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) return setStatus(offStatus, data.message || "Gagal", true);
+      document.getElementById("offName").value = "";
+      setStatus(offStatus, `Offering '${data.item.name}' tersimpan.`);
+      await loadOfferings();
+    });
+
+    document.getElementById("purchaseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeWorkspaceId) return setStatus(purStatus, "Pilih workspace dulu.", true);
+      const btn = e.target.querySelector("button[type='submit']");
+      if (btn.disabled) return;
+      btn.disabled = true;
+      const payload = {
+        offering_id: purOffering.value,
+        qty: document.getElementById("purQty").value,
+        total_cost_idr: parseInt(document.getElementById("purCost").value, 10)
+      };
+      pendingPurKey = getScopedKey(PUR_KEY_STORAGE, activeWorkspaceId, payload);
+      setStatus(purStatus, "Menyimpan pembelian...");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/purchases`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Idempotency-Key": pendingPurKey },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.status === 409 || res.status === 422) {
+          pendingPurKey = "";
+          localStorage.removeItem(PUR_KEY_STORAGE);
+          return setStatus(purStatus, data.message || "Gagal", true);
+        }
+        if (!res.ok) return setStatus(purStatus, data.message || "Gagal", true);
+        pendingPurKey = "";
+        localStorage.removeItem(PUR_KEY_STORAGE);
+        setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}).`);
+        await loadReport();
+      } catch {
+        setStatus(purStatus, "Network error: key dipertahankan untuk retry aman.", true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("saleForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeWorkspaceId) return setStatus(saleStatus, "Pilih workspace dulu.", true);
+      const btn = e.target.querySelector("button[type='submit']");
+      if (btn.disabled) return;
+      btn.disabled = true;
+      const payload = {
+        lines: [{
+          offering_id: saleOffering.value,
+          qty: document.getElementById("saleQty").value,
+          total_price_idr: parseInt(document.getElementById("salePrice").value, 10)
+        }]
+      };
+      pendingSaleKey = getScopedKey(SALE_KEY_STORAGE, activeWorkspaceId, payload);
+      setStatus(saleStatus, "Saving penjualan...");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/sales`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Idempotency-Key": pendingSaleKey },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.status === 409 || res.status === 422) {
+          pendingSaleKey = "";
+          localStorage.removeItem(SALE_KEY_STORAGE);
+          return setStatus(saleStatus, `Conflict/Validation: ${data.message}`, true);
+        }
+        if (!res.ok) return setStatus(saleStatus, `Error: ${data.message || "Gagal"}`, true);
+        pendingSaleKey = "";
+        localStorage.removeItem(SALE_KEY_STORAGE);
+        setStatus(saleStatus, `Saved (${data.item.sale_id}).`);
+        await loadReport();
+      } catch {
+        setStatus(saleStatus, "Network error: key dipertahankan untuk retry aman.", true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
+    loadWorkspaces();
+  </script>
+</body>
+</html>
