@@ -30,9 +30,10 @@ _REQUIRED_ENV_VARS = (
 
 def get_ai_provider_config_status() -> dict[str, Any]:
     """Check AI provider env configuration presence without ever reading or exposing secret values."""
-    env_presence = {key: bool(os.environ.get(key)) for key in _REQUIRED_ENV_VARS}
-    provider = os.environ.get("MARKETSTUDIO_AI_PROVIDER") or None
-    model = os.environ.get("MARKETSTUDIO_AI_MODEL") or None
+    env_values = {key: (os.environ.get(key) or "").strip() for key in _REQUIRED_ENV_VARS}
+    env_presence = {key: bool(val) for key, val in env_values.items()}
+    provider = env_values["MARKETSTUDIO_AI_PROVIDER"] or None
+    model = env_values["MARKETSTUDIO_AI_MODEL"] or None
     has_key = env_presence["GEMINI_API_KEY"] or env_presence["GOOGLE_API_KEY"]
 
     missing_env_vars: list[str] = []
@@ -43,16 +44,22 @@ def get_ai_provider_config_status() -> dict[str, Any]:
     if not has_key:
         missing_env_vars.append("GEMINI_API_KEY")
 
+    unsupported_provider = bool(provider and provider != "gemini")
     configured = bool(provider == "gemini" and model and has_key)
     return {
         "configured": configured,
         "provider": provider,
         "model": model,
+        "unsupported_provider": unsupported_provider,
         "env_presence": env_presence,
         "missing_env_vars": missing_env_vars,
         "setup_action": (
-            "Set MARKETSTUDIO_AI_PROVIDER=gemini, MARKETSTUDIO_AI_MODEL=gemini-2.5-flash, "
-            "dan GEMINI_API_KEY di environment runtime."
+            f"Provider '{provider}' tidak didukung; gunakan MARKETSTUDIO_AI_PROVIDER=gemini."
+            if unsupported_provider
+            else (
+                "Set MARKETSTUDIO_AI_PROVIDER=gemini, MARKETSTUDIO_AI_MODEL=gemini-2.5-flash, "
+                "dan GEMINI_API_KEY di environment runtime."
+            )
         ),
         "live_integration_verified": False,
     }
@@ -107,12 +114,19 @@ def build_metric_snapshot(report: dict[str, Any]) -> dict[str, Any]:
         "source_ids": source_ids_all,
     }
 
+    data_sufficiency = (
+        "insufficient_data"
+        if metrics["sales_count"] == 0 and metrics["purchases_count"] == 0
+        else "sufficient"
+    )
+
     return {
         "snapshot_id": snapshot_id,
         "period": period,
         "policy_version": report["policy_version"],
         "tax_status": report["tax_status"],
         "cost_status": report["cogs_status"],
+        "data_sufficiency": data_sufficiency,
         "metrics": metrics,
         "source_ids_all": source_ids_all,
         "outbound_payload": outbound_payload,
@@ -185,6 +199,8 @@ def validate_ai_output(raw_output: Any, snapshot: dict[str, Any]) -> tuple[bool,
     if not isinstance(cited_ids, list) or not all(isinstance(x, str) for x in cited_ids):
         return False, "fake_citation"
     allowed_ids = set(snapshot["source_ids_all"])
+    if allowed_ids and not cited_ids:
+        return False, "fake_citation"
     if not set(cited_ids).issubset(allowed_ids):
         return False, "fake_citation"
 
@@ -193,7 +209,7 @@ def validate_ai_output(raw_output: Any, snapshot: dict[str, Any]) -> tuple[bool,
         if not isinstance(numeric_claims, dict):
             return False, "numeric_mismatch"
         for k, v in numeric_claims.items():
-            if k in snapshot["metrics"] and snapshot["metrics"][k] != v:
+            if k not in snapshot["metrics"] or isinstance(v, bool) or snapshot["metrics"][k] != v:
                 return False, "numeric_mismatch"
 
     return True, None
@@ -261,7 +277,7 @@ def _call_gemini_adapter(
     prompt = (
         "Anda adalah analis bisnis MarketStudio. Kembalikan HANYA JSON valid dengan keys: "
         "summary (string), highlights (list of strings), missing_data (list of strings), "
-        "citations ({snapshot_id, period_date, source_ids}). "
+        "numeric_claims (object matching metrics), citations ({snapshot_id, period_date, source_ids}). "
         "Jangan mengubah angka. Gunakan hanya data berikut:\n"
         + json.dumps(outbound_payload)
     )
@@ -286,6 +302,8 @@ def _call_gemini_adapter(
         parsed = json.loads(raw_text)
         text = parsed["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(text), None
+    except urllib.error.HTTPError:
+        return None, "provider_error"
     except (TimeoutError, urllib.error.URLError):
         return None, "provider_timeout"
     except Exception:

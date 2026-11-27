@@ -22,7 +22,7 @@ class AIContractTest(unittest.TestCase):
         self.service = BaselineService(db_path=self.db_path)
         self.owner = "owner_40"
         _, self.ws = self.service.create_workspace(
-            {"name": "Toko Rahasia #40", "timezone": "Asia/Jakarta"},
+            {"name": "Toko Rahasia 40", "timezone": "Asia/Jakarta"},
             actor=self.owner,
         )
         self.ws_id = self.ws["workspace_id"]
@@ -49,7 +49,7 @@ class AIContractTest(unittest.TestCase):
         report = self.service.get_daily_report(self.ws_id, self.owner)
         snap = build_metric_snapshot(report)
         outbound = json.dumps(snap["outbound_payload"])
-        self.assertNotIn("Toko Rahasia #40", outbound)
+        self.assertNotIn("Toko Rahasia 40", outbound)
         self.assertNotIn(self.ws_id, outbound)
         self.assertNotIn(self.owner, outbound)
         self.assertIn("IDR", outbound)

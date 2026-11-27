@@ -7,7 +7,9 @@ Status: **PROPOSED / Contract Verified (Provider Unconfigured)**
 - `MARKETSTUDIO_AI_MODEL=gemini-2.5-flash`
 - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
 
-## Blocker / Developer Action
+## Cost, Quota & Open Decisions (D12 / D17)
+- **D12 / D17 (OPEN)**: Model ID final, budget/quota API aktual, dan approval provider berbayar masih menunggu keputusan Product Owner (PO).
+- Tidak ada pengadaan layanan berbayar otomatis; integrasi live hanya berjalan jika env var legal/zero-cost sudah dikonfigurasi di runtime.
 Runtime environment currently has none of the above variables set (`configured=False`).
 To enable live provider calls without changing code, set:
 `MARKETSTUDIO_AI_PROVIDER=gemini`, `MARKETSTUDIO_AI_MODEL=gemini-2.5-flash`, and `GEMINI_API_KEY`.
