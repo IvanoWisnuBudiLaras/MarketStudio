@@ -1075,20 +1075,28 @@ class BaselineService:
         if date_str is not None and not isinstance(date_str, str):
             raise DomainError(422, "invalid_date", "Format tanggal harus string YYYY-MM-DD.")
 
+        import math
+        import os
+
         stub_mode = body.get("stub_mode") or None
-        if stub_mode is not None and stub_mode not in STUB_MODES:
-            raise DomainError(
-                422,
-                "invalid_stub_mode",
-                f"stub_mode tidak dikenal. Pilihan: {', '.join(sorted(STUB_MODES))}.",
-            )
+        if stub_mode is not None:
+            if os.environ.get("MARKETSTUDIO_ENV") == "production" and os.environ.get("MARKETSTUDIO_ENABLE_AI_STUBS") != "1":
+                raise DomainError(403, "stub_disabled", "Stub mode dinonaktifkan di production.")
+            if stub_mode not in STUB_MODES:
+                raise DomainError(
+                    422,
+                    "invalid_stub_mode",
+                    f"stub_mode tidak dikenal. Pilihan: {', '.join(sorted(STUB_MODES))}.",
+                )
 
         raw_timeout = body.get("timeout_seconds", 8.0)
+        if isinstance(raw_timeout, bool):
+            raise DomainError(422, "invalid_timeout", "timeout_seconds harus berupa angka.")
         try:
             timeout_seconds = float(raw_timeout)
         except (TypeError, ValueError) as exc:
             raise DomainError(422, "invalid_timeout", "timeout_seconds harus berupa angka.") from exc
-        if timeout_seconds <= 0 or timeout_seconds > 30:
+        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0 or timeout_seconds > 30:
             raise DomainError(422, "invalid_timeout", "timeout_seconds harus di antara 0 dan 30 detik.")
 
         report = self.get_daily_report(workspace_id, actor_id, date_str=date_str)

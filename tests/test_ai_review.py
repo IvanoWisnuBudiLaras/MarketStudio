@@ -219,6 +219,42 @@ class AIReviewTest(unittest.TestCase):
             self.service.run_daily_ai_review("ws_unknown_999", self.owner_actor, payload={})
         self.assertEqual(ctx_unknown.exception.status_code, 404)
 
+        # 422 invalid timeout_seconds (bool / nan)
+        for bad_timeout in (True, "nan", "inf", -1):
+            with self.assertRaises(DomainError) as ctx_to:
+                self.service.run_daily_ai_review(
+                    self.ws_id, self.owner_actor, payload={"timeout_seconds": bad_timeout}
+                )
+            self.assertEqual(ctx_to.exception.status_code, 422)
+
+        # HTTP 404 for non-member on POST /reports/daily/ai-review and GET /ai-review/config
+        token = "tok_intruder_99"
+        with db_transaction(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO sessions (token, actor_id, created_at) VALUES (?, ?, ?)",
+                (token, "intruder_99", "2026-11-27T00:00:00+00:00"),
+            )
+        req_http_404_post = urllib.request.Request(
+            f"{base}/v1/workspaces/{self.ws_id}/reports/daily/ai-review",
+            data=b"{}",
+            method="POST",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        )
+        with self.assertRaises(urllib.error.HTTPError) as ctx_hp:
+            urllib.request.urlopen(req_http_404_post)
+        self.assertEqual(ctx_hp.exception.code, 404)
+        ctx_hp.exception.close()
+
+        req_http_404_get = urllib.request.Request(
+            f"{base}/v1/workspaces/{self.ws_id}/ai-review/config",
+            method="GET",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        with self.assertRaises(urllib.error.HTTPError) as ctx_hg:
+            urllib.request.urlopen(req_http_404_get)
+        self.assertEqual(ctx_hg.exception.code, 404)
+        ctx_hg.exception.close()
+
 
 if __name__ == "__main__":
     unittest.main()

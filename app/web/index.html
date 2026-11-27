@@ -579,6 +579,7 @@
 
     document.getElementById("workspaceForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      clearAiReviewResults();
       const res = await apiFetch("/v1/workspaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -919,6 +920,7 @@
     let aiReviewReqSeq = 0;
 
     function clearAiReviewResults() {
+      aiReviewReqSeq++;
       aiReviewStatus.textContent = "";
       aiReviewGrid.textContent = "";
     }
