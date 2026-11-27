@@ -12,7 +12,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from app.db import DEFAULT_DB_PATH, init_db
+from app.db import (
+    DEFAULT_DB_PATH,
+    DatabaseConfig,
+    PostgresPoolManager,
+    init_db,
+    resolve_db_config,
+)
 from app.domain import DomainError
 from app.service import BaselineService
 
@@ -99,7 +105,14 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/health":
-                self._send_json(200, {"status": "ok", "service": "marketstudio-baseline"})
+                self._send_json(
+                    200,
+                    {
+                        "status": "ok",
+                        "service": "marketstudio-baseline",
+                        "db_backend": self.service.backend,
+                    },
+                )
                 return
 
             if path == "/v1/workspaces":
@@ -271,28 +284,62 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             self._send_error_envelope(err, request_id)
 
 
+class MarketStudioHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer that cleanly closes owned database pool resources on shutdown."""
+
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        RequestHandlerClass: type[BaselineHTTPHandler],
+        service: BaselineService,
+    ) -> None:
+        self.service = service
+        super().__init__(server_address, RequestHandlerClass)
+
+    def server_close(self) -> None:
+        try:
+            self.service.close()
+        finally:
+            super().server_close()
+
+
 def create_server(
     host: str = "127.0.0.1",
     port: int = 8000,
-    db_path: str = DEFAULT_DB_PATH,
-) -> ThreadingHTTPServer:
+    db_path: str | DatabaseConfig | None = None,
+    *,
+    database_url: str | None = None,
+    backend: str | None = None,
+    auto_migrate: bool | None = None,
+    use_pool: bool = True,
+) -> MarketStudioHTTPServer:
     """Create configured ThreadingHTTPServer for MarketStudio baseline."""
-    init_db(db_path)
-    service = BaselineService(db_path=db_path)
+    config = resolve_db_config(db_path=db_path, database_url=database_url, backend=backend)
+    init_db(config, auto_migrate=auto_migrate)
+
+    pool: PostgresPoolManager | None = None
+    if config.backend == "postgres" and use_pool:
+        pool = PostgresPoolManager(config)
+
+    service = BaselineService(config, pool=pool)
+    service._owns_pool = pool is not None
 
     class _Handler(BaselineHTTPHandler):
         pass
 
     _Handler.service = service
-    return ThreadingHTTPServer((host, port), _Handler)
+    return MarketStudioHTTPServer((host, port), _Handler, service=service)
 
 
 def main() -> None:
     host = os.environ.get("MARKETSTUDIO_HOST", "127.0.0.1")
     port = int(os.environ.get("MARKETSTUDIO_PORT", "8000"))
-    db_path = os.environ.get("MARKETSTUDIO_DB_PATH", DEFAULT_DB_PATH)
-    server = create_server(host=host, port=port, db_path=db_path)
-    print(f"MarketStudio baseline running at http://{host}:{port} (db: {db_path})")
+    config = resolve_db_config()
+    server = create_server(host=host, port=port, db_path=config)
+    print(
+        f"MarketStudio baseline running at http://{host}:{port} "
+        f"(backend: {config.backend}, db: {config.display_target})"
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:
