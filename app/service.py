@@ -37,17 +37,17 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _normalize_occurred_at(raw: str | None) -> str:
-    if not raw:
+def _normalize_occurred_at(raw: Any, provided: bool = False) -> str:
+    if not provided and raw is None:
         return _utc_now()
-    if not isinstance(raw, str):
-        raise DomainError(422, "invalid_timestamp", "Format occurred_at harus string ISO-8601.")
+    if not isinstance(raw, str) or not raw.strip():
+        raise DomainError(422, "invalid_timestamp", "occurred_at harus berupa string ISO-8601 dengan timezone.")
     try:
         dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except ValueError as exc:
         raise DomainError(422, "invalid_timestamp", f"Format occurred_at tidak valid: {exc}") from exc
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        raise DomainError(422, "invalid_timestamp", "occurred_at wajib menyertakan timezone/offset (tidak boleh naive).")
     return dt.astimezone(timezone.utc).isoformat()
 
 
@@ -190,7 +190,15 @@ class BaselineService:
                             "idempotency_conflict",
                             "Idempotency-Key sudah dipakai dengan payload berbeda.",
                         )
-                    return existing["status_code"], json.loads(existing["response_body"])
+                    replayed = json.loads(existing["response_body"])
+                    ws_id = replayed["workspace_id"]
+                    mem = conn.execute(
+                        "SELECT revoked_at FROM workspace_memberships WHERE workspace_id = ? AND actor_id = ?",
+                        (ws_id, actor),
+                    ).fetchone()
+                    if not mem or mem["revoked_at"] is not None:
+                        raise DomainError(403, "forbidden_workspace", "Keanggotaan workspace telah dicabut.")
+                    return existing["status_code"], replayed
 
             workspace_id = f"ws_{uuid.uuid4().hex[:12]}"
             created_at = _utc_now()
@@ -234,12 +242,9 @@ class BaselineService:
         conn: Any,
         workspace_id: str,
         actor_id: str | None,
-        actor_status: str | None = None,
     ) -> None:
         if not actor_id:
             raise DomainError(401, "unauthenticated", "Aktor tidak terautentikasi.")
-        if actor_status == "revoked":
-            raise DomainError(404, "workspace_not_found", "Workspace tidak ditemukan atau akses ditolak.")
         ws = conn.execute(
             "SELECT workspace_id FROM workspaces WHERE workspace_id = ?",
             (workspace_id,),
@@ -315,7 +320,7 @@ class BaselineService:
         actor_status: str | None = None,
     ) -> list[dict[str, Any]]:
         with db_transaction(self.db_path) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id, actor_status)
+            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
             rows = conn.execute(
                 "SELECT * FROM offerings WHERE workspace_id = ? ORDER BY created_at ASC",
                 (workspace_id,),
@@ -330,7 +335,7 @@ class BaselineService:
         actor_status: str | None = None,
     ) -> dict[str, Any]:
         with db_transaction(self.db_path) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id, actor_status)
+            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
             row = conn.execute(
                 "SELECT * FROM offerings WHERE workspace_id = ? AND offering_id = ?",
                 (workspace_id, offering_id),
@@ -349,7 +354,7 @@ class BaselineService:
         actor_status: str | None = None,
     ) -> tuple[int, dict[str, Any]]:
         with db_transaction(self.db_path, immediate=True) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id, actor_status)
+            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
             validated = validate_offering_input(payload)
             req_hash = _hash_payload(payload)
 
@@ -411,7 +416,7 @@ class BaselineService:
         actor_status: str | None = None,
     ) -> tuple[int, dict[str, Any]]:
         with db_transaction(self.db_path, immediate=True) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id, actor_status)
+            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
             validated = validate_purchase_input(payload)
             req_hash = _hash_payload(payload)
 
@@ -432,7 +437,19 @@ class BaselineService:
                     "Offering jasa tidak memerlukan pembelian/pergerakan stok.",
                 )
 
-            occurred_at = _normalize_occurred_at(validated.occurred_at)
+            occurred_at = _normalize_occurred_at(
+                payload.get("occurred_at"), provided=("occurred_at" in payload)
+            )
+            max_mov = conn.execute(
+                "SELECT MAX(occurred_at) AS max_ts FROM stock_movements WHERE workspace_id = ? AND offering_id = ?",
+                (workspace_id, validated.offering_id),
+            ).fetchone()
+            if max_mov and max_mov["max_ts"] and occurred_at < max_mov["max_ts"]:
+                raise DomainError(
+                    422,
+                    "out_of_order_timestamp",
+                    "occurred_at tidak boleh lebih awal dari mutasi stok terakhir.",
+                )
             recorded_at = _utc_now()
             purchase_id = f"pur_{uuid.uuid4().hex[:12]}"
             batch_id = f"bat_{uuid.uuid4().hex[:12]}"
@@ -522,7 +539,7 @@ class BaselineService:
         fault_stage: str = "pre_commit",
     ) -> tuple[int, dict[str, Any]]:
         with db_transaction(self.db_path, immediate=True) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id, actor_status)
+            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
             validated = validate_sale_input(payload)
             req_hash = _hash_payload(payload)
 
@@ -530,7 +547,9 @@ class BaselineService:
             if replay:
                 return replay
 
-            occurred_at = _normalize_occurred_at(validated.occurred_at)
+            occurred_at = _normalize_occurred_at(
+                payload.get("occurred_at"), provided=("occurred_at" in payload)
+            )
             recorded_at = _utc_now()
             sale_id = f"sal_{uuid.uuid4().hex[:12]}"
 
@@ -602,6 +621,28 @@ class BaselineService:
                         "UPDATE inventory_pools SET qty_on_hand = ?, total_value_idr = ? WHERE workspace_id = ? AND offering_id = ?",
                         (str(new_qty), new_val_idr, workspace_id, line.offering_id),
                     )
+
+                    # Keep inventory_batches.qty_remaining synchronized with inventory_pools
+                    batches = conn.execute(
+                        """
+                        SELECT batch_id, qty_remaining
+                        FROM inventory_batches
+                        WHERE workspace_id = ? AND offering_id = ? AND CAST(qty_remaining AS REAL) > 0
+                        ORDER BY occurred_at ASC, batch_id ASC
+                        """,
+                        (workspace_id, line.offering_id),
+                    ).fetchall()
+                    rem_deduct = line.qty
+                    for b in batches:
+                        if rem_deduct <= 0:
+                            break
+                        b_rem = Decimal(b["qty_remaining"])
+                        take = min(b_rem, rem_deduct)
+                        conn.execute(
+                            "UPDATE inventory_batches SET qty_remaining = ? WHERE batch_id = ?",
+                            (str(b_rem - take), b["batch_id"]),
+                        )
+                        rem_deduct -= take
 
                     if fault_injector is not None and fault_stage == "stock_movements":
                         fault_injector(conn)
@@ -728,7 +769,14 @@ class BaselineService:
         actor_status: str | None = None,
     ) -> dict[str, Any]:
         with db_transaction(self.db_path) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id, actor_status)
+            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
+
+            ws_row = conn.execute(
+                "SELECT timezone FROM workspaces WHERE workspace_id = ?",
+                (workspace_id,),
+            ).fetchone()
+            ws_tz_name = ws_row["timezone"] if ws_row else "Asia/Jakarta"
+            ws_tz = ZoneInfo(ws_tz_name)
 
             if date_str:
                 try:
@@ -736,9 +784,9 @@ class BaselineService:
                 except ValueError as exc:
                     raise DomainError(422, "invalid_date", "Format tanggal harus YYYY-MM-DD.") from exc
             else:
-                target_date = datetime.now(JAKARTA_TZ).date()
+                target_date = datetime.now(ws_tz).date()
 
-            start_local = datetime(target_date.year, target_date.month, target_date.day, tzinfo=JAKARTA_TZ)
+            start_local = datetime(target_date.year, target_date.month, target_date.day, tzinfo=ws_tz)
             end_local = start_local + timedelta(days=1)
             start_utc = start_local.astimezone(timezone.utc).isoformat()
             end_utc = end_local.astimezone(timezone.utc).isoformat()
@@ -842,17 +890,17 @@ class BaselineService:
             audit_rows = conn.execute(
                 """
                 SELECT * FROM audit_events
-                WHERE workspace_id = ?
+                WHERE workspace_id = ? AND created_at >= ? AND created_at < ?
                 ORDER BY created_at DESC LIMIT 50
                 """,
-                (workspace_id,),
+                (workspace_id, start_utc, end_utc),
             ).fetchall()
 
             return {
                 "workspace_id": workspace_id,
                 "period": {
                     "date": target_date.isoformat(),
-                    "timezone": "Asia/Jakarta",
+                    "timezone": ws_tz_name,
                     "start_utc": start_utc,
                     "end_utc": end_utc,
                 },

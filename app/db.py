@@ -180,11 +180,23 @@ CREATE TABLE IF NOT EXISTS audit_events (
 
 
 def init_db(db_path: str = DEFAULT_DB_PATH) -> str:
-    """Initialize SQLite database and apply schema idempotently."""
+    """Initialize SQLite database, apply schema, and backfill inventory_pools idempotently."""
     if db_path != ":memory:":
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(db_path, timeout=10.0)) as conn:
         conn.executescript(SCHEMA_SQL)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO inventory_pools (workspace_id, offering_id, qty_on_hand, total_value_idr)
+            SELECT
+                workspace_id,
+                offering_id,
+                CAST(COALESCE(SUM(CAST(qty_delta AS REAL)), 0) AS TEXT),
+                COALESCE(SUM(CASE WHEN movement_type = 'purchase_in' THEN total_cost_idr ELSE -total_cost_idr END), 0)
+            FROM stock_movements
+            GROUP BY workspace_id, offering_id;
+            """
+        )
         conn.commit()
     return db_path
 

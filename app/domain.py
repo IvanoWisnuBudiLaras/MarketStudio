@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
+from zoneinfo import available_timezones
 
 VALID_OFFERING_TYPES = ("goods", "service", "hybrid")
 VALID_TAX_STATUSES = ("not_assessed", "unknown")
@@ -41,8 +42,8 @@ def parse_positive_decimal(value: Any, field: str, errors: dict[str, str]) -> De
     except (InvalidOperation, ValueError):
         errors[field] = f"{field} harus berupa angka desimal yang valid."
         return None
-    if not dec.is_finite() or dec <= 0:
-        errors[field] = f"{field} harus lebih besar dari 0 dan bukan NaN/Infinity."
+    if not dec.is_finite() or dec <= 0 or dec > Decimal("1000000000"):
+        errors[field] = f"{field} harus > 0, <= 1.000.000.000, dan bukan NaN/Infinity."
         return None
     return dec
 
@@ -104,7 +105,9 @@ def validate_workspace_input(payload: dict[str, Any]) -> WorkspaceInput:
     business_type = raw_type.strip() if isinstance(raw_type, str) and raw_type.strip() else "umkm_hybrid"
 
     raw_tz = payload.get("timezone", "Asia/Jakarta")
-    timezone = raw_tz.strip() if isinstance(raw_tz, str) and raw_tz.strip() else "Asia/Jakarta"
+    timezone = raw_tz.strip() if isinstance(raw_tz, str) and raw_tz.strip() else ""
+    if not timezone or timezone not in available_timezones():
+        errors["timezone"] = "Timezone tidak valid (gunakan IANA timezone, contoh: Asia/Jakarta)."
 
     if errors:
         raise DomainError(422, "validation_error", "Data workspace tidak valid.", errors)
@@ -149,6 +152,10 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
     if "requires_stock_movement" in payload and payload["requires_stock_movement"] is not None:
         if not isinstance(payload["requires_stock_movement"], bool):
             errors["requires_stock_movement"] = "requires_stock_movement harus berupa boolean (true/false)."
+        elif offering_type == "service" and payload["requires_stock_movement"] is True:
+            errors["requires_stock_movement"] = "Offering tipe 'service' tidak boleh memiliki requires_stock_movement=true."
+        elif offering_type == "goods" and payload["requires_stock_movement"] is False:
+            errors["requires_stock_movement"] = "Offering tipe 'goods' wajib memiliki requires_stock_movement=true."
 
     raw_val_method = payload.get("valuation_method")
     if raw_val_method is not None and raw_val_method != "WA":

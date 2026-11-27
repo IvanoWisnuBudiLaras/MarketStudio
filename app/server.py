@@ -55,14 +55,21 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         )
 
     def _read_json_body(self) -> dict[str, Any]:
-        length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0:
+        raw_len = self.headers.get("Content-Length", "0")
+        try:
+            length = int(raw_len)
+        except ValueError as exc:
+            raise DomainError(400, "invalid_content_length", "Content-Length tidak valid.") from exc
+        if length < 0 or length > 1048576:
+            raise DomainError(400, "invalid_content_length", "Content-Length di luar batas (0..1MB).")
+        if length == 0:
             return {}
         raw = self.rfile.read(length)
         try:
-            data = json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError as exc:
-            raise DomainError(422, "invalid_json", f"JSON tidak valid: {exc}") from exc
+            text = raw.decode("utf-8")
+            data = json.loads(text)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise DomainError(422, "invalid_json", f"Body UTF-8/JSON tidak valid: {exc}") from exc
         if not isinstance(data, dict):
             raise DomainError(422, "invalid_json", "Body JSON harus berupa object.")
         return data
@@ -100,8 +107,7 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_list:
                 actor_id = self._require_actor()
                 ws_id = m_list.group(1)
-                actor_status = self.headers.get("X-Actor-Status")
-                items = self.service.list_offerings(ws_id, actor_id, actor_status=actor_status)
+                items = self.service.list_offerings(ws_id, actor_id)
                 self._send_json(200, {"items": items, "request_id": request_id})
                 return
 
@@ -109,8 +115,7 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_detail:
                 actor_id = self._require_actor()
                 ws_id, off_id = m_detail.group(1), m_detail.group(2)
-                actor_status = self.headers.get("X-Actor-Status")
-                item = self.service.get_offering(ws_id, off_id, actor_id, actor_status=actor_status)
+                item = self.service.get_offering(ws_id, off_id, actor_id)
                 self._send_json(200, {"item": item, "request_id": request_id})
                 return
 
@@ -118,12 +123,9 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_report:
                 actor_id = self._require_actor()
                 ws_id = m_report.group(1)
-                actor_status = self.headers.get("X-Actor-Status")
                 qs = parse_qs(urlparse(self.path).query)
                 date_str = qs.get("date", [None])[0]
-                report = self.service.get_daily_report(
-                    ws_id, actor_id, date_str=date_str, actor_status=actor_status
-                )
+                report = self.service.get_daily_report(ws_id, actor_id, date_str=date_str)
                 self._send_json(200, {"report": report, "request_id": request_id})
                 return
 
@@ -157,7 +159,6 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_list:
                 actor_id = self._require_actor()
                 ws_id = m_list.group(1)
-                actor_status = self.headers.get("X-Actor-Status")
                 body = self._read_json_body()
                 status, item = self.service.create_offering(
                     ws_id,
@@ -165,7 +166,6 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                     payload=body,
                     idempotency_key=idem_key,
                     actor=actor_id,
-                    actor_status=actor_status,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})
                 return
@@ -174,7 +174,6 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_pur:
                 actor_id = self._require_actor()
                 ws_id = m_pur.group(1)
-                actor_status = self.headers.get("X-Actor-Status")
                 body = self._read_json_body()
                 status, item = self.service.create_purchase(
                     ws_id,
@@ -182,7 +181,6 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                     payload=body,
                     idempotency_key=idem_key,
                     actor=actor_id,
-                    actor_status=actor_status,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})
                 return
@@ -191,7 +189,6 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_sale:
                 actor_id = self._require_actor()
                 ws_id = m_sale.group(1)
-                actor_status = self.headers.get("X-Actor-Status")
                 body = self._read_json_body()
                 status, item = self.service.create_sale(
                     ws_id,
@@ -199,7 +196,6 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                     payload=body,
                     idempotency_key=idem_key,
                     actor=actor_id,
-                    actor_status=actor_status,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})
                 return

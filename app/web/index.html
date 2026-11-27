@@ -288,8 +288,22 @@
       return res;
     }
 
+    function getScopedKey(storageKey, workspaceId, payload) {
+      const canonical = JSON.stringify(payload);
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+        if (saved && saved.workspaceId === workspaceId && saved.payload === canonical && saved.key) {
+          return saved.key;
+        }
+      } catch {}
+      const key = "ui-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem(storageKey, JSON.stringify({ workspaceId, payload: canonical, key }));
+      return key;
+    }
+
     async function loadWorkspaces() {
       const res = await apiFetch("/v1/workspaces");
+      if (res.status === 401) return;
       const data = await res.json();
       wsSelect.textContent = "";
       if (!data.items || data.items.length === 0) {
@@ -412,6 +426,8 @@
       localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
       pendingPurKey = "";
       pendingSaleKey = "";
+      localStorage.removeItem(PUR_KEY_STORAGE);
+      localStorage.removeItem(SALE_KEY_STORAGE);
       await Promise.all([loadOfferings(), loadReport()]);
     });
 
@@ -469,27 +485,32 @@
       const btn = e.target.querySelector("button[type='submit']");
       if (btn.disabled) return;
       btn.disabled = true;
-      if (!pendingPurKey) {
-        pendingPurKey = "ui-pur-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-        localStorage.setItem(PUR_KEY_STORAGE, pendingPurKey);
-      }
+      const payload = {
+        offering_id: purOffering.value,
+        qty: document.getElementById("purQty").value,
+        total_cost_idr: parseInt(document.getElementById("purCost").value, 10)
+      };
+      pendingPurKey = getScopedKey(PUR_KEY_STORAGE, activeWorkspaceId, payload);
       setStatus(purStatus, "Menyimpan pembelian...");
       try {
         const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/purchases`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Idempotency-Key": pendingPurKey },
-          body: JSON.stringify({
-            offering_id: purOffering.value,
-            qty: document.getElementById("purQty").value,
-            total_cost_idr: parseInt(document.getElementById("purCost").value, 10)
-          })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
+        if (res.status === 409 || res.status === 422) {
+          pendingPurKey = "";
+          localStorage.removeItem(PUR_KEY_STORAGE);
+          return setStatus(purStatus, data.message || "Gagal", true);
+        }
         if (!res.ok) return setStatus(purStatus, data.message || "Gagal", true);
         pendingPurKey = "";
         localStorage.removeItem(PUR_KEY_STORAGE);
         setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}).`);
         await loadReport();
+      } catch {
+        setStatus(purStatus, "Network error: key dipertahankan untuk retry aman.", true);
       } finally {
         btn.disabled = false;
       }
@@ -501,34 +522,34 @@
       const btn = e.target.querySelector("button[type='submit']");
       if (btn.disabled) return;
       btn.disabled = true;
-      if (!pendingSaleKey) {
-        pendingSaleKey = "ui-sale-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-        localStorage.setItem(SALE_KEY_STORAGE, pendingSaleKey);
-      }
+      const payload = {
+        lines: [{
+          offering_id: saleOffering.value,
+          qty: document.getElementById("saleQty").value,
+          total_price_idr: parseInt(document.getElementById("salePrice").value, 10)
+        }]
+      };
+      pendingSaleKey = getScopedKey(SALE_KEY_STORAGE, activeWorkspaceId, payload);
       setStatus(saleStatus, "Saving penjualan...");
       try {
         const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/sales`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Idempotency-Key": pendingSaleKey },
-          body: JSON.stringify({
-            lines: [{
-              offering_id: saleOffering.value,
-              qty: document.getElementById("saleQty").value,
-              total_price_idr: parseInt(document.getElementById("salePrice").value, 10)
-            }]
-          })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (res.status === 409) {
+        if (res.status === 409 || res.status === 422) {
           pendingSaleKey = "";
           localStorage.removeItem(SALE_KEY_STORAGE);
-          return setStatus(saleStatus, `Conflict: ${data.message}`, true);
+          return setStatus(saleStatus, `Conflict/Validation: ${data.message}`, true);
         }
         if (!res.ok) return setStatus(saleStatus, `Error: ${data.message || "Gagal"}`, true);
         pendingSaleKey = "";
         localStorage.removeItem(SALE_KEY_STORAGE);
         setStatus(saleStatus, `Saved (${data.item.sale_id}).`);
         await loadReport();
+      } catch {
+        setStatus(saleStatus, "Network error: key dipertahankan untuk retry aman.", true);
       } finally {
         btn.disabled = false;
       }
