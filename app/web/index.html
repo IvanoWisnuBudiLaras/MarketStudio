@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MarketStudio — Ekosistem Bisnis Terintegrasi</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232563EB'/%3E%3Cpath d='M5 7L8.5 4L10.5 7H13.5L15.5 4L19 7V15.5C19 18 16.8 20 14 20H10C7.2 20 5 18 5 15.5V7Z' fill='white'/%3E%3Ccircle cx='9.5' cy='12.5' r='1.2' fill='%232563EB'/%3E%3Ccircle cx='14.5' cy='12.5' r='1.2' fill='%232563EB'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" href="/brand/mark.png" />
   <style>
     :root {
       --accent: #2563EB;
@@ -122,28 +122,32 @@
       min-width: 0;
     }
 
-    .brand-mark {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: var(--accent);
-      color: #FFFFFF;
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
+    .brand-image {
+      display: block;
+      width: min(100%, 220px);
+      height: auto;
     }
 
-    .brand-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--brand-navy);
-      line-height: 1.2;
+    .mobile-brand-image {
+      object-fit: contain;
     }
 
-    .brand-sub {
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.2;
+    .icon-defs {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+
+    .ui-icon {
+      width: 18px;
+      height: 18px;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .mobile-close-btn {
@@ -560,48 +564,225 @@
       color: #7C2D12;
     }
 
-    .banner-readonly {
-      background: #F5F3FF;
-      border-color: #DDD6FE;
-      color: #4C1D95;
-    }
-
     .banner-info {
       background: var(--surface-elevated);
       border-color: #BFDBFE;
       color: var(--brand-navy);
     }
 
-    .screen-guide {
+    .report-card {
+      border-top: 3px solid var(--accent);
+    }
+
+    .quick-metrics {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-      gap: 10px;
-      background: var(--surface);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+
+    .quick-metrics > div {
+      padding: 10px 12px;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 12px 14px;
-      min-width: 0;
     }
 
-    .guide-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
+    .quick-metrics dt {
+      color: var(--muted);
+      font-size: 12px;
     }
 
-    .guide-label {
-      font-size: 11px;
+    .quick-metrics dd {
+      margin: 2px 0 0;
+      color: var(--brand-navy);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .report-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .report-metrics .kpi {
+      padding: 16px;
+      background: var(--surface-elevated);
+    }
+
+    .report-metrics .val {
+      font-size: clamp(22px, 3vw, 34px);
+      overflow-wrap: anywhere;
+    }
+
+    .report-note {
+      margin: 12px 0 0;
+      color: var(--muted);
+    }
+
+    .optional-controls {
+      margin-bottom: 12px;
+    }
+
+    .metric-secondary {
+      margin: 4px 0;
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stock-summary table {
+      min-width: 0;
+    }
+
+    .stock-summary th {
+      white-space: normal;
+    }
+
+    .stock-alert {
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: var(--warn-bg);
+      color: var(--warn);
+    }
+
+    .summary-drawer {
+      position: fixed;
+      inset: 0 0 0 auto;
+      width: min(420px, 100%);
+      max-width: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      margin: 0;
+      padding: 20px;
+      border: 0;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .summary-drawer::backdrop {
+      background: rgba(15, 23, 42, 0.45);
+    }
+
+    .drawer-icon-btn {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+    }
+
+    .module-picker {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .module-option {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) 20px;
+      align-items: center;
+      gap: 12px;
+      min-height: 64px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+    }
+
+    .module-option:hover {
+      background: var(--canvas);
+    }
+
+    .module-option .ui-icon {
       color: var(--accent);
     }
 
-    .guide-text {
-      font-size: 12.5px;
-      color: var(--text);
-      overflow-wrap: anywhere;
+    .module-option small {
+      display: block;
+      color: var(--muted);
+    }
+
+    .module-option input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      min-width: 0;
+      min-height: 0;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .recent-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .recent-list li {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 4px 16px;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .recent-list small {
+      display: block;
+      color: var(--muted);
+    }
+
+    #ringkasanPopulated {
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    @media (min-width: 1140px) {
+      #ringkasanPopulated {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #dailyReport, #reportDetailsCard {
+        grid-column: 1 / -1;
+      }
+
+      #homeStockCard:has(+ #homeRecentCard.hidden),
+      #homeStockCard.hidden + #homeRecentCard {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 900px) {
+      button, .btn, .nav-link, input, select, summary {
+        min-height: 44px;
+        min-width: 44px;
+      }
+
+      summary {
+        align-content: center;
+      }
+
+      #topDataBadge, .desktop-context {
+        display: none;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .quick-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .report-metrics {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
 
     /* Buttons & Inputs */
@@ -1105,59 +1286,99 @@
   </style>
 </head>
 <body>
+  <svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-home" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10H3z M9 20v-7h6v7"/></symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 3v17h17 M8 16v-4 M13 16V8 M18 16V5"/></symbol>
+    <symbol id="icon-calculator" viewBox="0 0 24 24"><path d="M6 3h12v18H6z M9 7h6 M9 11h1 M14 11h1 M9 15h1 M14 15h1"/></symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24"><path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/></symbol>
+    <symbol id="icon-art" viewBox="0 0 24 24"><path d="M4 20l4-1 12-12-3-3L5 16z M14 7l3 3"/></symbol>
+    <symbol id="icon-cart" viewBox="0 0 24 24"><path d="M2 4h3l3 11h11l2-8H6 M9 20h1 M17 20h1"/></symbol>
+    <symbol id="icon-social" viewBox="0 0 24 24"><path d="M4 4h16v12h-9l-5 4v-4H4z M8 9h8"/></symbol>
+    <symbol id="icon-office" viewBox="0 0 24 24"><path d="M4 21h16 M6 21V4h12v17 M10 8h1 M14 8h1 M10 12h1 M14 12h1 M11 21v-5h2v5"/></symbol>
+    <symbol id="icon-card" viewBox="0 0 24 24"><path d="M3 5h18v14H3z M3 10h18 M6 15h4"/></symbol>
+    <symbol id="icon-box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10"/></symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16 M4 12h16 M4 18h16"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14 M5 12h14"/></symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 11v6 M12 7h.01"/></symbol>
+  </svg>
   <a class="skip-link" href="#main-content">Langsung ke konten utama</a>
   <div id="globalLiveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
   <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
+
+  <dialog id="summaryDrawer" class="summary-drawer" aria-labelledby="summaryDrawerTitle">
+    <div class="card-header">
+      <div>
+        <h2 id="summaryDrawerTitle">Atur ringkasan</h2>
+        <p id="summaryDrawerContext" class="muted"></p>
+      </div>
+      <form method="dialog">
+        <button type="submit" class="btn btn-secondary drawer-icon-btn" aria-label="Tutup pengaturan ringkasan" autofocus>
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg>
+        </button>
+      </form>
+    </div>
+    <p class="muted">Pilih modul yang ingin ditampilkan. Kas dan laba kotor selalu tersedia.</p>
+    <fieldset class="module-picker">
+      <legend class="sr-only">Modul opsional</legend>
+      <label class="module-option">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-chart"/></svg>
+        <span><strong>Angka ringkas</strong><small>Omzet, laba kotor, arus kas bersih, dan nilai stok akhir.</small></span>
+        <input type="checkbox" data-summary-module="quickMetrics" />
+      </label>
+      <label class="module-option">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-box"/></svg>
+        <span><strong>Stok dan stok habis</strong><small>Nilai persediaan akhir dan barang dengan stok saat ini nol.</small></span>
+        <input type="checkbox" data-summary-module="homeStockCard" />
+      </label>
+      <label class="module-option">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-card"/></svg>
+        <span><strong>Transaksi terbaru</strong><small>Tiga transaksi terakhir pada tanggal laporan.</small></span>
+        <input type="checkbox" data-summary-module="homeRecentCard" />
+      </label>
+    </fieldset>
+    <button id="restoreSummaryBtn" type="button" class="btn btn-secondary">Pulihkan tampilan</button>
+    <p id="summaryPreferenceStatus" class="status" aria-live="polite"></p>
+  </dialog>
 
   <div class="app-shell">
     <aside id="appSidebar" class="sidebar" aria-label="Menu utama studio">
       <div>
         <div class="brand-row">
           <a href="#ringkasan" class="brand-lockup">
-            <span class="brand-mark" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M5 7L8.5 4L10.5 7H13.5L15.5 4L19 7V15.5C19 18 16.8 20 14 20H10C7.2 20 5 18 5 15.5V7Z" fill="white" fill-opacity="0.95"/>
-                <circle cx="9.5" cy="12.5" r="1.2" fill="#2563EB"/>
-                <circle cx="14.5" cy="12.5" r="1.2" fill="#2563EB"/>
-              </svg>
-            </span>
-            <span>
-              <span class="brand-title" style="display:block;">MarketStudio</span>
-              <span class="brand-sub" style="display:block;">One Studio. Every Market.</span>
-            </span>
+            <img class="brand-image" src="/brand/lockup.png" alt="MarketStudio" width="220" height="58" />
           </a>
-          <button id="closeDrawerBtn" type="button" class="mobile-close-btn" aria-label="Tutup menu studio">✕</button>
+          <button id="closeDrawerBtn" type="button" class="mobile-close-btn" aria-label="Tutup menu studio"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg></button>
         </div>
 
         <nav aria-label="Navigasi aplikasi">
           <div class="nav-group">
             <a href="#ringkasan" class="nav-link" data-route="ringkasan">
               <span class="nav-link-main">
-                <span aria-hidden="true">🏠</span>
-                <span>Beranda / Ringkasan</span>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-home"/></svg>
+                <span>Beranda</span>
               </span>
-              <span class="pill pill-active">Aktif</span>
             </a>
           </div>
 
           <div class="nav-group">
             <div class="nav-group-label">Studio</div>
             <div class="nav-studio-head">
-              <span>📊 Business Studio</span>
+              <span class="nav-link-main"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-chart"/></svg> Business Studio</span>
               <span class="pill pill-active">Aktif</span>
             </div>
             <div class="nav-sub-list">
               <a href="#transaksi" class="nav-link" data-route="transaksi">
-                <span class="nav-link-main"><span>Transaksi</span></span>
+                <span class="nav-link-main"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-card"/></svg><span>Transaksi</span></span>
               </a>
               <a href="#katalog" class="nav-link" data-route="katalog">
-                <span class="nav-link-main"><span>Katalog &amp; Stok</span></span>
+                <span class="nav-link-main"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-box"/></svg><span>Katalog &amp; Stok</span></span>
               </a>
             </div>
 
             <a href="#analisis" class="nav-link" data-route="analisis">
               <span class="nav-link-main">
-                <span aria-hidden="true">🧮</span>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-calculator"/></svg>
                 <span class="nav-link-text">
                   <span>Spreadsheet Studio</span>
                   <span class="nav-link-sub">Analisis &amp; Harga</span>
@@ -1168,7 +1389,7 @@
 
             <a href="#studio-intelligence" class="nav-link" data-route="studio-intelligence">
               <span class="nav-link-main">
-                <span aria-hidden="true">✨</span>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-spark"/></svg>
                 <span class="nav-link-text">
                   <span>Intelligence Studio</span>
                   <span class="nav-link-sub">AI Business Review</span>
@@ -1179,7 +1400,7 @@
 
             <a href="#studio-creative" class="nav-link" data-route="studio-creative">
               <span class="nav-link-main">
-                <span aria-hidden="true">🎨</span>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-art"/></svg>
                 <span>Creative Studio</span>
               </span>
               <span class="pill pill-active">Aktif</span>
@@ -1187,7 +1408,7 @@
 
             <a href="#studio-commerce" class="nav-link" data-route="studio-commerce">
               <span class="nav-link-main">
-                <span aria-hidden="true">🛒</span>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-cart"/></svg>
                 <span>Commerce Studio</span>
               </span>
               <span class="pill pill-roadmap">Roadmap</span>
@@ -1195,7 +1416,7 @@
 
             <a href="#studio-social" class="nav-link" data-route="studio-social">
               <span class="nav-link-main">
-                <span aria-hidden="true">#</span>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-social"/></svg>
                 <span>Social Studio</span>
               </span>
               <span class="pill pill-roadmap">Roadmap</span>
@@ -1206,10 +1427,9 @@
             <div class="nav-group-label">Workspace</div>
             <a href="#profil" class="nav-link" data-route="profil">
               <span class="nav-link-main">
-                <span aria-hidden="true">🏢</span>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-office"/></svg>
                 <span>Profil &amp; Demo</span>
               </span>
-              <span class="pill pill-active">Aktif</span>
             </a>
           </div>
         </nav>
@@ -1223,9 +1443,10 @@
         <div id="sidebarWsName" class="sidebar-ws-name">Belum ada profil usaha</div>
         <div id="sidebarWsMeta" class="sidebar-ws-meta">IDR • Asia/Jakarta (WIB)</div>
         <select id="sidebarWorkspaceSelect" aria-label="Pilih workspace aktif di sidebar"></select>
-        <button id="sidebarLoadDemoBtn" type="button" class="btn btn-soft" style="width:100%;">
-          Muat Demo Terisolasi
+        <button id="sidebarLoadDemoBtn" type="button" class="btn btn-soft js-load-demo" style="width:100%;">
+          Coba data demo
         </button>
+        <div class="status js-demo-status" aria-live="polite"></div>
       </div>
     </aside>
 
@@ -1233,8 +1454,9 @@
       <div class="mobile-header">
         <div class="mobile-header-left">
           <button id="mobileMenuBtn" type="button" class="menu-toggle-btn" aria-label="Buka menu Studio" aria-expanded="false" aria-controls="appSidebar">
-            ☰
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-menu"/></svg>
           </button>
+          <img class="mobile-brand-image" src="/brand/mark.png" width="32" height="32" alt="" />
           <span class="mobile-brand-text">MarketStudio</span>
         </div>
         <span id="mobileContextBadge" class="pill pill-roadmap">Kosong</span>
@@ -1242,61 +1464,38 @@
 
       <header class="top-bar">
         <div class="top-bar-title">
-          <h1 id="pageTitle">Beranda / Ringkasan</h1>
+          <h1 id="pageTitle" tabindex="-1">Beranda</h1>
           <div class="top-bar-meta">
             <span id="topWsName">Belum ada profil usaha</span>
-            <span>•</span>
+            <span class="desktop-context">•</span>
             <span id="topDataBadge" class="pill pill-roadmap">Belum Ada Usaha</span>
-            <span>•</span>
-            <span id="topTzLabel">Zona waktu: Asia/Jakarta (WIB)</span>
+            <span class="desktop-context">•</span>
+            <span id="topTzLabel" class="desktop-context">Zona waktu: Asia/Jakarta (WIB)</span>
           </div>
         </div>
         <div class="top-bar-actions">
-          <button id="topQuickDemoBtn" type="button" class="btn btn-soft">Muat Demo Terisolasi</button>
-          <a href="#transaksi" class="btn btn-primary" data-nav-cta="transaksi">+ Catat Transaksi</a>
+          <a href="#transaksi" class="btn btn-primary hidden" id="homeTransactionBtn"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-plus"/></svg><span>Catat transaksi</span></a>
+          <button id="openSummaryBtn" type="button" class="btn btn-secondary hidden" aria-haspopup="dialog" aria-controls="summaryDrawer">Atur ringkasan</button>
         </div>
       </header>
 
       <main id="main-content" tabindex="-1">
         <div id="demoContextBanner" class="banner banner-demo hidden" role="note">
-          <div>
-            <strong>Mode Demo Sintetis Terisolasi:</strong> Workspace ini memakai data contoh sintetis dan terpisah penuh dari profil usaha nyata Anda. Data historis Bapanas di menu Benchmark tetap ditandai terpisah sebagai <em>Data Resmi · Historis</em>.
-          </div>
-          <a href="#profil" class="btn btn-secondary">Lihat Skenario &amp; Profil</a>
+          <span class="nav-link-main"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-info"/></svg> <span><strong>Mode demo</strong> · Data contoh di ruang usaha terpisah.</span></span>
         </div>
-
-        <section id="screenGuide" class="screen-guide" aria-label="Panduan layar aktif">
-          <div class="guide-cell">
-            <span class="guide-label">Fungsi</span>
-            <span id="guideFungsi" class="guide-text">-</span>
-          </div>
-          <div class="guide-cell">
-            <span class="guide-label">Input</span>
-            <span id="guideInput" class="guide-text">-</span>
-          </div>
-          <div class="guide-cell">
-            <span class="guide-label">Hasil</span>
-            <span id="guideHasil" class="guide-text">-</span>
-          </div>
-        </section>
 
         <!-- VIEW 1: RINGKASAN -->
         <section id="view-ringkasan" class="view-section" aria-label="Beranda dan Ringkasan Harian">
           <div id="ringkasanEmptyState" class="card card-elevated">
             <div class="card-header">
               <div>
-                <h2>Mulai Kelola Usaha Anda di MarketStudio</h2>
-                <p class="muted" style="margin-top:4px;">Pilih salah satu langkah awal di bawah: buat profil usaha nyata Anda sendiri, atau muat mode demo terisolasi dengan data contoh Warung Bakso &amp; Sembako.</p>
+                <h2>Siapkan profil usaha</h2>
+                <p class="muted">Isi nama dan tipe usaha untuk mulai mengelola katalog dan mencatat transaksi.</p>
               </div>
-              <span class="pill pill-actual">Onboarding</span>
-            </div>
-            <div class="form-actions" style="margin-top:0; margin-bottom:14px;">
-              <button id="onboardingDemoBtn" type="button" class="btn btn-primary">Muat Demo Terisolasi</button>
-              <a href="#profil" class="btn btn-secondary">Buat Profil Usaha</a>
             </div>
             <form id="onboardingWsForm" class="form-grid" novalidate>
               <div class="field">
-                <label class="field-label" for="onbWsName">Buat Cepat: Nama Usaha Anda</label>
+                <label class="field-label" for="onbWsName">Nama usaha</label>
                 <input id="onbWsName" type="text" placeholder="Contoh: Kedai Kopi Nusantara" aria-describedby="onbWsNameErr" />
                 <div id="onbWsNameErr" class="field-error"></div>
               </div>
@@ -1309,48 +1508,59 @@
                 </select>
               </div>
               <div class="field" style="justify-content:end;">
-                <button type="submit" class="btn btn-soft">Simpan &amp; Mulai Usaha</button>
+                <button type="submit" class="btn btn-primary">Buat profil usaha</button>
               </div>
             </form>
-            <div id="onbWsStatus" class="status" aria-live="polite"></div>
+            <div class="form-actions">
+              <button id="onboardingDemoBtn" type="button" class="btn btn-secondary js-load-demo">Coba dengan data demo</button>
+            </div>
+            <div id="onbWsStatus" class="status js-demo-status" aria-live="polite"></div>
           </div>
 
-          <div id="ringkasanPopulated" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
-            <div class="card">
+          <div id="ringkasanPopulated" class="hidden">
+            <div class="card report-card" id="dailyReport" aria-busy="true">
               <div class="card-header">
                 <div>
-                  <h2>Ringkasan Performa Harian &amp; Tutup Hari</h2>
-                  <p id="reportPeriodLabel" class="muted" style="margin-top:4px;">Periode aktif: Hari ini (Asia/Jakarta / WIB)</p>
+                  <h2>Kas dan laba kotor</h2>
+                  <p id="reportPeriodLabel" class="muted" style="margin-top:4px;">Tanggal laporan mengikuti waktu Jakarta</p>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:end;">
                   <div class="field" style="min-width:165px;">
                     <label class="field-label" for="reportDate">Tanggal (WIB)</label>
                     <input id="reportDate" type="date" />
                   </div>
-                  <button type="button" id="refreshReportBtn" class="btn btn-secondary">Muat Laporan</button>
+                  <button type="button" id="refreshReportBtn" class="btn btn-secondary">Muat ulang</button>
                 </div>
               </div>
 
-              <div id="kpiGrid" class="kpi-grid"></div>
-              <div id="cashVsProfitNote" class="banner banner-info hidden" style="margin-top:12px;"></div>
+              <dl id="quickMetrics" class="quick-metrics" aria-label="Angka ringkas">
+                <div><dt>Omzet</dt><dd id="quickRevenue"></dd></div>
+                <div><dt>Laba kotor</dt><dd id="quickProfit"></dd></div>
+                <div><dt>Arus kas bersih</dt><dd id="quickCash"></dd></div>
+                <div><dt>Nilai stok akhir</dt><dd id="quickInventory"></dd></div>
+              </dl>
+              <div id="kpiGrid" class="report-metrics"></div>
+              <p id="cashVsProfitNote" class="report-note hidden"></p>
+              <div id="reportStatus" class="status" aria-live="polite"></div>
             </div>
 
-            <div class="card">
+            <div class="card" id="homeStockCard">
               <div class="card-header">
                 <div>
-                  <h2>Sisa Stok Terkini per Produk</h2>
-                  <p class="muted" style="margin-top:4px;">Menampilkan sisa unit aktual dan nilai persediaan Weighted Average (WA) hingga akhir tanggal laporan.</p>
+                  <h2>Stok akhir</h2>
+                  <p id="stockValue" class="metric-secondary"></p>
+                  <p class="muted" style="margin-top:4px;">Sisa unit dan nilai persediaan pada akhir tanggal laporan, dihitung dengan biaya rata-rata tertimbang (WA).</p>
                 </div>
                 <a href="#katalog" class="btn btn-secondary">Kelola Katalog &amp; Stok</a>
               </div>
-              <div class="table-wrap">
+              <div id="homeStockAlert" class="stock-alert hidden"></div>
+              <div class="table-wrap stock-summary">
                 <table>
                   <thead>
                     <tr>
                       <th>Produk</th>
                       <th>Sisa Stok</th>
                       <th>Nilai Persediaan (WA)</th>
-                      <th>Keterangan</th>
                     </tr>
                   </thead>
                   <tbody id="ringkasanStockBody"></tbody>
@@ -1358,13 +1568,22 @@
               </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="homeRecentCard">
+              <div class="card-header">
+                <h2>Transaksi terbaru</h2>
+                <a href="#transaksi" class="btn btn-secondary">Buka transaksi</a>
+              </div>
+              <ul id="homeRecentList" class="recent-list"></ul>
+            </div>
+
+            <div id="reportDetailsCard" class="card">
               <details id="drillDownDetails">
-                <summary>Rincian Transaksi, Mutasi Stok &amp; Log Audit (Asia/Jakarta)</summary>
+                <summary>Rincian transaksi, stok, pajak, dan audit</summary>
+                <p id="taxNote" class="muted"></p>
                 <div style="display:flex; flex-direction:column; gap:14px; margin-top:12px; min-width:0;">
                   <div>
                     <h3>Transaksi Penjualan &amp; Pembelian</h3>
-                    <div class="table-wrap">
+                    <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel dapat digulir">
                       <table>
                         <thead>
                           <tr>
@@ -1383,7 +1602,7 @@
 
                   <div>
                     <h3>Mutasi Persediaan (Stok Masuk / Keluar)</h3>
-                    <div class="table-wrap">
+                    <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel dapat digulir">
                       <table>
                         <thead>
                           <tr>
@@ -1402,7 +1621,7 @@
 
                   <div>
                     <h3>Log Audit Aktivitas</h3>
-                    <div class="table-wrap">
+                    <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel dapat digulir">
                       <table>
                         <thead>
                           <tr>
@@ -1435,8 +1654,9 @@
             <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu sebelum mencatat penjualan maupun pembelian stok.</p>
             <div class="form-actions" style="margin-top:0;">
               <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
-              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+              <button type="button" class="btn btn-soft js-load-demo">Coba data demo</button>
             </div>
+            <div class="status js-demo-status" aria-live="polite"></div>
           </div>
 
           <div id="transaksiMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
@@ -1461,7 +1681,7 @@
                       <div id="saleOfferingHelper" class="field-helper">Pilih item yang dijual.</div>
                       <div id="saleOfferingErr" class="field-error"></div>
                     </div>
-                    <div class="field">
+                    <div class="field hidden" data-offering-fields="sale">
                       <label class="field-label" for="saleQty">Kuantitas Terjual</label>
                       <div class="input-group">
                         <input id="saleQty" type="text" inputmode="decimal" placeholder="Contoh: 2" aria-describedby="saleQtyHelper saleQtyErr" />
@@ -1470,14 +1690,14 @@
                       <div id="saleQtyHelper" class="field-helper">Mendukung angka bulat atau desimal (mis. 0.5).</div>
                       <div id="saleQtyErr" class="field-error"></div>
                     </div>
-                    <div class="field">
+                    <div class="field hidden" data-offering-fields="sale">
                       <label class="field-label" for="salePrice">Total Harga Jual (IDR)</label>
                       <input id="salePrice" type="number" min="0" step="1" placeholder="Otomatis dari qty × harga satuan" aria-describedby="salePriceHelper salePriceErr" />
                       <div id="salePriceHelper" class="field-helper">Harga saran dihitung otomatis dan dapat diedit manual.</div>
                       <div id="salePriceErr" class="field-error"></div>
                     </div>
                   </div>
-                  <div class="form-actions">
+                  <div class="form-actions hidden" data-offering-fields="sale">
                     <button id="saleSubmitBtn" type="submit" class="btn btn-primary">Catat Penjualan</button>
                     <button id="saleSuggestResetBtn" type="button" class="btn btn-secondary">Hitung Ulang Harga Saran</button>
                   </div>
@@ -1500,7 +1720,7 @@
                       <div id="purOfferingHelper" class="field-helper">Hanya offering yang melacak stok.</div>
                       <div id="purOfferingErr" class="field-error"></div>
                     </div>
-                    <div class="field">
+                    <div class="field hidden" data-offering-fields="pur">
                       <label class="field-label" for="purQty">Kuantitas Dibeli</label>
                       <div class="input-group">
                         <input id="purQty" type="text" inputmode="decimal" placeholder="Contoh: 5" aria-describedby="purQtyErr" />
@@ -1508,14 +1728,14 @@
                       </div>
                       <div id="purQtyErr" class="field-error"></div>
                     </div>
-                    <div class="field">
+                    <div class="field hidden" data-offering-fields="pur">
                       <label class="field-label" for="purCost">Total Biaya Beli Tunai (IDR)</label>
                       <input id="purCost" type="number" min="0" step="1" placeholder="Contoh: 45000" aria-describedby="purCostHelper purCostErr" />
                       <div id="purCostHelper" class="field-helper">Biaya rata-rata per unit akan dihitung otomatis (WA).</div>
                       <div id="purCostErr" class="field-error"></div>
                     </div>
                   </div>
-                  <div class="form-actions">
+                  <div class="form-actions hidden" data-offering-fields="pur">
                     <button id="purSubmitBtn" type="submit" class="btn btn-primary">Catat Pembelian</button>
                   </div>
                   <div id="purStatus" class="status" aria-live="polite"></div>
@@ -1526,12 +1746,12 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2>Transaksi Hari Ini (Asia/Jakarta)</h2>
-                  <p class="muted" style="margin-top:4px;">Daftar pencatatan penjualan dan pembelian terbaru pada tanggal aktif.</p>
+                  <h2>Riwayat transaksi</h2>
+                  <p id="transactionPeriodLabel" class="muted">Periode mengikuti tanggal laporan di Beranda.</p>
                 </div>
-                <a href="#ringkasan" class="btn btn-soft">Lihat Ringkasan &amp; Tutup Hari</a>
+                <a href="#ringkasan" class="btn btn-soft">Lihat laporan di Beranda</a>
               </div>
-              <div class="table-wrap">
+              <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel dapat digulir">
                 <table>
                   <thead>
                     <tr>
@@ -1557,8 +1777,9 @@
             <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu untuk mengelola katalog produk, jasa, dan sisa stok.</p>
             <div class="form-actions" style="margin-top:0;">
               <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
-              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+              <button type="button" class="btn btn-soft js-load-demo">Coba data demo</button>
             </div>
+            <div class="status js-demo-status" aria-live="polite"></div>
           </div>
 
           <div id="katalogMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
@@ -1566,15 +1787,16 @@
               <div class="card-header">
                 <div>
                   <h2>Tambah Produk atau Jasa Baru</h2>
-                  <p class="muted" style="margin-top:4px;">Gunakan tombol contoh cepat untuk mengisi format satuan umum UMKM.</p>
                 </div>
-                <span class="pill pill-actual">Business Studio</span>
               </div>
-              <div class="chip-row" aria-label="Contoh isian cepat katalog">
+              <details class="optional-controls">
+                <summary>Gunakan contoh isian</summary>
+                <div class="chip-row" aria-label="Contoh isian cepat katalog">
                 <button type="button" class="chip-btn" data-preset-off="bakso">Contoh: Bakso Urat (pcs)</button>
                 <button type="button" class="chip-btn" data-preset-off="beras">Contoh: Beras Medium (kg)</button>
                 <button type="button" class="chip-btn" data-preset-off="jasa">Contoh: Jasa Katering (sesi)</button>
-              </div>
+                </div>
+              </details>
               <form id="offeringForm" novalidate>
                 <div class="form-grid">
                   <div class="field">
@@ -1589,7 +1811,7 @@
                       <option value="service">Jasa — tanpa stok persediaan</option>
                       <option value="hybrid">Hybrid — barang + layanan (lacak stok WA)</option>
                     </select>
-                    <div id="offTypeHelper" class="field-helper">Barang/Hybrid mengikuti metode Weighted Average (WA).</div>
+                    <div id="offTypeHelper" class="field-helper">Barang dan penawaran gabungan melacak stok dengan biaya rata-rata tertimbang (WA).</div>
                     <div id="offTypeErr" class="field-error"></div>
                   </div>
                   <div class="field">
@@ -1633,9 +1855,9 @@
                   <h2>Daftar Katalog &amp; Sisa Stok Aktual</h2>
                   <p class="muted" style="margin-top:4px;">Stok dan biaya rata-rata (WA) terbarui otomatis setiap pembelian dan penjualan.</p>
                 </div>
-                <a href="#transaksi" class="btn btn-soft">+ Beli Stok / Jual</a>
+                <a href="#transaksi" class="btn btn-secondary">Buka transaksi</a>
               </div>
-              <div class="table-wrap">
+              <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel dapat digulir">
                 <table>
                   <thead>
                     <tr>
@@ -1656,23 +1878,18 @@
 
         <!-- VIEW 4: ANALISIS & HARGA -->
         <section id="view-analisis" class="view-section hidden" aria-label="Simulasi Harga dan Benchmark Pasar">
-          <div class="banner banner-readonly" role="note">
-            <div>
-              <strong>Mode Analisis (Read-Only):</strong> Perhitungan Simulasi dan Benchmark Pasar bersifat eksploratif dan <strong>tidak pernah mengubah</strong> harga katalog, stok persediaan, kas, maupun buku besar usaha.
-            </div>
-            <span class="pill pill-sim">Read-Only</span>
-          </div>
-
           <div id="analisisNoWorkspace" class="empty-state hidden">
             <h3>Belum Ada Profil Usaha Aktif</h3>
             <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu agar analisis dapat merujuk produk/jasa di katalog Anda.</p>
             <div class="form-actions" style="margin-top:0;">
               <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
-              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+              <button type="button" class="btn btn-soft js-load-demo">Coba data demo</button>
             </div>
+            <div class="status js-demo-status" aria-live="polite"></div>
           </div>
 
           <div id="analisisMain" class="card hidden">
+            <p class="muted">Hasil simulasi dan perbandingan harga hanya untuk analisis.</p>
             <div class="subtabs" role="tablist" aria-label="Alat analisis harga">
               <button id="tabSimBtn" type="button" class="subtab-btn" role="tab" aria-selected="true" aria-controls="simPanel">Simulasi Harga &amp; Diskon</button>
               <button id="tabBenchBtn" type="button" class="subtab-btn" role="tab" aria-selected="false" aria-controls="benchPanel">Benchmark Harga Pasar</button>
@@ -1680,10 +1897,13 @@
 
             <!-- SIMULASI PANEL -->
             <div id="simPanel" role="tabpanel" aria-labelledby="tabSimBtn">
-              <div class="chip-row">
+              <details class="optional-controls">
+                <summary>Gunakan contoh simulasi</summary>
+                <div class="chip-row">
                 <button type="button" class="chip-btn" id="simPresetManualBtn">Contoh Manual (Rp 5.000 · Biaya Rp 3.000 · Diskon 20%)</button>
                 <button type="button" class="chip-btn" id="simPresetCatalogBtn">Pakai Produk Katalog Pertama</button>
-              </div>
+                </div>
+              </details>
               <form id="simForm" novalidate>
                 <div class="form-grid">
                   <div class="field">
@@ -1726,10 +1946,13 @@
                 <a href="#katalog" class="btn btn-primary">Tambah Produk di Katalog</a>
               </div>
               <div id="benchFormWrap">
-                <div class="chip-row">
+                <details class="optional-controls">
+                  <summary>Gunakan contoh perbandingan</summary>
+                  <div class="chip-row">
                   <button type="button" class="chip-btn" id="benchPresetOfficialBtn">Contoh Cocok: Beras Medium (kg) vs Bapanas (Historis)</button>
                   <button type="button" class="chip-btn" id="benchPresetManualBtn">Contoh Survei Manual Pasar Baru</button>
-                </div>
+                  </div>
+                </details>
                 <form id="benchForm" novalidate>
                   <div class="form-grid">
                     <div class="field">
@@ -1809,42 +2032,12 @@
 
         <!-- VIEW 5: PROFIL & DEMO + SKENARIO PER FITUR -->
         <section id="view-profil" class="view-section hidden" aria-label="Profil Usaha, Mode Demo Terisolasi, dan Skenario Fitur">
-          <div class="card card-elevated" id="demoControlCard">
-            <div class="card-header">
-              <div>
-                <h2>Mode Demo Terisolasi &amp; Transparansi Sumber Data</h2>
-                <p class="muted" style="margin-top:4px;">Uji seluruh alur MarketStudio dalam 1 klik tanpa mencemari workspace usaha nyata.</p>
-              </div>
-              <span class="pill pill-demo">Demo Sintetis Terisolasi</span>
-            </div>
-            <div class="kpi-grid" style="margin-top:0; margin-bottom:12px;">
-              <div class="kpi" style="background:var(--surface);">
-                <div class="kpi-top"><span class="label">1. Skenario Pengguna Demo</span><span class="pill pill-demo">Sintetis</span></div>
-                <div class="sub">Fixture interaktif <strong>Warung Bakso &amp; Sembako</strong> (idempoten: klik berulang tidak menggandakan data). Transaksi manual lanjutan tetap aksi eksplisit Anda.</div>
-              </div>
-              <div class="kpi" style="background:var(--surface);">
-                <div class="kpi-top"><span class="label">2. Data Nyata Historis</span><span class="pill pill-hist">Historis</span></div>
-                <div class="sub">Transkripsi resmi <strong>Bapanas Maret 2026</strong> (Beras Medium Rp 13.378/kg Nasional). Bukan harga spot hari ini dan tidak disamakan dengan data sintetis.</div>
-              </div>
-              <div class="kpi" style="background:var(--surface);">
-                <div class="kpi-top"><span class="label">3. Automated Test Suite</span><span class="pill pill-roadmap">Teknis</span></div>
-                <div class="sub">Pengujian otomatis <code>unittest</code> &amp; Playwright memakai DB SQLite sementara terpisah (<code>/tmp</code>) dan bukan skenario pengguna langsung.</div>
-              </div>
-            </div>
-            <div class="form-actions" style="margin-top:0;">
-              <button id="loadDemoBtn" type="button" class="btn btn-primary">Muat Demo Terisolasi: Warung Bakso &amp; Sembako</button>
-              <a href="#ringkasan" class="btn btn-secondary">Buka Ringkasan</a>
-            </div>
-            <div id="demoStatus" class="status" aria-live="polite"></div>
-          </div>
-
           <div class="card">
             <div class="card-header">
               <div>
-                <h2>Profil Usaha (Workspace)</h2>
-                <p class="muted" style="margin-top:4px;">Pilih workspace aktif atau buat profil usaha baru. Setiap workspace terisolasi penuh (tenant-isolated).</p>
+                <h2>Profil usaha</h2>
+                <p class="muted" style="margin-top:4px;">Pilih profil untuk melihat dan mengelola data usaha tersebut.</p>
               </div>
-              <span class="pill pill-actual">Multi-Workspace</span>
             </div>
 
             <div class="field" style="max-width:520px; margin-bottom:14px;">
@@ -1876,14 +2069,24 @@
             </form>
           </div>
 
-          <div class="card">
+          <div class="card card-elevated" id="demoControlCard">
             <div class="card-header">
               <div>
-                <h2>Skenario Demo Per Fitur (Setup, Aksi, Input &amp; Expected Output)</h2>
-                <p class="muted" style="margin-top:4px;">Panduan uji manual untuk Product Owner. Seluruh angka di bawah diverifikasi cocok dengan perhitungan oracle sistem.</p>
+                <h2>Data demo</h2>
+                <p class="muted" style="margin-top:4px;">Demo memakai transaksi contoh Warung Bakso &amp; Sembako. Benchmark memakai data historis Bapanas yang ditandai di layar Analisis.</p>
               </div>
-              <span class="pill pill-demo">Panduan Fitur</span>
+              <span class="pill pill-demo">Demo Sintetis Terisolasi</span>
             </div>
+            <div class="form-actions">
+              <button id="loadDemoBtn" type="button" class="btn btn-secondary js-load-demo">Muat demo Warung Bakso &amp; Sembako</button>
+              <a href="#ringkasan" class="btn btn-secondary">Buka Beranda</a>
+            </div>
+            <div id="demoStatus" class="status js-demo-status" aria-live="polite"></div>
+          </div>
+
+          <div class="card">
+            <details>
+              <summary>Buka panduan skenario demo</summary>
 
             <div class="scenario-grid">
               <article class="scenario-card">
@@ -2006,6 +2209,7 @@
                 <a href="#studio-intelligence" class="btn btn-soft">Buka Intelligence Studio</a>
               </article>
             </div>
+            </details>
           </div>
         </section>
 
@@ -2023,8 +2227,9 @@
             <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu agar Intelligence Studio dapat menganalisis snapshot laporan harian.</p>
             <div class="form-actions" style="margin-top:0;">
               <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
-              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+              <button type="button" class="btn btn-soft js-load-demo">Coba data demo</button>
             </div>
+            <div class="status js-demo-status" aria-live="polite"></div>
           </div>
 
           <div id="intelligenceMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
@@ -2138,23 +2343,23 @@
 
   <nav class="mobile-bottom-nav" aria-label="Navigasi cepat ponsel">
     <a href="#ringkasan" class="mobile-nav-btn" data-route="ringkasan">
-      <span aria-hidden="true">🏠</span>
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-home"/></svg>
       <span>Ringkasan</span>
     </a>
     <a href="#transaksi" class="mobile-nav-btn" data-route="transaksi">
-      <span aria-hidden="true">💳</span>
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-card"/></svg>
       <span>Transaksi</span>
     </a>
     <a href="#katalog" class="mobile-nav-btn" data-route="katalog">
-      <span aria-hidden="true">📦</span>
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-box"/></svg>
       <span>Katalog</span>
     </a>
     <a href="#analisis" class="mobile-nav-btn" data-route="analisis">
-      <span aria-hidden="true">🧮</span>
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-calculator"/></svg>
       <span>Analisis</span>
     </a>
     <a href="#profil" class="mobile-nav-btn" data-route="profil">
-      <span aria-hidden="true">🏢</span>
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-office"/></svg>
       <span>Profil</span>
     </a>
   </nav>
@@ -2171,12 +2376,14 @@
     let sessionToken = localStorage.getItem(SESSION_KEY) || "";
     let workspacesCache = [];
     let offeringsCache = [];
+    let catalogWorkspaceId = "";
     let activeReportCache = null;
 
     let catalogReqSeq = 0;
     let reportReqSeq = 0;
     let simReqSeq = 0;
     let benchReqSeq = 0;
+    let workspaceUiVersion = 0;
 
     let pendingPurKey = localStorage.getItem(PUR_KEY_STORAGE) || "";
     let pendingSaleKey = localStorage.getItem(SALE_KEY_STORAGE) || "";
@@ -2197,49 +2404,14 @@
       }
     };
 
-    const SCREEN_GUIDES = {
-      "studio-creative": {
-        title: "Creative Studio",
-        fungsi: "Siapkan satu poster dari draft dan aset berizin.",
-        input: "Pilih draft, ilustrasi, dan format pratinjau.",
-        hasil: "Unduh poster SVG atau PNG dari versi yang Anda tinjau."
-      },
-      "ringkasan": {
-        title: "Beranda / Ringkasan",
-        fungsi: "Memantau hasil usaha harian (Omzet, HPP, Laba Kotor, Arus Kas Bersih, Nilai Stok Akhir) dan melakukan tutup hari.",
-        input: "Pilih tanggal laporan (WIB) lalu muat laporan atau buka rincian audit transaksi.",
-        hasil: "Menampilkan angka aktual tercatat beserta rincian transaksi, mutasi stok, dan status pajak belum dinilai."
-      },
-      "transaksi": {
-        title: "Transaksi Harian — Business Studio",
-        fungsi: "Mencatat penjualan tunai pelanggan dan pembelian stok barang/hybrid dengan perlindungan idempoten.",
-        input: "Pilih produk/jasa, kuantitas beserta satuannya, dan total harga jual (saran otomatis dapat diedit) atau total biaya beli.",
-        hasil: "Mengubah kas tunai, mengurangi/menambah stok WA, menghitung HPP penjualan barang, dan memperbarui Ringkasan Harian."
-      },
-      "katalog": {
-        title: "Katalog & Stok — Business Studio",
-        fungsi: "Mengelola daftar produk barang, jasa, atau hybrid sekaligus memantau sisa stok aktual dan nilai persediaan WA.",
-        input: "Nama produk/jasa, tipe penawaran (barang/jasa/hybrid), harga satuan IDR, dan satuan (kg, g, liter, ml, pcs, sesi).",
-        hasil: "Menyimpan offering ke katalog workspace dan menampilkan sisa unit aktual setiap transaksi tercatat."
-      },
-      "analisis": {
-        title: "Spreadsheet Studio — Analisis & Harga",
-        fungsi: "Menguji skenario diskon/margin dan membandingkan harga jual terhadap referensi pasar secara read-only.",
-        input: "Produk/jasa referensi (opsional), harga jual, estimasi biaya, diskon %, atau sumber benchmark (resmi historis/demo/manual).",
-        hasil: "Menghasilkan estimasi margin atau selisih benchmark tanpa mengubah katalog, stok, kas, ataupun pembukuan."
-      },
-      "studio-intelligence": {
-        title: "Intelligence Studio — AI Business Review",
-        fungsi: "Menyediakan ringkasan analitik read-only berbasis MetricSnapshot harian teranonimisasi dengan fallback deterministik.",
-        input: "Pilih Mode Eksekusi (provider terkonfigurasi/fallback atau stub test fixture) lalu jalankan review.",
-        hasil: "Menampilkan ringkasan, sitasi snapshot & source IDs, missing_data, serta status fallback tanpa mutasi ledger."
-      },
-      "profil": {
-        title: "Profil Usaha & Mode Demo",
-        fungsi: "Mengelola workspace usaha, beralih antar profil, memuat mode demo terisolasi, dan melihat skenario fitur.",
-        input: "Nama profil usaha baru dan tipe bisnis, atau 1 klik Muat Demo Terisolasi.",
-        hasil: "Menyiapkan ruang kerja terisolasi antar-tenant beserta panduan Setup, Aksi, Input, dan Expected Output tiap fitur."
-      }
+    const SCREEN_TITLES = {
+      "studio-creative": "Creative Studio",
+      ringkasan: "Beranda",
+      transaksi: "Transaksi",
+      katalog: "Katalog & Stok",
+      analisis: "Analisis & Harga",
+      "studio-intelligence": "Intelligence Studio — AI Business Review",
+      profil: "Profil & Demo"
     };
 
     let benchmarkSnapshots = [
@@ -2301,10 +2473,11 @@
     const demoContextBanner = document.getElementById("demoContextBanner");
 
     const pageTitle = document.getElementById("pageTitle");
-    const screenGuide = document.getElementById("screenGuide");
-    const guideFungsi = document.getElementById("guideFungsi");
-    const guideInput = document.getElementById("guideInput");
-    const guideHasil = document.getElementById("guideHasil");
+    const homeTransactionBtn = document.getElementById("homeTransactionBtn");
+    const openSummaryBtn = document.getElementById("openSummaryBtn");
+    const summaryDrawer = document.getElementById("summaryDrawer");
+    const summaryModules = Array.from(summaryDrawer.querySelectorAll("[data-summary-module]"));
+    const summaryPreferenceStatus = document.getElementById("summaryPreferenceStatus");
 
     const wsStatus = document.getElementById("wsStatus");
     const onbWsStatus = document.getElementById("onbWsStatus");
@@ -2339,6 +2512,7 @@
       const cls = variant === true || variant === "err" ? "err" : (variant === "info" ? "info" : "ok");
       el.className = "status " + cls;
       if (cls === "err") {
+        el.closest("form")?.querySelector('[aria-invalid="true"]')?.focus();
         el.setAttribute("role", "alert");
       } else {
         el.removeAttribute("role");
@@ -2386,16 +2560,16 @@
       return s.includes(".") ? s.replace(/\.?0+$/, "") : s;
     }
 
-    function todayJakartaIso() {
+    function jakartaIsoDate(date = new Date()) {
       try {
         return new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Jakarta",
           year: "numeric",
           month: "2-digit",
           day: "2-digit"
-        }).format(new Date());
+        }).format(date);
       } catch {
-        return new Date().toISOString().slice(0, 10);
+        return date.toISOString().slice(0, 10);
       }
     }
 
@@ -2529,23 +2703,89 @@
       return null;
     }
 
-    function setTxSubtab(mode) {
-      const isPur = mode === "purchase";
-      document.getElementById("tabSaleBtn").setAttribute("aria-selected", isPur ? "false" : "true");
-      document.getElementById("tabPurchaseBtn").setAttribute("aria-selected", isPur ? "true" : "false");
-      document.getElementById("salePanel").classList.toggle("hidden", isPur);
-      document.getElementById("purchasePanel").classList.toggle("hidden", !isPur);
+    function selectSubtab(activeId) {
+      const tablist = document.getElementById(activeId).closest('[role="tablist"]');
+      for (const tab of tablist.querySelectorAll('[role="tab"]')) {
+        const selected = tab.id === activeId;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        document.getElementById(tab.getAttribute("aria-controls")).classList.toggle("hidden", !selected);
+      }
     }
 
-    function setAnalisisSubtab(mode) {
-      const isBench = mode === "benchmark";
-      document.getElementById("tabSimBtn").setAttribute("aria-selected", isBench ? "false" : "true");
-      document.getElementById("tabBenchBtn").setAttribute("aria-selected", isBench ? "true" : "false");
-      document.getElementById("simPanel").classList.toggle("hidden", isBench);
-      document.getElementById("benchPanel").classList.toggle("hidden", !isBench);
+    for (const tablist of document.querySelectorAll('.subtabs[role="tablist"]')) {
+      tablist.addEventListener("keydown", event => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+        const index = tabs.indexOf(event.target);
+        if (index < 0) return;
+        event.preventDefault();
+        const nextIndex = event.key === "Home" ? 0
+          : event.key === "End" ? tabs.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[nextIndex].click();
+        tabs[nextIndex].focus();
+      });
     }
 
     let currentRoute = "ringkasan";
+
+    function summaryPreferenceKey() {
+      return `marketstudio_summary_hidden:${activeWorkspaceId}`;
+    }
+
+    function renderSummaryPreferences() {
+      let hidden = [];
+      try {
+        const saved = JSON.parse(localStorage.getItem(summaryPreferenceKey()));
+        if (Array.isArray(saved)) hidden = saved;
+      } catch {
+        // An unreadable preference falls back to the default layout.
+      }
+      for (const checkbox of summaryModules) {
+        const moduleId = checkbox.dataset.summaryModule;
+        checkbox.checked = !hidden.includes(moduleId);
+        document.getElementById(moduleId).classList.toggle("hidden", !checkbox.checked);
+      }
+    }
+
+    function saveSummaryPreferences(restore = false) {
+      if (!activeWorkspaceId) return;
+      const key = summaryPreferenceKey();
+      try {
+        if (restore) {
+          localStorage.removeItem(key);
+        } else {
+          const hidden = summaryModules.filter(input => !input.checked).map(input => input.dataset.summaryModule);
+          localStorage.setItem(key, JSON.stringify(hidden));
+        }
+        setStatus(summaryPreferenceStatus, restore ? "Tampilan bawaan dipulihkan." : "Pilihan modul tersimpan.");
+      } catch {
+        setStatus(summaryPreferenceStatus, "Pilihan gagal disimpan. Periksa pengaturan penyimpanan browser.", "err");
+      }
+      renderSummaryPreferences();
+    }
+
+    openSummaryBtn.addEventListener("click", () => {
+      document.getElementById("summaryDrawerContext").textContent = getActiveWorkspace()?.name || "";
+      setStatus(summaryPreferenceStatus, "");
+      summaryDrawer.showModal();
+    });
+    summaryDrawer.addEventListener("close", () => {
+      if (!openSummaryBtn.classList.contains("hidden")) openSummaryBtn.focus();
+    });
+    summaryModules.forEach(input => input.addEventListener("change", () => saveSummaryPreferences()));
+    document.getElementById("restoreSummaryBtn").addEventListener("click", () => saveSummaryPreferences(true));
+
+    function updateHomeAction() {
+      const hasOfferings = offeringsCache.length > 0;
+      homeTransactionBtn.href = hasOfferings ? "#transaksi" : "#katalog";
+      homeTransactionBtn.querySelector("span").textContent = hasOfferings ? "Catat transaksi" : "Tambah produk atau jasa";
+      homeTransactionBtn.classList.toggle("hidden", currentRoute !== "ringkasan" || !activeWorkspaceId || catalogWorkspaceId !== activeWorkspaceId);
+      const showSummaryButton = currentRoute === "ringkasan" && Boolean(getActiveWorkspace());
+      openSummaryBtn.classList.toggle("hidden", !showSummaryButton);
+      if (!showSummaryButton && summaryDrawer.open) summaryDrawer.close();
+    }
 
     function applyRoute(routeInfo, updateHash = false) {
       const route = routeInfo ? routeInfo.route : "ringkasan";
@@ -2561,28 +2801,18 @@
         }
       }
 
-      document.querySelectorAll(".view-section").forEach((sec) => sec.classList.add("hidden"));
-
       const isRoadmap = Boolean(ROADMAP_INFO[route]);
+      const sectionId = isRoadmap ? "view-roadmap" : route === "studio-intelligence" ? "view-intelligence" : `view-${route}`;
+      document.querySelectorAll(".view-section").forEach(sec => sec.classList.toggle("hidden", sec.id !== sectionId));
       if (isRoadmap) {
         const info = ROADMAP_INFO[route];
         pageTitle.textContent = info.title;
-        screenGuide.classList.add("hidden");
         document.getElementById("roadmapStudioTitle").textContent = info.title;
         document.getElementById("roadmapStudioSub").textContent = info.sub;
         document.getElementById("roadmapStudioBody").textContent = info.body;
         document.getElementById("roadmapStudioScope").textContent = info.scope;
-        document.getElementById("view-roadmap").classList.remove("hidden");
       } else {
-        const g = SCREEN_GUIDES[route] || SCREEN_GUIDES.ringkasan;
-        pageTitle.textContent = g.title;
-        guideFungsi.textContent = g.fungsi;
-        guideInput.textContent = g.input;
-        guideHasil.textContent = g.hasil;
-        screenGuide.classList.remove("hidden");
-        const sectionId = route === "studio-intelligence" ? "view-intelligence" : `view-${route}`;
-        const targetSection = document.getElementById(sectionId);
-        if (targetSection) targetSection.classList.remove("hidden");
+        pageTitle.textContent = SCREEN_TITLES[route] || SCREEN_TITLES.ringkasan;
       }
 
       if (route === "studio-creative") loadPosterStudio();
@@ -2592,10 +2822,10 @@
       }
 
       if (route === "transaksi" && routeInfo && routeInfo.subtab) {
-        setTxSubtab(routeInfo.subtab);
+        selectSubtab(routeInfo.subtab === "purchase" ? "tabPurchaseBtn" : "tabSaleBtn");
       }
       if (route === "analisis" && routeInfo && routeInfo.subtab) {
-        setAnalisisSubtab(routeInfo.subtab);
+        selectSubtab(routeInfo.subtab === "benchmark" ? "tabBenchBtn" : "tabSimBtn");
       }
 
       document.querySelectorAll("[data-route]").forEach((link) => {
@@ -2606,6 +2836,7 @@
         }
       });
 
+      updateHomeAction();
       closeMobileDrawer(false);
     }
 
@@ -2620,24 +2851,26 @@
         if (parsed) {
           e.preventDefault();
           applyRoute(parsed, true);
+          pageTitle.focus({ preventScroll: true });
+          window.scrollTo(0, 0);
         }
       });
     });
 
     document.getElementById("tabSaleBtn").addEventListener("click", () => {
-      setTxSubtab("sale");
+      selectSubtab("tabSaleBtn");
       window.location.hash = "#transaksi";
     });
     document.getElementById("tabPurchaseBtn").addEventListener("click", () => {
-      setTxSubtab("purchase");
+      selectSubtab("tabPurchaseBtn");
       window.location.hash = "#transaksi-pembelian";
     });
     document.getElementById("tabSimBtn").addEventListener("click", () => {
-      setAnalisisSubtab("sim");
+      selectSubtab("tabSimBtn");
       window.location.hash = "#analisis";
     });
     document.getElementById("tabBenchBtn").addEventListener("click", () => {
-      setAnalisisSubtab("benchmark");
+      selectSubtab("tabBenchBtn");
       window.location.hash = "#analisis-benchmark";
     });
 
@@ -2679,6 +2912,8 @@
       }
 
       const hasWs = Boolean(ws);
+      updateHomeAction();
+      renderSummaryPreferences();
       document.getElementById("posterNoWorkspace").classList.toggle("hidden", hasWs);
       document.getElementById("posterMain").classList.toggle("hidden", !hasWs);
       if (currentRoute === "studio-creative" && hasWs) loadPosterStudio();
@@ -2720,7 +2955,28 @@
     }
 
     function resetWorkspaceScopedUiState() {
+      workspaceUiVersion++;
       resetPosterStudio();
+      catalogWorkspaceId = "";
+      offeringsCache = [];
+      activeReportCache = null;
+      for (const id of ["kpiGrid", "quickRevenue", "quickProfit", "quickCash", "quickInventory",
+        "stockValue", "ringkasanStockBody", "homeRecentList", "txRecentBody",
+        "drillTxBody", "drillStockBody", "drillAuditBody", "drillDownPre", "taxNote", "offeringTableBody"]) {
+        document.getElementById(id).textContent = "";
+      }
+      document.getElementById("cashVsProfitNote").classList.add("hidden");
+      document.getElementById("homeStockAlert").classList.add("hidden");
+      document.getElementById("reportPeriodLabel").textContent = "Memuat tanggal laporan…";
+      document.getElementById("transactionPeriodLabel").textContent = "";
+      for (const id of ["saleForm", "purchaseForm"]) {
+        const form = document.getElementById(id);
+        form.reset();
+        clearFieldErrors(form);
+      }
+      for (const select of [saleOffering, purOffering, simOffering, benchOffering]) select.textContent = "";
+      updateSaleContextHints();
+      updatePurchaseContextHints();
       pendingPurKey = "";
       pendingSaleKey = "";
       salePriceManualEdited = false;
@@ -2793,6 +3049,9 @@
         return false;
       }
       setStatus(statusEl, "Menyimpan profil usaha...", "info");
+      const button = formEl.querySelector('button[type="submit"]');
+      if (button.disabled) return false;
+      button.disabled = true;
       try {
         const res = await apiFetch("/v1/workspaces", {
           method: "POST",
@@ -2817,6 +3076,8 @@
       } catch {
         setStatus(statusEl, "Gangguan jaringan saat membuat profil usaha.", "err");
         return false;
+      } finally {
+        button.disabled = false;
       }
     }
 
@@ -2845,9 +3106,15 @@
     });
 
     // Idempotent 1-click Demo Mode Loader
-    async function triggerIsolatedDemoLoad() {
+    async function triggerIsolatedDemoLoad(event) {
+      const buttons = document.querySelectorAll(".js-load-demo");
+      const initiator = event.currentTarget;
+      const label = initiator.textContent;
+      const status = initiator.closest("section, aside")?.querySelector(".js-demo-status") || demoStatus;
+      buttons.forEach(button => { button.disabled = true; });
+      initiator.textContent = "Memuat demo…";
       clearAiReviewResults();
-      setStatus(demoStatus, "Memuat mode demo terisolasi...", "info");
+      setStatus(status, "Memuat data demo…", "info");
       try {
         const res = await apiFetch("/v1/workspaces/demo", {
           method: "POST",
@@ -2856,7 +3123,7 @@
         });
         const data = await res.json();
         if (!res.ok) {
-          setStatus(demoStatus, data.message || "Gagal memuat demo terisolasi.", "err");
+          setStatus(status, data.message || "Demo gagal dimuat. Coba lagi.", "err");
           return;
         }
         const info = data.item;
@@ -2871,20 +3138,20 @@
           ? `Mode demo terisolasi sudah aktif (${info.workspace.name}) — tidak ada data duplikat.`
           : `Mode demo terisolasi '${info.workspace.name}' berhasil dimuat.`;
         setStatus(demoStatus, msg, "ok");
+        if (status !== demoStatus) setStatus(status, "");
         if (currentRoute === "profil") {
           announce(msg);
         } else {
           applyRoute({ route: "ringkasan", subtab: null }, true);
         }
       } catch {
-        setStatus(demoStatus, "Gangguan jaringan saat memuat demo terisolasi.", "err");
+        setStatus(status, "Demo gagal dimuat. Periksa koneksi lalu coba lagi.", "err");
+      } finally {
+        initiator.textContent = label;
+        buttons.forEach(button => { button.disabled = false; });
       }
     }
 
-    document.getElementById("loadDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
-    document.getElementById("sidebarLoadDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
-    document.getElementById("topQuickDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
-    document.getElementById("onboardingDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
     document.querySelectorAll(".js-load-demo").forEach((btn) => {
       btn.addEventListener("click", triggerIsolatedDemoLoad);
     });
@@ -2897,6 +3164,7 @@
 
     function updateSaleContextHints(recalculatePrice = false) {
       const off = getSelectedOffering(saleOffering);
+      document.querySelectorAll('[data-offering-fields="sale"]').forEach(field => field.classList.toggle("hidden", !off));
       const unitBadge = document.getElementById("saleUnitBadge");
       const helper = document.getElementById("saleOfferingHelper");
       const qtyInput = document.getElementById("saleQty");
@@ -2933,6 +3201,7 @@
 
     function updatePurchaseContextHints() {
       const off = getSelectedOffering(purOffering);
+      document.querySelectorAll('[data-offering-fields="pur"]').forEach(field => field.classList.toggle("hidden", !off));
       const unitBadge = document.getElementById("purUnitBadge");
       const helper = document.getElementById("purOfferingHelper");
       const costHelper = document.getElementById("purCostHelper");
@@ -3021,12 +3290,27 @@
       const data = await res.json();
       if (reqWsId !== activeWorkspaceId || reqSeq !== catalogReqSeq || !res.ok) return;
 
+      const previousSelections = [saleOffering, purOffering, simOffering, benchOffering].map(select => select.value);
       offeringsCache = data.items || [];
+      catalogWorkspaceId = reqWsId;
+      updateHomeAction();
+      const stockAlert = document.getElementById("homeStockAlert");
+      const soldOut = offeringsCache.filter(item => item.requires_stock_movement && item.qty_on_hand === "0");
+      stockAlert.classList.toggle("hidden", soldOut.length === 0);
+      if (soldOut.length) {
+        const names = soldOut.slice(0, 3).map(item => item.name).join(", ");
+        const remaining = soldOut.length > 3 ? ` dan ${soldOut.length - 3} lainnya` : "";
+        stockAlert.textContent = `Stok habis saat ini · ${names}${remaining}`;
+      }
       offBody.textContent = "";
       purOffering.textContent = "";
       saleOffering.textContent = "";
       simOffering.textContent = "";
       benchOffering.textContent = "";
+
+      for (const [select, label] of [[saleOffering, "Pilih produk atau jasa"], [purOffering, "Pilih produk barang"]]) {
+        select.add(new Option(label, ""));
+      }
 
       const simManualOpt = document.createElement("option");
       simManualOpt.value = "";
@@ -3127,7 +3411,11 @@
       document.getElementById("benchNoOfferingEmpty").classList.toggle("hidden", hasAnyOfferings);
       document.getElementById("benchFormWrap").classList.toggle("hidden", !hasAnyOfferings);
 
-      updateSaleContextHints(true);
+      [saleOffering, purOffering, simOffering, benchOffering].forEach((select, index) => {
+        const previous = previousSelections[index];
+        if (Array.from(select.options).some(option => option.value === previous)) select.value = previous;
+      });
+      updateSaleContextHints();
       updatePurchaseContextHints();
       updateSimContextHints();
       updateBenchmarkCompatibility();
@@ -3158,8 +3446,7 @@
       return box;
     }
 
-    function renderTxRowsInto(tbody, report) {
-      tbody.textContent = "";
+    function reportTransactionRows(report) {
       const dd = (report && report.drill_down) || {};
       const purchases = (dd.purchases || []).map((p) => ({
         ts: p.occurred_at,
@@ -3190,7 +3477,11 @@
           note: `${hppLabel} • ID ${s.sale_id}`
         };
       });
-      const combined = [...purchases, ...sales].sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+      return [...purchases, ...sales].sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    }
+
+    function renderTxRowsInto(tbody, combined) {
+      tbody.textContent = "";
 
       if (combined.length === 0) {
         const tr = document.createElement("tr");
@@ -3222,7 +3513,7 @@
       if (invItems.length === 0) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 4;
+        td.colSpan = 3;
         td.textContent = "Belum ada stok barang tercatat hingga akhir tanggal ini.";
         tr.appendChild(td);
         stockSummaryBody.appendChild(tr);
@@ -3239,16 +3530,35 @@
           const tdVal = document.createElement("td");
           tdVal.className = "num";
           tdVal.textContent = fmtIdr(item.value_idr);
-          const tdNote = document.createElement("td");
-          tdNote.textContent = `Metode WA • ID ${item.offering_id}`;
-          tr.append(tdName, tdQty, tdVal, tdNote);
+          tr.append(tdName, tdQty, tdVal);
           stockSummaryBody.appendChild(tr);
         });
       }
 
       // 2. Human-readable transaction tables (both in Ringkasan drill-down and Transaksi history)
-      renderTxRowsInto(document.getElementById("drillTxBody"), report);
-      renderTxRowsInto(document.getElementById("txRecentBody"), report);
+      const transactions = reportTransactionRows(report);
+      renderTxRowsInto(document.getElementById("drillTxBody"), transactions.slice().reverse());
+      renderTxRowsInto(document.getElementById("txRecentBody"), transactions);
+
+      const recent = document.getElementById("homeRecentList");
+      recent.replaceChildren();
+      if (!transactions.length) {
+        const item = document.createElement("li");
+        item.textContent = "Belum ada transaksi pada tanggal ini.";
+        recent.append(item);
+      }
+      for (const row of transactions.slice(0, 3)) {
+        const item = document.createElement("li");
+        const description = document.createElement("span");
+        const detail = document.createElement("small");
+        description.textContent = row.name;
+        detail.textContent = `${row.kind} · ${fmtJakartaDateTime(row.ts)}`;
+        description.append(detail);
+        const amount = document.createElement("strong");
+        amount.textContent = row.amount;
+        item.append(description, amount);
+        recent.append(item);
+      }
 
       // 3. Stock Movements Table
       const drillStockBody = document.getElementById("drillStockBody");
@@ -3322,84 +3632,62 @@
       const reqWsId = activeWorkspaceId;
       const reqSeq = ++reportReqSeq;
       const dateInput = document.getElementById("reportDate");
-      if (!dateInput.value) dateInput.value = todayJakartaIso();
+      if (!dateInput.value) dateInput.value = jakartaIsoDate();
       const dateVal = dateInput.value;
       const qs = dateVal ? `?date=${encodeURIComponent(dateVal)}` : "";
-      const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/reports/daily${qs}`);
-      const data = await res.json();
-      if (reqWsId !== activeWorkspaceId || reqSeq !== reportReqSeq || !res.ok) return;
+      const status = document.getElementById("reportStatus");
+      const card = document.getElementById("dailyReport");
+      card.setAttribute("aria-busy", "true");
+      setStatus(status, "Memuat laporan…", "info");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/reports/daily${qs}`);
+        if (!res.ok) throw new Error("report request failed");
+        const { report } = await res.json();
+        if (reqWsId !== activeWorkspaceId || reqSeq !== reportReqSeq) return;
 
-      const r = data.report;
-      activeReportCache = r;
-      const ws = getActiveWorkspace();
-      const isDemo = Boolean(ws && ws.is_demo);
-      const badgeText = isDemo ? "Demo Sintetis" : "Aktual";
-      const badgeCls = isDemo ? "pill-demo" : "pill-actual";
+        activeReportCache = report;
+        const period = `Laporan ${fmtJakartaDateLabel(report.period.date)}`;
+        dateInput.value = report.period.date;
+        document.getElementById("reportPeriodLabel").textContent = period;
+        document.getElementById("transactionPeriodLabel").textContent = period;
 
-      if (r.period && r.period.date) {
-        dateInput.value = r.period.date;
-        document.getElementById("reportPeriodLabel").textContent = `Periode aktif: ${fmtJakartaDateLabel(r.period.date)}`;
-      }
-
-      const grid = document.getElementById("kpiGrid");
-      grid.textContent = "";
-      grid.appendChild(makeKpiCard("Omzet", fmtIdr(r.revenue_idr), badgeText, badgeCls, "Total penjualan tercatat pada tanggal aktif"));
-      grid.appendChild(makeKpiCard(
-        "HPP (Harga Pokok)",
-        r.cogs_idr === null ? "Belum dinilai" : fmtIdr(r.cogs_idr),
-        r.cogs_status === "assessed" ? badgeText : "Belum Dinilai",
-        r.cogs_status === "assessed" ? badgeCls : "pill-roadmap",
-        r.cogs_status === "assessed" ? "Dihitung dengan metode Weighted Average (WA)" : "Terdapat penjualan jasa tanpa biaya pokok"
-      ));
-      grid.appendChild(makeKpiCard(
-        "Laba Kotor",
-        r.gross_profit_idr === null ? "Belum dinilai" : fmtIdr(r.gross_profit_idr),
-        r.gross_profit_status === "assessed" ? badgeText : "Belum Dinilai",
-        r.gross_profit_status === "assessed" ? badgeCls : "pill-roadmap",
-        r.gross_profit_status === "assessed" ? "Omzet dikurangi HPP terjual" : "Menunggu penilaian biaya jasa"
-      ));
-      grid.appendChild(makeKpiCard(
-        "Arus Kas Bersih",
-        fmtIdr(r.net_cash_flow_idr),
-        badgeText,
-        badgeCls,
-        `Masuk ${fmtIdr(r.cash_in_idr)} · Keluar ${fmtIdr(r.cash_out_idr)}`
-      ));
-
-      const invItems = (r.ending_inventory && r.ending_inventory.items) || [];
-      const invBreakdown = invItems.length > 0
-        ? invItems.map((it) => `${it.name}: ${fmtQty(it.qty_remaining)} ${it.unit} (${fmtIdr(it.value_idr)})`).join(" · ")
-        : "Belum ada stok akhir";
-      grid.appendChild(makeKpiCard(
-        "Nilai Stok Akhir",
-        fmtIdr(r.ending_inventory ? r.ending_inventory.total_value_idr : 0),
-        badgeText,
-        badgeCls,
-        invBreakdown
-      ));
-
-      grid.appendChild(makeKpiCard(
-        "Status Pajak",
-        r.tax_status === "not_assessed" ? "Belum dinilai" : r.tax_status,
-        "Belum Dinilai",
-        "pill-roadmap",
-        "Nominal pajak tidak ditampilkan atau diasumsikan Rp 0"
-      ));
-
-      const cashNote = document.getElementById("cashVsProfitNote");
-      if (r.net_cash_flow_idr < 0 && r.ending_inventory && r.ending_inventory.total_value_idr > 0) {
-        cashNote.textContent = `Catatan kas vs laba: Arus kas bersih (${fmtIdr(r.net_cash_flow_idr)}) bernilai negatif karena kas keluar dipakai membeli stok persediaan yang masih tersisa senilai ${fmtIdr(r.ending_inventory.total_value_idr)} — bukan otomatis berarti usaha rugi.`;
+        const { cash_in_idr, cash_out_idr, net_cash_flow_idr, revenue_idr, cogs_idr, gross_profit_idr } = report;
+        const inventory = report.ending_inventory?.total_value_idr ?? 0;
+        const grossProfit = gross_profit_idr === null ? "Belum dinilai" : fmtIdr(gross_profit_idr);
+        document.getElementById("quickRevenue").textContent = fmtIdr(revenue_idr);
+        document.getElementById("quickProfit").textContent = grossProfit;
+        document.getElementById("quickCash").textContent = fmtIdr(net_cash_flow_idr);
+        document.getElementById("quickInventory").textContent = fmtIdr(inventory);
+        const grid = document.getElementById("kpiGrid");
+        grid.replaceChildren(
+          makeKpiCard("Arus kas bersih", fmtIdr(net_cash_flow_idr), "", "",
+            `Kas masuk ${fmtIdr(cash_in_idr)} · Kas keluar ${fmtIdr(cash_out_idr)}`),
+          makeKpiCard("Laba kotor", grossProfit, "", "",
+            `Omzet ${fmtIdr(revenue_idr)} · HPP ${cogs_idr === null ? "belum dinilai" : fmtIdr(cogs_idr)}`)
+        );
+        const cashNote = document.getElementById("cashVsProfitNote");
+        const definition = "Arus kas bersih adalah selisih uang masuk dan keluar. Laba kotor adalah omzet (total penjualan) dikurangi harga pokok penjualan (HPP).";
+        cashNote.textContent = net_cash_flow_idr < 0 && inventory > 0
+          ? `${definition} Pembelian stok mengurangi kas saat dibayar. Harga pokok barang masuk perhitungan laba saat barang terjual.`
+          : definition;
         cashNote.classList.remove("hidden");
-      } else {
-        cashNote.classList.add("hidden");
+        document.getElementById("stockValue").textContent = fmtIdr(inventory);
+        document.getElementById("taxNote").textContent = report.tax_status === "not_assessed"
+          ? "Pajak belum dinilai. Nominal pajak belum tersedia."
+          : `Status pajak: ${report.tax_status}`;
+        renderDrillDownTables(report);
+        setStatus(status, "");
+      } catch {
+        if (reqWsId === activeWorkspaceId && reqSeq === reportReqSeq) {
+          setStatus(status, "Laporan gagal dimuat. Pilih tanggal atau tekan Muat ulang untuk mencoba lagi.", "err");
+        }
+      } finally {
+        if (reqWsId === activeWorkspaceId && reqSeq === reportReqSeq) card.setAttribute("aria-busy", "false");
       }
-
-      renderDrillDownTables(r);
     }
 
-    // Form Listeners
-    document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
     document.getElementById("reportDate").addEventListener("change", loadReport);
+    document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
 
     // Quick catalog presets & unit chips
     document.querySelectorAll("[data-preset-off]").forEach((btn) => {
@@ -3535,6 +3823,8 @@
         total_cost_idr: parseInt(rawCost, 10)
       };
       pendingPurKey = getScopedKey(PUR_KEY_STORAGE, activeWorkspaceId, payload);
+      const reqWsId = activeWorkspaceId;
+      const workspaceVersion = workspaceUiVersion;
       setStatus(purStatus, "Menyimpan pembelian tunai...", "info");
       try {
         const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/purchases`, {
@@ -3543,6 +3833,7 @@
           body: JSON.stringify(payload)
         });
         const data = await res.json();
+        if (workspaceVersion !== workspaceUiVersion) return;
         if (res.status === 409 || res.status === 422) {
           pendingPurKey = "";
           localStorage.removeItem(PUR_KEY_STORAGE);
@@ -3556,9 +3847,12 @@
         pendingPurKey = "";
         localStorage.removeItem(PUR_KEY_STORAGE);
         setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}). Stok dan kas diperbarui.`, "ok");
+        document.getElementById("reportDate").value = jakartaIsoDate(new Date(data.item.occurred_at));
         await Promise.all([loadOfferings(), loadReport()]);
       } catch {
-        setStatus(purStatus, "Gangguan jaringan: kunci idempoten dipertahankan agar aman dicoba ulang.", "err");
+        if (reqWsId === activeWorkspaceId && workspaceVersion === workspaceUiVersion) {
+          setStatus(purStatus, "Koneksi terganggu. Kirim ulang isian yang sama untuk mencoba lagi.", "err");
+        }
       } finally {
         btn.disabled = false;
       }
@@ -3619,6 +3913,8 @@
         }]
       };
       pendingSaleKey = getScopedKey(SALE_KEY_STORAGE, activeWorkspaceId, payload);
+      const reqWsId = activeWorkspaceId;
+      const workspaceVersion = workspaceUiVersion;
       setStatus(saleStatus, "Menyimpan penjualan tunai...", "info");
       try {
         const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/sales`, {
@@ -3627,13 +3923,14 @@
           body: JSON.stringify(payload)
         });
         const data = await res.json();
+        if (workspaceVersion !== workspaceUiVersion) return;
         if (res.status === 409 || res.status === 422) {
           pendingSaleKey = "";
           localStorage.removeItem(SALE_KEY_STORAGE);
           const fe = data.field_errors || {};
           if (fe["lines[0].qty"]) setFieldError("saleQty", "saleQtyErr", fe["lines[0].qty"]);
           if (fe["lines[0].total_price_idr"]) setFieldError("salePrice", "salePriceErr", fe["lines[0].total_price_idr"]);
-          if (data.code === "insufficient_stock") setFieldError("saleQty", "saleQtyErr", data.message);
+          if (data.code === "insufficient_stock") setFieldError("saleQty", "saleQtyErr", "Kurangi jumlah hingga sesuai stok tersedia, atau catat pembelian stok terlebih dahulu.");
           return setStatus(saleStatus, data.message || "Data penjualan ditolak.", "err");
         }
         if (!res.ok) return setStatus(saleStatus, data.message || "Gagal mencatat penjualan.", "err");
@@ -3643,9 +3940,12 @@
           ? `HPP ${fmtIdr(data.item.total_cogs_idr)}, Laba Kotor ${fmtIdr(data.item.gross_profit_idr)}`
           : "HPP belum dinilai (jasa)";
         setStatus(saleStatus, `Penjualan tersimpan (${data.item.sale_id}) — Omzet ${fmtIdr(data.item.total_revenue_idr)}, ${hppInfo}.`, "ok");
+        document.getElementById("reportDate").value = jakartaIsoDate(new Date(data.item.occurred_at));
         await Promise.all([loadOfferings(), loadReport()]);
       } catch {
-        setStatus(saleStatus, "Gangguan jaringan: kunci idempoten dipertahankan agar aman dicoba ulang.", "err");
+        if (reqWsId === activeWorkspaceId && workspaceVersion === workspaceUiVersion) {
+          setStatus(saleStatus, "Koneksi terganggu. Kirim ulang isian yang sama untuk mencoba lagi.", "err");
+        }
       } finally {
         btn.disabled = false;
       }
@@ -3821,7 +4121,7 @@
       document.getElementById("benchSourceLabel").value = "Survei Pasar Tradisional";
       document.getElementById("benchEvidenceNote").value = "Foto papan harga kios #12";
       document.getElementById("benchSourceUrl").value = "";
-      document.getElementById("benchObservedAt").value = todayJakartaIso();
+      document.getElementById("benchObservedAt").value = jakartaIsoDate();
       document.getElementById("benchLocationMarket").value = "Pasar Baru, Bandung";
       document.getElementById("benchUnit").value = berasOff ? berasOff.unit : "kg";
       document.getElementById("benchQuantity").value = "1";
@@ -4276,7 +4576,7 @@
 
     // Initial boot: restore route from hash or localStorage, prefill date, load workspaces
     (function initApp() {
-      document.getElementById("reportDate").value = todayJakartaIso();
+      document.getElementById("reportDate").value = jakartaIsoDate();
       const fromHash = normalizeRouteFromHash(window.location.hash);
       const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY) || "ringkasan";
       const initialRoute = fromHash || normalizeRouteFromHash("#" + savedRoute) || { route: "ringkasan", subtab: null };

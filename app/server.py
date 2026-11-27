@@ -23,6 +23,11 @@ from app.domain import DomainError
 from app.service import BaselineService
 
 WEB_INDEX_PATH = Path(__file__).resolve().parent / "web" / "index.html"
+BRAND_ASSETS_PATH = WEB_INDEX_PATH.parents[2] / "assets" / "branding"
+BRAND_ASSETS = {
+    "/brand/lockup.png": BRAND_ASSETS_PATH / "marketstudio-lockup.png",
+    "/brand/mark.png": BRAND_ASSETS_PATH / "marketstudio-mark.png",
+}
 _RE_OFFERINGS = re.compile(r"^/v1/workspaces/([^/]+)/offerings$")
 _RE_OFFERING_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)$")
 _RE_PURCHASES = re.compile(r"^/v1/workspaces/([^/]+)/purchases$")
@@ -123,13 +128,14 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
 
         try:
-            if path == "/" or path == "/index.html":
-                html = WEB_INDEX_PATH.read_bytes()
+            if path in ("/", "/index.html") or path in BRAND_ASSETS:
+                asset = BRAND_ASSETS.get(path)
+                body = (asset or WEB_INDEX_PATH).read_bytes()
                 self.send_response(HTTPStatus.OK)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(html)))
+                self.send_header("Content-Type", "image/png" if asset else "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
-                self.wfile.write(html)
+                self.wfile.write(body)
                 return
 
             if path == "/health":
