@@ -429,46 +429,49 @@ def compute_price_simulation(
 
 BENCHMARK_SNAPSHOTS: tuple[dict[str, Any], ...] = (
     {
-        "snapshot_id": "bapanas_beras_medium_jkt",
-        "source_kind": "attributed_snapshot",
-        "source_name": "Panel Harga Pangan - Badan Pangan Nasional (Bapanas)",
-        "source_url": "https://panelharga.badanpangan.go.id",
+        "snapshot_id": "demo_beras_medium_jkt",
+        "source_kind": "synthetic_demo",
+        "is_synthetic": True,
+        "source_name": "Demo Sintetis MarketStudio (Beras Medium)",
+        "source_url": None,
         "observed_at": "2026-11-26T00:00:00+07:00",
-        "location_market": "Pasar Induk Kramat Jati, DKI Jakarta",
-        "commodity_name": "Beras Medium",
+        "location_market": "Pasar Induk Kramat Jati, DKI Jakarta (Sintetis)",
+        "commodity_name": "Beras Medium (Demo Sintetis)",
         "unit": "kg",
         "quantity": "1",
         "currency": "IDR",
         "observed_price_idr": 13500,
-        "evidence_note": "Snapshot lokal statis/sintetis merujuk referensi Panel Harga Pangan Bapanas (bukan live fetch); verifikasi harga pasar aktual sebelum mengubah katalog.",
+        "evidence_note": "Demo sintetis — bukan observasi pasar nyata. Gunakan manual_fallback dengan bukti survei aktual untuk keputusan harga.",
     },
     {
-        "snapshot_id": "bapanas_gula_pasir_500g_jkt",
-        "source_kind": "attributed_snapshot",
-        "source_name": "Panel Harga Pangan - Badan Pangan Nasional (Bapanas)",
-        "source_url": "https://panelharga.badanpangan.go.id",
+        "snapshot_id": "demo_gula_pasir_500g_jkt",
+        "source_kind": "synthetic_demo",
+        "is_synthetic": True,
+        "source_name": "Demo Sintetis MarketStudio (Gula Konsumsi 500 g)",
+        "source_url": None,
         "observed_at": "2026-11-26T00:00:00+07:00",
-        "location_market": "Pasar Senen, DKI Jakarta",
-        "commodity_name": "Gula Konsumsi (kemasan 500 g)",
+        "location_market": "Pasar Senen, DKI Jakarta (Sintetis)",
+        "commodity_name": "Gula Konsumsi 500 g (Demo Sintetis)",
         "unit": "g",
         "quantity": "500",
         "currency": "IDR",
         "observed_price_idr": 9000,
-        "evidence_note": "Snapshot lokal statis/sintetis merujuk referensi Panel Harga Pangan Bapanas (bukan live fetch); verifikasi harga pasar aktual sebelum mengubah katalog.",
+        "evidence_note": "Demo sintetis — bukan observasi pasar nyata. Gunakan manual_fallback dengan bukti survei aktual untuk keputusan harga.",
     },
     {
-        "snapshot_id": "bapanas_minyak_goreng_jkt",
-        "source_kind": "attributed_snapshot",
-        "source_name": "Panel Harga Pangan - Badan Pangan Nasional (Bapanas)",
-        "source_url": "https://panelharga.badanpangan.go.id",
+        "snapshot_id": "demo_minyak_goreng_jkt",
+        "source_kind": "synthetic_demo",
+        "is_synthetic": True,
+        "source_name": "Demo Sintetis MarketStudio (Minyak Goreng)",
+        "source_url": None,
         "observed_at": "2026-11-26T00:00:00+07:00",
-        "location_market": "Pasar Minggu, DKI Jakarta",
-        "commodity_name": "Minyak Goreng Kemasan Sederhana",
+        "location_market": "Pasar Minggu, DKI Jakarta (Sintetis)",
+        "commodity_name": "Minyak Goreng Kemasan Sederhana (Demo Sintetis)",
         "unit": "liter",
         "quantity": "1",
         "currency": "IDR",
         "observed_price_idr": 17500,
-        "evidence_note": "Snapshot lokal statis/sintetis merujuk referensi Panel Harga Pangan Bapanas (bukan live fetch); verifikasi harga pasar aktual sebelum mengubah katalog.",
+        "evidence_note": "Demo sintetis — bukan observasi pasar nyata. Gunakan manual_fallback dengan bukti survei aktual untuk keputusan harga.",
     },
 )
 
@@ -527,21 +530,21 @@ def validate_benchmark_input(payload: dict[str, Any]) -> tuple[str, BenchmarkObs
         offering_id = raw_offering_id.strip()
 
     raw_kind = payload.get("source_kind")
-    if raw_kind not in ("attributed_snapshot", "manual_fallback"):
-        errors["source_kind"] = "source_kind harus 'attributed_snapshot' atau 'manual_fallback'."
+    if raw_kind not in ("synthetic_demo", "manual_fallback"):
+        errors["source_kind"] = "source_kind harus 'synthetic_demo' atau 'manual_fallback'."
         raise DomainError(422, "validation_error", "Data benchmark tidak valid.", errors)
 
-    if raw_kind == "attributed_snapshot":
+    if raw_kind == "synthetic_demo":
         snap_id = payload.get("snapshot_id")
         if not isinstance(snap_id, str) or not snap_id.strip():
-            errors["snapshot_id"] = "snapshot_id wajib diisi untuk attributed_snapshot."
+            errors["snapshot_id"] = "snapshot_id wajib diisi untuk synthetic_demo."
         elif snap_id.strip() not in _BENCHMARK_SNAPSHOT_MAP:
             errors["snapshot_id"] = f"Snapshot '{snap_id}' tidak ditemukan."
         if errors:
             raise DomainError(422, "validation_error", "Data benchmark tidak valid.", errors)
         snap = _BENCHMARK_SNAPSHOT_MAP[snap_id.strip()]
         return offering_id, BenchmarkObservation(
-            source_kind="attributed_snapshot",
+            source_kind="synthetic_demo",
             source_name=snap["source_name"],
             source_url=snap["source_url"],
             observed_at=snap["observed_at"],
@@ -659,6 +662,7 @@ def compute_price_benchmark(
             "snapshot_id": observation.snapshot_id,
             "commodity_name": observation.commodity_name,
             "source_kind": observation.source_kind,
+            "is_synthetic": observation.source_kind == "synthetic_demo",
             "source_name": observation.source_name,
             "source_url": observation.source_url,
             "observed_at": observation.observed_at,

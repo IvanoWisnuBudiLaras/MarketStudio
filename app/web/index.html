@@ -265,16 +265,16 @@
         <label>
           Sumber Benchmark
           <select id="benchSourceKind">
-            <option value="attributed_snapshot">Snapshot Publik Ter-atribusi (Bapanas)</option>
-            <option value="manual_fallback">Manual Fallback (dengan bukti)</option>
+            <option value="synthetic_demo">Demo Sintetis (Bukan Observasi Nyata)</option>
+            <option value="manual_fallback">Manual Fallback (Input Operator dengan Bukti)</option>
           </select>
         </label>
         <label id="benchSnapshotWrap">
           Snapshot Komoditas
           <select id="benchSnapshotId">
-            <option value="bapanas_beras_medium_jkt">Beras Medium — Rp13.500 / 1 kg (Pasar Induk Kramat Jati)</option>
-            <option value="bapanas_gula_pasir_500g_jkt">Gula Konsumsi — Rp9.000 / 500 g (Pasar Senen)</option>
-            <option value="bapanas_minyak_goreng_jkt">Minyak Goreng — Rp17.500 / 1 liter (Pasar Minggu)</option>
+            <option value="demo_beras_medium_jkt">Beras Medium (Demo Sintetis) — Rp13.500 / 1 kg</option>
+            <option value="demo_gula_pasir_500g_jkt">Gula Konsumsi 500 g (Demo Sintetis) — Rp9.000 / 500 g</option>
+            <option value="demo_minyak_goreng_jkt">Minyak Goreng (Demo Sintetis) — Rp17.500 / 1 liter</option>
           </select>
         </label>
         <div id="benchManualWrap" class="row" style="display:none; flex-basis: 100%;">
@@ -791,7 +791,7 @@
         offering_id: document.getElementById("benchOfferingId").value.trim(),
         source_kind: kind,
       };
-      if (kind === "attributed_snapshot") {
+      if (kind === "synthetic_demo") {
         payload.snapshot_id = document.getElementById("benchSnapshotId").value;
       } else {
         const rawPrice = document.getElementById("benchObservedPrice").value.trim();

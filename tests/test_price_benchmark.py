@@ -120,18 +120,19 @@ class PriceBenchmarkTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertGreaterEqual(len(snaps["items"]), 3)
         first = snaps["items"][0]
-        self.assertEqual(first["source_kind"], "attributed_snapshot")
-        self.assertTrue(first["source_url"].startswith("https://"))
+        self.assertEqual(first["source_kind"], "synthetic_demo")
+        self.assertTrue(first["is_synthetic"])
+        self.assertIsNone(first["source_url"])
         self.assertEqual(first["currency"], "IDR")
-        self.assertIn("statis/sintetis", first["evidence_note"])
+        self.assertIn("Demo sintetis", first["evidence_note"])
 
         status, res = self._request(
             "POST",
             f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
             body={
                 "offering_id": self.off_kg,
-                "source_kind": "attributed_snapshot",
-                "snapshot_id": "bapanas_beras_medium_jkt",
+                "source_kind": "synthetic_demo",
+                "snapshot_id": "demo_beras_medium_jkt",
             },
             token=self.token_a,
         )
@@ -145,9 +146,10 @@ class PriceBenchmarkTest(unittest.TestCase):
         self.assertEqual(item["normalized_benchmark_price_idr"], 13500)
         self.assertEqual(item["price_delta_idr"], 1500)
         self.assertEqual(item["price_delta_percent"], "11.11")
-        self.assertEqual(item["observation"]["source_kind"], "attributed_snapshot")
-        self.assertEqual(item["observation"]["location_market"], "Pasar Induk Kramat Jati, DKI Jakarta")
-        self.assertIn("statis/sintetis", item["observation"]["evidence_note"])
+        self.assertEqual(item["observation"]["source_kind"], "synthetic_demo")
+        self.assertTrue(item["observation"]["is_synthetic"])
+        self.assertIsNone(item["observation"]["source_url"])
+        self.assertIn("Demo sintetis", item["observation"]["evidence_note"])
 
     def test_metric_unit_conversion_g_to_kg(self) -> None:
         # bapanas_gula_pasir_500g_jkt is Rp 9.000 per 500 g -> Rp 18.000 per kg
@@ -156,8 +158,8 @@ class PriceBenchmarkTest(unittest.TestCase):
             f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
             body={
                 "offering_id": self.off_kg,
-                "source_kind": "attributed_snapshot",
-                "snapshot_id": "bapanas_gula_pasir_500g_jkt",
+                "source_kind": "synthetic_demo",
+                "snapshot_id": "demo_gula_pasir_500g_jkt",
             },
             token=self.token_a,
         )
@@ -173,8 +175,8 @@ class PriceBenchmarkTest(unittest.TestCase):
             f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
             body={
                 "offering_id": self.off_sesi,
-                "source_kind": "attributed_snapshot",
-                "snapshot_id": "bapanas_beras_medium_jkt",
+                "source_kind": "synthetic_demo",
+                "snapshot_id": "demo_beras_medium_jkt",
             },
             token=self.token_a,
         )
@@ -254,7 +256,7 @@ class PriceBenchmarkTest(unittest.TestCase):
         status_401, _ = self._request(
             "POST",
             f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
-            body={"offering_id": self.off_kg, "source_kind": "attributed_snapshot", "snapshot_id": "bapanas_beras_medium_jkt"},
+            body={"offering_id": self.off_kg, "source_kind": "synthetic_demo", "snapshot_id": "demo_beras_medium_jkt"},
         )
         self.assertEqual(status_401, 401)
 
@@ -273,8 +275,8 @@ class PriceBenchmarkTest(unittest.TestCase):
             f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
             body={
                 "offering_id": self.off_b,
-                "source_kind": "attributed_snapshot",
-                "snapshot_id": "bapanas_beras_medium_jkt",
+                "source_kind": "synthetic_demo",
+                "snapshot_id": "demo_beras_medium_jkt",
             },
             token=self.token_a,
         )
