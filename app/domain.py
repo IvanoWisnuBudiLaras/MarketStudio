@@ -440,6 +440,7 @@ BENCHMARK_SNAPSHOTS: tuple[dict[str, Any], ...] = (
         "quantity": "1",
         "currency": "IDR",
         "observed_price_idr": 13500,
+        "evidence_note": "Snapshot lokal statis/sintetis merujuk referensi Panel Harga Pangan Bapanas (bukan live fetch); verifikasi harga pasar aktual sebelum mengubah katalog.",
     },
     {
         "snapshot_id": "bapanas_gula_pasir_500g_jkt",
@@ -453,6 +454,7 @@ BENCHMARK_SNAPSHOTS: tuple[dict[str, Any], ...] = (
         "quantity": "500",
         "currency": "IDR",
         "observed_price_idr": 9000,
+        "evidence_note": "Snapshot lokal statis/sintetis merujuk referensi Panel Harga Pangan Bapanas (bukan live fetch); verifikasi harga pasar aktual sebelum mengubah katalog.",
     },
     {
         "snapshot_id": "bapanas_minyak_goreng_jkt",
@@ -466,6 +468,7 @@ BENCHMARK_SNAPSHOTS: tuple[dict[str, Any], ...] = (
         "quantity": "1",
         "currency": "IDR",
         "observed_price_idr": 17500,
+        "evidence_note": "Snapshot lokal statis/sintetis merujuk referensi Panel Harga Pangan Bapanas (bukan live fetch); verifikasi harga pasar aktual sebelum mengubah katalog.",
     },
 )
 
@@ -549,7 +552,7 @@ def validate_benchmark_input(payload: dict[str, Any]) -> tuple[str, BenchmarkObs
             observed_price_idr=int(snap["observed_price_idr"]),
             snapshot_id=snap["snapshot_id"],
             commodity_name=snap["commodity_name"],
-            evidence_note=None,
+            evidence_note=snap["evidence_note"],
         )
 
     # manual_fallback
@@ -580,7 +583,11 @@ def validate_benchmark_input(payload: dict[str, Any]) -> tuple[str, BenchmarkObs
         if not isinstance(source_url_raw, str):
             errors["source_url"] = "source_url harus berupa string."
         elif source_url_raw.strip():
-            source_url = source_url_raw.strip()
+            candidate_url = source_url_raw.strip()
+            if not (candidate_url.startswith("http://") or candidate_url.startswith("https://")):
+                errors["source_url"] = "source_url harus diawali http:// atau https://."
+            else:
+                source_url = candidate_url
 
     if errors:
         raise DomainError(422, "validation_error", "Data benchmark manual tidak valid.", errors)

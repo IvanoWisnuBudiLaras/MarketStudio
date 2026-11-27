@@ -123,6 +123,7 @@ class PriceBenchmarkTest(unittest.TestCase):
         self.assertEqual(first["source_kind"], "attributed_snapshot")
         self.assertTrue(first["source_url"].startswith("https://"))
         self.assertEqual(first["currency"], "IDR")
+        self.assertIn("statis/sintetis", first["evidence_note"])
 
         status, res = self._request(
             "POST",
@@ -146,6 +147,7 @@ class PriceBenchmarkTest(unittest.TestCase):
         self.assertEqual(item["price_delta_percent"], "11.11")
         self.assertEqual(item["observation"]["source_kind"], "attributed_snapshot")
         self.assertEqual(item["observation"]["location_market"], "Pasar Induk Kramat Jati, DKI Jakarta")
+        self.assertIn("statis/sintetis", item["observation"]["evidence_note"])
 
     def test_metric_unit_conversion_g_to_kg(self) -> None:
         # bapanas_gula_pasir_500g_jkt is Rp 9.000 per 500 g -> Rp 18.000 per kg
@@ -224,6 +226,28 @@ class PriceBenchmarkTest(unittest.TestCase):
         )
         self.assertEqual(status_bad, 422)
         self.assertEqual(res_bad["code"], "validation_error")
+
+        # Reject javascript: source_url -> 422
+        status_js, res_js = self._request(
+            "POST",
+            f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
+            body={
+                "offering_id": self.off_kg,
+                "source_kind": "manual_fallback",
+                "source_label": "Survei",
+                "evidence_note": "Catatan",
+                "source_url": "javascript:alert(1)",
+                "observed_at": "2026-11-27",
+                "location_market": "Pasar Baru",
+                "unit": "kg",
+                "quantity": "1",
+                "currency": "IDR",
+                "observed_price_idr": 14000,
+            },
+            token=self.token_a,
+        )
+        self.assertEqual(status_js, 422)
+        self.assertEqual(res_js["code"], "validation_error")
 
     def test_tenant_isolation_and_catalog_ledger_invariance(self) -> None:
         # 401 unauthenticated
