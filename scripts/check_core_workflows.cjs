@@ -17,7 +17,7 @@ async function run() {
   const visible = selector => el(selector).waitFor({ state: "visible" });
   const screenshot = async state => {
     await page.mouse.move(0, 0);
-    await page.screenshot({ path: `${evidence}/after-${state}-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `${evidence}/after-${state}-${width}.png`, fullPage: true, animations: "disabled" });
   };
   const primary = '.top-bar .btn-primary:visible, main .btn-primary:visible';
 
@@ -88,6 +88,7 @@ async function run() {
     assert.equal(await el("#reportDate").inputValue(), demo.demo_date);
     assert.match(await el("#kpiGrid").innerText(), /Arus kas bersih\s+-Rp\s*150\.000[\s\S]*Laba kotor\s+Rp\s*24\.000/);
     assert.match(await el("#stockValue").innerText(), /174\.000/);
+    assert(await el(".stock-summary").evaluate(table => table.scrollWidth <= table.clientWidth));
     assert.equal(await el("#homeRecentList li").count(), 3);
     await layout(1);
     await screenshot("demo");
