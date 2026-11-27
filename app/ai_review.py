@@ -151,7 +151,7 @@ def _build_deterministic_review(snapshot: dict[str, Any]) -> dict[str, Any]:
     cogs_text = f"Rp{m['cogs_idr']:,}" if m["cogs_idr"] is not None else "open (belum dinilai)"
     gp_text = f"Rp{m['gross_profit_idr']:,}" if m["gross_profit_idr"] is not None else "unavailable"
     summary = (
-        f"Ringkasan deterministik periode {period_date}: "
+        f"Penjelasan AI belum tersedia. Ringkasan deterministik periode {period_date}: "
         f"Omzet Rp{m['revenue_idr']:,}, HPP {cogs_text}, Laba Kotor {gp_text}, "
         f"Arus Kas Bersih Rp{m['net_cash_flow_idr']:,}."
     )
@@ -215,7 +215,8 @@ def validate_ai_output(raw_output: Any, snapshot: dict[str, Any]) -> tuple[bool,
     return True, None
 
 
-def _run_stub_adapter(stub_mode: str, outbound_payload: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
+def _run_stub_adapter(stub_mode: str, snapshot: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
+    outbound_payload = snapshot["outbound_payload"]
     if stub_mode == "stub_timeout":
         return None, "provider_timeout"
     if stub_mode == "stub_error":
@@ -255,7 +256,7 @@ def _run_stub_adapter(stub_mode: str, outbound_payload: dict[str, Any]) -> tuple
             f"Total penjualan: {m['sales_count']} transaksi.",
             f"Status HPP: {m['cogs_status']}; status pajak: {outbound_payload['tax_status']}.",
         ],
-        "missing_data": ["tax_status: not_assessed"],
+        "missing_data": _collect_missing_data(snapshot),
         "citations": {
             "snapshot_id": outbound_payload["snapshot_id"],
             "period_date": outbound_payload["period"]["date"],
@@ -327,7 +328,7 @@ def execute_ai_review(
     is_stub = stub_mode is not None
 
     if is_stub:
-        raw_output, error_reason = _run_stub_adapter(stub_mode, outbound_payload)
+        raw_output, error_reason = _run_stub_adapter(stub_mode, snapshot)
     elif provider_callable is not None:
         try:
             raw_output = provider_callable(outbound_payload)
