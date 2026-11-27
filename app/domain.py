@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
+from urllib.parse import urlparse
 from zoneinfo import available_timezones
 
 VALID_OFFERING_TYPES = ("goods", "service", "hybrid")
@@ -610,8 +611,9 @@ def validate_benchmark_input(payload: dict[str, Any]) -> tuple[str, BenchmarkObs
             errors["source_url"] = "source_url harus berupa string."
         elif source_url_raw.strip():
             candidate_url = source_url_raw.strip()
-            if not (candidate_url.startswith("http://") or candidate_url.startswith("https://")):
-                errors["source_url"] = "source_url harus diawali http:// atau https://."
+            parsed_url = urlparse(candidate_url)
+            if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+                errors["source_url"] = "source_url harus berupa URL http:// atau https:// yang valid."
             else:
                 source_url = candidate_url
 

@@ -257,6 +257,28 @@ class PriceBenchmarkTest(unittest.TestCase):
         self.assertEqual(status_js, 422)
         self.assertEqual(res_js["code"], "validation_error")
 
+        # Reject bare https:// without host -> 422
+        status_bare, res_bare = self._request(
+            "POST",
+            f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
+            body={
+                "offering_id": self.off_kg,
+                "source_kind": "manual_fallback",
+                "source_label": "Survei",
+                "evidence_note": "Catatan",
+                "source_url": "https://",
+                "observed_at": "2026-11-27",
+                "location_market": "Pasar Baru",
+                "unit": "kg",
+                "quantity": "1",
+                "currency": "IDR",
+                "observed_price_idr": 14000,
+            },
+            token=self.token_a,
+        )
+        self.assertEqual(status_bare, 422)
+        self.assertEqual(res_bare["code"], "validation_error")
+
     def test_tenant_isolation_and_catalog_ledger_invariance(self) -> None:
         # 401 unauthenticated
         status_401, _ = self._request(
@@ -325,7 +347,7 @@ class PriceBenchmarkTest(unittest.TestCase):
         self.assertEqual(obs["source_url"], "https://data.badanpangan.go.id/nfs_storage/public/publication/documents/1779588677.pdf")
         self.assertIn("halaman cetak 20", obs["evidence_note"])
 
-        # Also compare a gram offering (500 g @ Rp 7.500 -> benchmark 6689 IDR / 500 g)
+        # Also compare a gram offering (13378 / 1000 = 13.378 -> 13 IDR / g)
         _, off_g = self.service.create_offering(
             self.ws_a,
             actor_id="actor_a",

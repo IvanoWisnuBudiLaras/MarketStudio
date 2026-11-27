@@ -256,7 +256,7 @@
 
     <section class="card" id="benchmarkCard">
       <h2>7. Benchmark Harga Pasar (#46)</h2>
-      <p class="muted">Bandingkan harga offering terhadap snapshot publik ter-atribusi atau input manual fallback (read-only, harga katalog tidak berubah).</p>
+      <p class="muted">Bandingkan harga offering terhadap snapshot resmi ter-atribusi, demo sintetis, atau manual fallback dengan bukti (read-only, harga katalog tidak berubah).</p>
       <form id="benchForm" class="row">
         <label>
           Offering
@@ -577,6 +577,7 @@
       benchStatus.textContent = "";
       setStatus(wsStatus, `Workspace '${data.item.name}' dibuat.`);
       await loadWorkspaces();
+      await loadBenchmarkSnapshots();
     });
 
     document.getElementById("offeringForm").addEventListener("submit", async (e) => {
@@ -754,11 +755,68 @@
     const benchSnapshotWrap = document.getElementById("benchSnapshotWrap");
     const benchManualWrap = document.getElementById("benchManualWrap");
     let benchReqSeq = 0;
+    let benchmarkSnapshots = [
+      {
+        snapshot_id: "bapanas_beras_medium_maret_2026",
+        source_kind: "transcribed_official",
+        observation_period: "Maret 2026",
+        commodity_name: "Beras Medium",
+        observed_price_idr: 13378,
+        quantity: "1",
+        unit: "kg",
+        location_market: "Nasional (Tingkat Konsumen)",
+      },
+      {
+        snapshot_id: "demo_beras_medium_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Beras Medium (Demo Sintetis)",
+        observed_price_idr: 13500,
+        quantity: "1",
+        unit: "kg",
+        location_market: "Pasar Induk Kramat Jati, DKI Jakarta (Sintetis)",
+      },
+      {
+        snapshot_id: "demo_gula_pasir_500g_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Gula Konsumsi 500 g (Demo Sintetis)",
+        observed_price_idr: 9000,
+        quantity: "500",
+        unit: "g",
+        location_market: "Pasar Senen, DKI Jakarta (Sintetis)",
+      },
+      {
+        snapshot_id: "demo_minyak_goreng_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Minyak Goreng Kemasan Sederhana (Demo Sintetis)",
+        observed_price_idr: 17500,
+        quantity: "1",
+        unit: "liter",
+        location_market: "Pasar Minggu, DKI Jakarta (Sintetis)",
+      },
+    ];
+
+    function renderBenchmarkSnapshotsForKind() {
+      const kind = benchSourceKind.value;
+      const sel = document.getElementById("benchSnapshotId");
+      sel.textContent = "";
+      const filtered = benchmarkSnapshots.filter((s) => s.source_kind === kind);
+      filtered.forEach((snap) => {
+        const opt = document.createElement("option");
+        opt.value = snap.snapshot_id;
+        const prefix = snap.source_kind === "transcribed_official"
+          ? `[Resmi · Historis ${snap.observation_period || snap.observed_at}]`
+          : "[Demo Sintetis]";
+        opt.textContent = `${prefix} ${snap.commodity_name} — ${fmtIdr(snap.observed_price_idr)} / ${snap.quantity} ${snap.unit} · ${snap.location_market}`;
+        sel.appendChild(opt);
+      });
+      if (sel.options.length > 0) sel.selectedIndex = 0;
+    }
 
     benchSourceKind.addEventListener("change", () => {
       const isManual = benchSourceKind.value === "manual_fallback";
       benchSnapshotWrap.style.display = isManual ? "none" : "";
       benchManualWrap.style.display = isManual ? "flex" : "none";
+      if (!isManual) renderBenchmarkSnapshotsForKind();
     });
 
     async function loadBenchmarkSnapshots() {
@@ -769,20 +827,12 @@
         if (!res.ok || reqWsId !== activeWorkspaceId) return;
         const data = await res.json();
         const items = data.items || [];
-        if (items.length === 0) return;
-        const sel = document.getElementById("benchSnapshotId");
-        sel.textContent = "";
-        items.forEach((snap) => {
-          const opt = document.createElement("option");
-          opt.value = snap.snapshot_id;
-          const prefix = snap.source_kind === "transcribed_official"
-            ? `[Resmi · Historis ${snap.observation_period || snap.observed_at}]`
-            : "[Demo Sintetis]";
-          opt.textContent = `${prefix} ${snap.commodity_name} — ${fmtIdr(snap.observed_price_idr)} / ${snap.quantity} ${snap.unit} · ${snap.location_market}`;
-          sel.appendChild(opt);
-        });
+        if (items.length > 0) {
+          benchmarkSnapshots = items;
+        }
+        renderBenchmarkSnapshotsForKind();
       } catch {
-        // Keep static fallback options if snapshot fetch fails
+        renderBenchmarkSnapshotsForKind();
       }
     }
 
