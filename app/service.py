@@ -2,15 +2,29 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
+from app.creative import (
+    BUILTIN_ASSET_MAP,
+    DEFAULT_ASSETS_DIR,
+    LICENSED_LOCAL_ASSETS,
+    SUPPORTED_EXPORT_FORMATS,
+    compute_draft_revision_hash,
+    load_and_verify_asset,
+    render_poster_artifact,
+    validate_export_request,
+    validate_poster_draft_input,
+    validate_preview_request,
+)
 from app.db import (
     DEFAULT_DB_PATH,
     DatabaseConfig,
@@ -157,12 +171,14 @@ class BaselineService:
         database_url: str | None = None,
         backend: str | None = None,
         pool: PostgresPoolManager | None = None,
+        creative_assets_dir: str | Path | None = None,
     ) -> None:
         self.db_config = resolve_db_config(db_path=db_path, database_url=database_url, backend=backend)
         self.backend = self.db_config.backend
         self.db_path = self.db_config.target if self.backend == "sqlite" else self.db_config.display_target
         self._pool = pool
         self._owns_pool = False
+        self.creative_assets_dir = Path(creative_assets_dir) if creative_assets_dir is not None else DEFAULT_ASSETS_DIR
 
     def close(self) -> None:
         """Close owned database pool resources cleanly."""
@@ -321,6 +337,11 @@ class BaselineService:
                 "workspace_not_found",
                 "Workspace tidak ditemukan atau akses ditolak.",
             )
+
+    def require_poster_access(self, workspace_id: str, actor_id: str) -> None:
+        """Authorize poster requests before decoding their body."""
+        with self._tx() as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
 
     def _check_idempotency(
         self,
@@ -1513,3 +1534,782 @@ class BaselineService:
             "ledger_unchanged": True,
             **result,
         }
+
+    # --- Creative Studio (#42): Licensed Local Assets, Poster Drafts, Preview & Export ---
+
+    def _assert_poster_access(self, conn: Any, workspace_id: str, actor_id: str | None) -> None:
+        self._assert_workspace_access(conn, workspace_id, actor_id)
+        if self.backend != "sqlite":
+            raise DomainError(
+                503,
+                "poster_backend_unavailable",
+                "Creative Studio tersedia pada penyimpanan SQLite lokal.",
+            )
+
+    def _resolve_asset_record(
+        self,
+        conn: Any,
+        workspace_id: str,
+        asset_id: str,
+    ) -> dict[str, Any]:
+        if asset_id in BUILTIN_ASSET_MAP:
+            return dict(BUILTIN_ASSET_MAP[asset_id])
+        row = conn.execute(
+            "SELECT * FROM creative_assets WHERE workspace_id = ? AND asset_id = ?",
+            (workspace_id, asset_id),
+        ).fetchone()
+        if not row:
+            raise DomainError(
+                404,
+                "asset_not_found",
+                f"Aset '{asset_id}' tidak ditemukan pada workspace ini.",
+                {"asset_id": "Aset tidak ditemukan pada workspace aktif."},
+            )
+        provenance: dict[str, Any] = {}
+        try:
+            parsed = json.loads(row["asset_provenance_json"])
+            if isinstance(parsed, dict):
+                provenance = parsed
+        except (TypeError, ValueError):
+            provenance = {}
+        return {
+            "asset_id": row["asset_id"],
+            "workspace_id": row["workspace_id"],
+            "title": row["title"],
+            "mime_type": row["mime_type"],
+            "file_path": row["file_path"],
+            "filename": Path(row["file_path"]).name,
+            "asset_source": row["asset_source"],
+            "asset_license": row["asset_license"],
+            "license_status": row["license_status"],
+            "attribution_text": row["attribution_text"],
+            "asset_provenance": provenance,
+            "is_builtin": False,
+            "created_at": row["created_at"],
+        }
+
+    def _row_to_poster_draft(self, row: Any) -> dict[str, Any]:
+        copy_prov = None
+        if row["copy_provenance_json"]:
+            try:
+                copy_prov = json.loads(row["copy_provenance_json"])
+            except (TypeError, ValueError):
+                copy_prov = None
+        asset_prov: dict[str, Any] = {}
+        try:
+            parsed_ap = json.loads(row["asset_provenance_json"])
+            if isinstance(parsed_ap, dict):
+                asset_prov = parsed_ap
+        except (TypeError, ValueError):
+            asset_prov = {}
+        version = int(row["version"])
+        last_prev_ver = (
+            int(row["last_previewed_version"])
+            if row["last_previewed_version"] is not None
+            else None
+        )
+        preview_synced = (
+            last_prev_ver == version
+            and row["last_previewed_hash"] == row["revision_hash"]
+        )
+        return {
+            "draft_id": row["draft_id"],
+            "workspace_id": row["workspace_id"],
+            "offering_id": row["offering_id"],
+            "title": row["title"],
+            "headline": row["headline"],
+            "caption": row["caption"],
+            "cta_text": row["cta_text"],
+            "price_label": row["price_label"],
+            "copy_source": row["copy_source"],
+            "copy_provenance": copy_prov,
+            "asset_id": row["asset_id"],
+            "asset_source": row["asset_source"],
+            "asset_license": row["asset_license"],
+            "asset_provenance": asset_prov,
+            "version": version,
+            "revision_hash": row["revision_hash"],
+            "status": row["status"],
+            "published": False,
+            "last_previewed_version": last_prev_ver,
+            "last_previewed_hash": row["last_previewed_hash"],
+            "last_previewed_at": row["last_previewed_at"],
+            "preview_synced": preview_synced,
+            "created_by": row["created_by"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    def list_creative_assets(
+        self,
+        workspace_id: str,
+        actor_id: str | None,
+    ) -> list[dict[str, Any]]:
+        """List verified licensed local sample assets plus workspace-scoped custom assets."""
+        with self._tx() as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            items = [
+                {
+                    **item,
+                    "asset_provenance": dict(item["asset_provenance"]),
+                }
+                for item in LICENSED_LOCAL_ASSETS
+            ]
+            rows = conn.execute(
+                "SELECT * FROM creative_assets WHERE workspace_id = ? ORDER BY created_at DESC",
+                (workspace_id,),
+            ).fetchall()
+            for r in rows:
+                items.append(self._resolve_asset_record(conn, workspace_id, r["asset_id"]))
+            return items
+
+    def list_poster_drafts(
+        self,
+        workspace_id: str,
+        actor_id: str | None,
+    ) -> list[dict[str, Any]]:
+        """List workspace-scoped poster drafts."""
+        with self._tx() as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            rows = conn.execute(
+                """
+                SELECT * FROM poster_drafts
+                WHERE workspace_id = ?
+                ORDER BY updated_at DESC, created_at DESC
+                """,
+                (workspace_id,),
+            ).fetchall()
+            return [self._row_to_poster_draft(r) for r in rows]
+
+    def get_poster_draft(
+        self,
+        workspace_id: str,
+        draft_id: str,
+        actor_id: str | None,
+    ) -> dict[str, Any]:
+        """Fetch one workspace-scoped poster draft."""
+        with self._tx() as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            row = conn.execute(
+                "SELECT * FROM poster_drafts WHERE workspace_id = ? AND draft_id = ?",
+                (workspace_id, draft_id),
+            ).fetchone()
+            if not row:
+                raise DomainError(
+                    404,
+                    "poster_draft_not_found",
+                    "Draft poster tidak ditemukan pada workspace ini.",
+                )
+            return self._row_to_poster_draft(row)
+
+    def _insert_poster_draft(
+        self,
+        conn: Any,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        cleaned: dict[str, Any],
+        asset_record: dict[str, Any],
+    ) -> dict[str, Any]:
+        draft_id = f"drf_{uuid.uuid4().hex[:12]}"
+        now_utc = _utc_now()
+        asset_prov = {
+            **dict(asset_record.get("asset_provenance") or {}),
+            "attribution_text": asset_record["attribution_text"],
+            "license_status": asset_record["license_status"],
+            "mime_type": asset_record["mime_type"],
+        }
+        base_draft = {
+            "draft_id": draft_id,
+            "workspace_id": workspace_id,
+            "offering_id": cleaned["offering_id"],
+            "title": cleaned["title"],
+            "headline": cleaned["headline"],
+            "caption": cleaned["caption"],
+            "cta_text": cleaned["cta_text"],
+            "price_label": cleaned["price_label"],
+            "copy_source": cleaned["copy_source"],
+            "asset_id": asset_record["asset_id"],
+            "asset_source": asset_record["asset_source"],
+            "asset_license": asset_record["asset_license"],
+            "version": 1,
+        }
+        revision_hash = compute_draft_revision_hash(base_draft)
+        copy_prov_json = (
+            json.dumps(cleaned["copy_provenance"], sort_keys=True)
+            if cleaned.get("copy_provenance") is not None
+            else None
+        )
+        asset_prov_json = json.dumps(asset_prov, sort_keys=True)
+
+        conn.execute(
+            """
+            INSERT INTO poster_drafts (
+                draft_id, workspace_id, offering_id, title, headline, caption,
+                cta_text, price_label, copy_source, copy_provenance_json,
+                asset_id, asset_source, asset_license, asset_provenance_json,
+                version, revision_hash, status,
+                last_previewed_version, last_previewed_hash, last_previewed_at,
+                created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'draft', NULL, NULL, NULL, ?, ?, ?)
+            """,
+            (
+                draft_id,
+                workspace_id,
+                cleaned["offering_id"],
+                cleaned["title"],
+                cleaned["headline"],
+                cleaned["caption"],
+                cleaned["cta_text"],
+                cleaned["price_label"],
+                cleaned["copy_source"],
+                copy_prov_json,
+                asset_record["asset_id"],
+                asset_record["asset_source"],
+                asset_record["asset_license"],
+                asset_prov_json,
+                revision_hash,
+                actor_id,
+                now_utc,
+                now_utc,
+            ),
+        )
+        row = conn.execute(
+            "SELECT * FROM poster_drafts WHERE workspace_id = ? AND draft_id = ?",
+            (workspace_id, draft_id),
+        ).fetchone()
+        result = self._row_to_poster_draft(row)
+        _record_audit(
+            conn,
+            workspace_id,
+            actor_id,
+            "poster_draft.created",
+            "poster_draft",
+            draft_id,
+            {
+                "draft_id": draft_id,
+                "version": 1,
+                "revision_hash": revision_hash,
+                "asset_id": asset_record["asset_id"],
+                "asset_license": asset_record["asset_license"],
+                "status": "draft",
+            },
+        )
+        return result
+
+    def _assert_verified_asset_metadata(self, asset_record: dict[str, Any]) -> None:
+        if (
+            str(asset_record.get("license_status") or "").lower() != "verified"
+            or not str(asset_record.get("asset_license") or "").strip()
+            or not str(asset_record.get("asset_source") or "").strip()
+            or not str(asset_record.get("attribution_text") or "").strip()
+        ):
+            raise DomainError(
+                422,
+                "unlicensed_asset",
+                "Aset poster belum memiliki lisensi terverifikasi dan tidak dapat dipakai.",
+                {"asset_id": "Aset harus memiliki lisensi terverifikasi."},
+            )
+
+    def create_poster_draft(
+        self,
+        workspace_id: str,
+        actor_id: str | None,
+        payload: dict[str, Any],
+        idempotency_key: str | None = None,
+        actor: str | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        """Create a persisted draft poster bound to a verified licensed asset (status='draft')."""
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            assert actor_id is not None
+            body = payload if isinstance(payload, dict) else {}
+            cleaned = validate_poster_draft_input(body, partial=False)
+            req_hash = _hash_payload(body)
+
+            replay = self._check_idempotency(
+                conn, workspace_id, "create_poster_draft", idempotency_key, req_hash
+            )
+            if replay:
+                return replay
+
+            if cleaned["offering_id"] is not None:
+                off = conn.execute(
+                    "SELECT offering_id FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                    (workspace_id, cleaned["offering_id"]),
+                ).fetchone()
+                if not off:
+                    raise DomainError(
+                        404,
+                        "offering_not_found",
+                        "Offering tidak ditemukan pada workspace ini.",
+                        {"offering_id": "Offering tidak ditemukan pada workspace ini."},
+                    )
+
+            asset_record = self._resolve_asset_record(conn, workspace_id, cleaned["asset_id"])
+            self._assert_verified_asset_metadata(asset_record)
+
+            result = self._insert_poster_draft(
+                conn,
+                workspace_id=workspace_id,
+                actor_id=actor or actor_id,
+                cleaned=cleaned,
+                asset_record=asset_record,
+            )
+            self._save_idempotency(
+                conn,
+                workspace_id,
+                "create_poster_draft",
+                idempotency_key,
+                req_hash,
+                201,
+                result,
+                result["created_at"],
+            )
+            return 201, result
+
+    def create_sample_poster_draft(
+        self,
+        workspace_id: str,
+        actor_id: str | None,
+        idempotency_key: str | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        """One-click creation of a sample poster draft using workspace offering + licensed CC0 asset."""
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            assert actor_id is not None
+            req_hash = _hash_payload({"sample": True})
+            replay = self._check_idempotency(
+                conn, workspace_id, "create_sample_poster_draft", idempotency_key, req_hash
+            )
+            if replay:
+                return replay
+
+            off = conn.execute(
+                "SELECT * FROM offerings WHERE workspace_id = ? ORDER BY created_at ASC LIMIT 1",
+                (workspace_id,),
+            ).fetchone()
+
+            if off:
+                name_lower = str(off["name"]).lower()
+                if "beras" in name_lower:
+                    asset_id = "asset_beras_harvest_v1"
+                elif off["offering_type"] == "service" or "katering" in name_lower:
+                    asset_id = "asset_catering_tray_v1"
+                else:
+                    asset_id = "asset_bakso_bowl_v1"
+                price_fmt = f"Rp {int(off['unit_price_idr']):,}".replace(",", ".")
+                cleaned = {
+                    "offering_id": off["offering_id"],
+                    "title": f"Promo {off['name']}"[:120],
+                    "headline": f"Sedia {off['name']} Siap Pesan"[:140],
+                    "caption": (
+                        f"Draft poster contoh untuk {off['name']} ({price_fmt}/{off['unit']}) "
+                        "menggunakan aset lokal berizin CC0-1.0. Siap ditinjau sebelum ekspor."
+                    ),
+                    "cta_text": "Pesan Sekarang",
+                    "price_label": f"{price_fmt} / {off['unit']}"[:60],
+                    "copy_source": "sample",
+                    "copy_provenance": {
+                        "source": "workspace_offering_sample",
+                        "offering_id": off["offering_id"],
+                    },
+                    "asset_id": asset_id,
+                }
+            else:
+                cleaned = {
+                    "offering_id": None,
+                    "title": "Promo Bakso Urat Spesial",
+                    "headline": "Hangat, Gurih & Siap Saji",
+                    "caption": (
+                        "Draft poster contoh sintetis MarketStudio menggunakan aset lokal "
+                        "berizin CC0-1.0. Sunting teks atau unggah aset pada rilis berikutnya."
+                    ),
+                    "cta_text": "Pesan di Outlet",
+                    "price_label": "Rp 15.000 / pcs",
+                    "copy_source": "sample",
+                    "copy_provenance": {"source": "synthetic_poster_sample"},
+                    "asset_id": "asset_bakso_bowl_v1",
+                }
+
+            asset_record = self._resolve_asset_record(conn, workspace_id, cleaned["asset_id"])
+            result = self._insert_poster_draft(
+                conn,
+                workspace_id=workspace_id,
+                actor_id=actor_id,
+                cleaned=cleaned,
+                asset_record=asset_record,
+            )
+            self._save_idempotency(
+                conn,
+                workspace_id,
+                "create_sample_poster_draft",
+                idempotency_key,
+                req_hash,
+                201,
+                result,
+                result["created_at"],
+            )
+            return 201, result
+
+    def update_poster_draft(
+        self,
+        workspace_id: str,
+        draft_id: str,
+        actor_id: str | None,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a poster draft, bumping version and invalidating prior preview lock."""
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            assert actor_id is not None
+            row = conn.execute(
+                "SELECT * FROM poster_drafts WHERE workspace_id = ? AND draft_id = ?",
+                (workspace_id, draft_id),
+            ).fetchone()
+            if not row:
+                raise DomainError(
+                    404,
+                    "poster_draft_not_found",
+                    "Draft poster tidak ditemukan pada workspace ini.",
+                )
+
+            body = payload if isinstance(payload, dict) else {}
+            cleaned = validate_poster_draft_input(body, partial=True)
+            cur_version = int(row["version"])
+            if "expected_version" in cleaned and cleaned["expected_version"] != cur_version:
+                raise DomainError(
+                    409,
+                    "draft_version_conflict",
+                    f"Versi draft telah berubah (tersimpan v{cur_version}, dikirim v{cleaned['expected_version']}). Muat ulang draft terlebih dahulu.",
+                )
+
+            offering_id = cleaned["offering_id"] if "offering_id" in cleaned else row["offering_id"]
+            if offering_id is not None:
+                off = conn.execute(
+                    "SELECT offering_id FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                    (workspace_id, offering_id),
+                ).fetchone()
+                if not off:
+                    raise DomainError(
+                        404,
+                        "offering_not_found",
+                        "Offering tidak ditemukan pada workspace ini.",
+                        {"offering_id": "Offering tidak ditemukan pada workspace ini."},
+                    )
+
+            asset_id = cleaned["asset_id"] if "asset_id" in cleaned else row["asset_id"]
+            asset_record = self._resolve_asset_record(conn, workspace_id, asset_id)
+            self._assert_verified_asset_metadata(asset_record)
+
+            new_version = cur_version + 1
+            title = cleaned.get("title", row["title"])
+            headline = cleaned.get("headline", row["headline"])
+            caption = cleaned.get("caption", row["caption"])
+            cta_text = cleaned.get("cta_text", row["cta_text"])
+            price_label = cleaned.get("price_label", row["price_label"])
+            copy_source = cleaned.get("copy_source", row["copy_source"])
+            copy_prov_json = (
+                json.dumps(cleaned["copy_provenance"], sort_keys=True)
+                if "copy_provenance" in cleaned and cleaned["copy_provenance"] is not None
+                else (None if "copy_provenance" in cleaned else row["copy_provenance_json"])
+            )
+            asset_prov = {
+                **dict(asset_record.get("asset_provenance") or {}),
+                "attribution_text": asset_record["attribution_text"],
+                "license_status": asset_record["license_status"],
+                "mime_type": asset_record["mime_type"],
+            }
+            new_hash = compute_draft_revision_hash(
+                {
+                    "draft_id": draft_id,
+                    "workspace_id": workspace_id,
+                    "offering_id": offering_id,
+                    "title": title,
+                    "headline": headline,
+                    "caption": caption,
+                    "cta_text": cta_text,
+                    "price_label": price_label,
+                    "copy_source": copy_source,
+                    "asset_id": asset_record["asset_id"],
+                    "asset_source": asset_record["asset_source"],
+                    "asset_license": asset_record["asset_license"],
+                    "version": new_version,
+                }
+            )
+            now_utc = _utc_now()
+            conn.execute(
+                """
+                UPDATE poster_drafts SET
+                    offering_id = ?, title = ?, headline = ?, caption = ?,
+                    cta_text = ?, price_label = ?, copy_source = ?, copy_provenance_json = ?,
+                    asset_id = ?, asset_source = ?, asset_license = ?, asset_provenance_json = ?,
+                    version = ?, revision_hash = ?, status = 'draft',
+                    last_previewed_version = NULL, last_previewed_hash = NULL, last_previewed_at = NULL,
+                    last_previewed_format = NULL, last_previewed_sha256 = NULL,
+                    updated_at = ?
+                WHERE workspace_id = ? AND draft_id = ?
+                """,
+                (
+                    offering_id,
+                    title,
+                    headline,
+                    caption,
+                    cta_text,
+                    price_label,
+                    copy_source,
+                    copy_prov_json,
+                    asset_record["asset_id"],
+                    asset_record["asset_source"],
+                    asset_record["asset_license"],
+                    json.dumps(asset_prov, sort_keys=True),
+                    new_version,
+                    new_hash,
+                    now_utc,
+                    workspace_id,
+                    draft_id,
+                ),
+            )
+            updated_row = conn.execute(
+                "SELECT * FROM poster_drafts WHERE workspace_id = ? AND draft_id = ?",
+                (workspace_id, draft_id),
+            ).fetchone()
+            _record_audit(
+                conn,
+                workspace_id,
+                actor_id,
+                "poster_draft.updated",
+                "poster_draft",
+                draft_id,
+                {
+                    "draft_id": draft_id,
+                    "version": new_version,
+                    "revision_hash": new_hash,
+                    "asset_id": asset_record["asset_id"],
+                    "status": "draft",
+                },
+            )
+            return self._row_to_poster_draft(updated_row)
+
+    def preview_poster_draft(
+        self,
+        workspace_id: str,
+        draft_id: str,
+        actor_id: str | None,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Verify licensed asset, render preview for current version, and lock preview revision."""
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            assert actor_id is not None
+            row = conn.execute(
+                "SELECT * FROM poster_drafts WHERE workspace_id = ? AND draft_id = ?",
+                (workspace_id, draft_id),
+            ).fetchone()
+            if not row:
+                raise DomainError(
+                    404,
+                    "poster_draft_not_found",
+                    "Draft poster tidak ditemukan pada workspace ini.",
+                )
+
+            fmt, sim_fail = validate_preview_request(payload)
+            ws_row = conn.execute(
+                "SELECT name FROM workspaces WHERE workspace_id = ?",
+                (workspace_id,),
+            ).fetchone()
+            ws_name = ws_row["name"] if ws_row else "MarketStudio"
+
+            asset_record = self._resolve_asset_record(conn, workspace_id, row["asset_id"])
+            loaded_asset = load_and_verify_asset(
+                asset_record,
+                self.creative_assets_dir,
+                simulate_failure=sim_fail,
+            )
+
+            draft_dict = self._row_to_poster_draft(row)
+            content, mime, _, digest = render_poster_artifact(draft_dict, loaded_asset, ws_name, fmt)
+
+            now_utc = _utc_now()
+            conn.execute(
+                """
+                UPDATE poster_drafts
+                SET last_previewed_version = ?, last_previewed_hash = ?, last_previewed_at = ?,
+                    last_previewed_format = ?, last_previewed_sha256 = ?
+                WHERE workspace_id = ? AND draft_id = ?
+                """,
+                (draft_dict["version"], draft_dict["revision_hash"], now_utc, fmt, digest, workspace_id, draft_id),
+            )
+            updated_row = conn.execute(
+                "SELECT * FROM poster_drafts WHERE workspace_id = ? AND draft_id = ?",
+                (workspace_id, draft_id),
+            ).fetchone()
+            synced_draft = self._row_to_poster_draft(updated_row)
+
+            _record_audit(
+                conn,
+                workspace_id,
+                actor_id,
+                "poster_draft.previewed",
+                "poster_draft",
+                draft_id,
+                {
+                    "draft_id": draft_id,
+                    "version": synced_draft["version"],
+                    "revision_hash": synced_draft["revision_hash"],
+                    "preview_format": fmt,
+                    "sha256": digest,
+                    "asset_id": loaded_asset.asset_id,
+                    "asset_license": loaded_asset.asset_license,
+                    "status": "draft",
+                },
+            )
+
+            data_url = f"data:{mime};base64,{base64.b64encode(content).decode('ascii')}"
+
+            return {
+                "workspace_id": workspace_id,
+                "draft": synced_draft,
+                "asset": {
+                    "asset_id": loaded_asset.asset_id,
+                    "title": loaded_asset.title,
+                    "mime_type": loaded_asset.mime_type,
+                    "asset_source": loaded_asset.asset_source,
+                    "asset_license": loaded_asset.asset_license,
+                    "license_status": loaded_asset.license_status,
+                    "attribution_text": loaded_asset.attribution_text,
+                    "asset_provenance": loaded_asset.asset_provenance,
+                    "sha256": loaded_asset.sha256,
+                    "width": loaded_asset.width,
+                    "height": loaded_asset.height,
+                },
+                "preview_format": fmt,
+                "preview_data_url": data_url,
+                "preview_sha256": digest,
+                "supported_formats": list(SUPPORTED_EXPORT_FORMATS),
+                "publish_mutated": False,
+                "ledger_unchanged": True,
+            }
+
+    def export_poster_draft(
+        self,
+        workspace_id: str,
+        draft_id: str,
+        actor_id: str | None,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Export poster bytes strictly matching the exact previewed draft_version without publishing."""
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            assert actor_id is not None
+            row = conn.execute(
+                "SELECT * FROM poster_drafts WHERE workspace_id = ? AND draft_id = ?",
+                (workspace_id, draft_id),
+            ).fetchone()
+            if not row:
+                raise DomainError(
+                    404,
+                    "poster_draft_not_found",
+                    "Draft poster tidak ditemukan pada workspace ini.",
+                )
+
+            fmt, expected_version, expected_hash, preview_sha256, sim_fail = validate_export_request(payload)
+            cur_version = int(row["version"])
+            if cur_version != expected_version or (
+                expected_hash is not None and row["revision_hash"] != expected_hash
+            ):
+                raise DomainError(
+                    409,
+                    "draft_version_conflict",
+                    (
+                        f"Versi draft tidak cocok dengan pratinjau (diminta v{expected_version}, "
+                        f"tersimpan v{cur_version}). Muat pratinjau ulang sebelum mengekspor."
+                    ),
+                )
+
+            if (
+                row["last_previewed_version"] != cur_version
+                or row["last_previewed_hash"] != row["revision_hash"]
+                or row["last_previewed_format"] != fmt
+            ):
+                raise DomainError(
+                    409,
+                    "preview_required",
+                    "Tampilkan pratinjau untuk versi draft dan format ekspor yang dipilih.",
+                )
+
+            if row["status"] != "draft":
+                raise DomainError(
+                    409,
+                    "invalid_draft_status",
+                    "Ekspor hanya diperbolehkan untuk draft berstatus 'draft'.",
+                )
+
+            ws_row = conn.execute(
+                "SELECT name FROM workspaces WHERE workspace_id = ?",
+                (workspace_id,),
+            ).fetchone()
+            ws_name = ws_row["name"] if ws_row else "MarketStudio"
+
+            asset_record = self._resolve_asset_record(conn, workspace_id, row["asset_id"])
+            loaded_asset = load_and_verify_asset(
+                asset_record,
+                self.creative_assets_dir,
+                simulate_failure=sim_fail,
+            )
+
+            draft_dict = self._row_to_poster_draft(row)
+            content_bytes, content_type, filename, sha256_hex = render_poster_artifact(
+                draft_dict, loaded_asset, ws_name, fmt
+            )
+            if sha256_hex != row["last_previewed_sha256"] or sha256_hex != preview_sha256:
+                raise DomainError(
+                    409,
+                    "preview_content_changed",
+                    "Isi poster berubah sejak pratinjau. Tampilkan pratinjau kembali sebelum mengekspor.",
+                )
+
+            _record_audit(
+                conn,
+                workspace_id,
+                actor_id,
+                "poster_draft.exported",
+                "poster_draft",
+                draft_id,
+                {
+                    "draft_id": draft_id,
+                    "version": draft_dict["version"],
+                    "revision_hash": draft_dict["revision_hash"],
+                    "format": fmt,
+                    "filename": filename,
+                    "sha256": sha256_hex,
+                    "byte_size": len(content_bytes),
+                    "asset_id": loaded_asset.asset_id,
+                    "asset_source": loaded_asset.asset_source,
+                    "asset_license": loaded_asset.asset_license,
+                    "status": "draft",
+                    "publish_mutated": False,
+                },
+            )
+
+            return {
+                "workspace_id": workspace_id,
+                "draft": draft_dict,
+                "asset": {
+                    "asset_id": loaded_asset.asset_id,
+                    "title": loaded_asset.title,
+                    "mime_type": loaded_asset.mime_type,
+                    "asset_source": loaded_asset.asset_source,
+                    "asset_license": loaded_asset.asset_license,
+                    "license_status": loaded_asset.license_status,
+                    "attribution_text": loaded_asset.attribution_text,
+                    "sha256": loaded_asset.sha256,
+                },
+                "format": fmt,
+                "content_bytes": content_bytes,
+                "content_type": content_type,
+                "filename": filename,
+                "sha256": sha256_hex,
+                "publish_mutated": False,
+                "ledger_unchanged": True,
+            }

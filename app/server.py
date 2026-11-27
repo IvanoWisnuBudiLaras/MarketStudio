@@ -33,6 +33,12 @@ _RE_BENCHMARK_COMPARE = re.compile(r"^/v1/workspaces/([^/]+)/price-benchmarks/co
 _RE_REPORT_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily$")
 _RE_AI_REVIEW_CONFIG = re.compile(r"^/v1/workspaces/([^/]+)/ai-review/config$")
 _RE_AI_REVIEW_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily/ai-review$")
+_RE_CREATIVE_ASSETS = re.compile(r"^/v1/workspaces/([^/]+)/creative-assets$")
+_RE_CREATIVE_DRAFTS = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts$")
+_RE_CREATIVE_DRAFT_SAMPLE = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/sample$")
+_RE_CREATIVE_DRAFT_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)$")
+_RE_CREATIVE_DRAFT_PREVIEW = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)/preview$")
+_RE_CREATIVE_DRAFT_EXPORT = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)/export$")
 
 
 class BaselineHTTPHandler(BaseHTTPRequestHandler):
@@ -51,6 +57,28 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_binary(
+        self,
+        status_code: int,
+        body: bytes,
+        content_type: str,
+        filename: str,
+        extra_headers: dict[str, str] | None = None,
+    ) -> None:
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", filename).strip("-.") or "poster"
+        self.send_response(status_code)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Disposition", f'attachment; filename="{safe_name}"')
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        if extra_headers:
+            for k, v in extra_headers.items():
+                clean_val = re.sub(r"[^ -~]", " ", str(v)).strip()
+                self.send_header(k, clean_val)
         self.end_headers()
         self.wfile.write(body)
 
@@ -160,6 +188,30 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 actor_id = self._require_actor()
                 ws_id = m_ai_cfg.group(1)
                 item = self.service.get_ai_review_config(ws_id, actor_id=actor_id)
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_cre_assets = _RE_CREATIVE_ASSETS.match(path)
+            if m_cre_assets:
+                actor_id = self._require_actor()
+                ws_id = m_cre_assets.group(1)
+                items = self.service.list_creative_assets(ws_id, actor_id=actor_id)
+                self._send_json(200, {"items": items, "request_id": request_id})
+                return
+
+            m_cre_drafts = _RE_CREATIVE_DRAFTS.match(path)
+            if m_cre_drafts:
+                actor_id = self._require_actor()
+                ws_id = m_cre_drafts.group(1)
+                items = self.service.list_poster_drafts(ws_id, actor_id=actor_id)
+                self._send_json(200, {"items": items, "request_id": request_id})
+                return
+
+            m_cre_detail = _RE_CREATIVE_DRAFT_DETAIL.match(path)
+            if m_cre_detail:
+                actor_id = self._require_actor()
+                ws_id, draft_id = m_cre_detail.group(1), m_cre_detail.group(2)
+                item = self.service.get_poster_draft(ws_id, draft_id, actor_id=actor_id)
                 self._send_json(200, {"item": item, "request_id": request_id})
                 return
 
@@ -279,6 +331,106 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 self._send_json(200, {"item": item, "request_id": request_id})
                 return
 
+            m_cre_sample = _RE_CREATIVE_DRAFT_SAMPLE.match(path)
+            if m_cre_sample:
+                actor_id = self._require_actor()
+                ws_id = m_cre_sample.group(1)
+                status, item = self.service.create_sample_poster_draft(
+                    ws_id,
+                    actor_id=actor_id,
+                    idempotency_key=idem_key,
+                )
+                self._send_json(status, {"item": item, "request_id": request_id})
+                return
+
+            m_cre_drafts = _RE_CREATIVE_DRAFTS.match(path)
+            if m_cre_drafts:
+                actor_id = self._require_actor()
+                ws_id = m_cre_drafts.group(1)
+                self.service.require_poster_access(ws_id, actor_id)
+                body = self._read_json_body()
+                status, item = self.service.create_poster_draft(
+                    ws_id,
+                    actor_id=actor_id,
+                    payload=body,
+                    idempotency_key=idem_key,
+                    actor=actor_id,
+                )
+                self._send_json(status, {"item": item, "request_id": request_id})
+                return
+
+            m_cre_preview = _RE_CREATIVE_DRAFT_PREVIEW.match(path)
+            if m_cre_preview:
+                actor_id = self._require_actor()
+                ws_id, draft_id = m_cre_preview.groups()
+                self.service.get_poster_draft(ws_id, draft_id, actor_id)
+                body = self._read_json_body()
+                item = self.service.preview_poster_draft(
+                    ws_id,
+                    draft_id,
+                    actor_id=actor_id,
+                    payload=body,
+                )
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_cre_export = _RE_CREATIVE_DRAFT_EXPORT.match(path)
+            if m_cre_export:
+                actor_id = self._require_actor()
+                ws_id, draft_id = m_cre_export.groups()
+                self.service.get_poster_draft(ws_id, draft_id, actor_id)
+                body = self._read_json_body()
+                result = self.service.export_poster_draft(
+                    ws_id,
+                    draft_id,
+                    actor_id=actor_id,
+                    payload=body,
+                )
+                draft = result["draft"]
+                asset = result["asset"]
+                self._send_binary(
+                    200,
+                    result["content_bytes"],
+                    result["content_type"],
+                    result["filename"],
+                    extra_headers={
+                        "X-Draft-Id": str(draft["draft_id"]),
+                        "X-Draft-Version": str(draft["version"]),
+                        "X-Draft-Revision-Hash": str(draft["revision_hash"]),
+                        "X-Draft-Status": str(draft["status"]),
+                        "X-Export-Format": str(result["format"]),
+                        "X-Export-Sha256": str(result["sha256"]),
+                        "X-Asset-Id": str(asset["asset_id"]),
+                        "X-Asset-Source": str(asset["asset_source"]),
+                        "X-Asset-License": str(asset["asset_license"]),
+                    },
+                )
+                return
+
+            self._send_error_envelope(DomainError(404, "not_found", "Endpoint tidak ditemukan."), request_id)
+        except DomainError as err:
+            self._send_error_envelope(err, request_id)
+
+    def do_PATCH(self) -> None:  # noqa: N802
+        request_id = f"req_{uuid.uuid4().hex[:10]}"
+        path = urlparse(self.path).path
+
+        try:
+            m_cre_detail = _RE_CREATIVE_DRAFT_DETAIL.match(path)
+            if m_cre_detail:
+                actor_id = self._require_actor()
+                ws_id, draft_id = m_cre_detail.groups()
+                self.service.get_poster_draft(ws_id, draft_id, actor_id)
+                body = self._read_json_body()
+                item = self.service.update_poster_draft(
+                    ws_id,
+                    draft_id,
+                    actor_id=actor_id,
+                    payload=body,
+                )
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
             self._send_error_envelope(DomainError(404, "not_found", "Endpoint tidak ditemukan."), request_id)
         except DomainError as err:
             self._send_error_envelope(err, request_id)
@@ -312,6 +464,7 @@ def create_server(
     backend: str | None = None,
     auto_migrate: bool | None = None,
     use_pool: bool = True,
+    creative_assets_dir: str | Path | None = None,
 ) -> MarketStudioHTTPServer:
     """Create configured ThreadingHTTPServer for MarketStudio baseline."""
     config = resolve_db_config(db_path=db_path, database_url=database_url, backend=backend)
@@ -321,7 +474,7 @@ def create_server(
     if config.backend == "postgres" and use_pool:
         pool = PostgresPoolManager(config)
 
-    service = BaselineService(config, pool=pool)
+    service = BaselineService(config, pool=pool, creative_assets_dir=creative_assets_dir)
     service._owns_pool = pool is not None
 
     class _Handler(BaselineHTTPHandler):

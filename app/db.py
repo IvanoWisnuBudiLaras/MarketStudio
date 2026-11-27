@@ -177,6 +177,58 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
     PRIMARY KEY (workspace_id, operation, idempotency_key)
 );
 
+CREATE TABLE IF NOT EXISTS creative_assets (
+    asset_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    asset_source TEXT NOT NULL,
+    asset_license TEXT NOT NULL,
+    license_status TEXT NOT NULL CHECK (license_status IN ('verified', 'unverified', 'revoked')),
+    attribution_text TEXT NOT NULL,
+    asset_provenance_json TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_creative_assets_workspace
+    ON creative_assets (workspace_id, created_at);
+
+CREATE TABLE IF NOT EXISTS poster_drafts (
+    draft_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    offering_id TEXT,
+    title TEXT NOT NULL,
+    headline TEXT NOT NULL,
+    caption TEXT NOT NULL DEFAULT '',
+    cta_text TEXT NOT NULL DEFAULT '',
+    price_label TEXT NOT NULL DEFAULT '',
+    copy_source TEXT NOT NULL DEFAULT 'manual',
+    copy_provenance_json TEXT,
+    asset_id TEXT NOT NULL,
+    asset_source TEXT NOT NULL,
+    asset_license TEXT NOT NULL,
+    asset_provenance_json TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+    revision_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status = 'draft'),
+    last_previewed_version INTEGER,
+    last_previewed_hash TEXT,
+    last_previewed_format TEXT,
+    last_previewed_sha256 TEXT,
+    last_previewed_at TEXT,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    FOREIGN KEY (offering_id) REFERENCES offerings(offering_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_poster_drafts_workspace
+    ON poster_drafts (workspace_id, updated_at);
+
 CREATE TABLE IF NOT EXISTS audit_events (
     event_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
