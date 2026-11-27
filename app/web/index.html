@@ -893,6 +893,24 @@
       border-color: var(--accent);
     }
 
+    #posterMain { display: grid; gap: 16px; }
+    #catalogReview, #catalogPublished, #posterCaptionPanel { margin-top: 16px; }
+    .public-catalog-controls { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .public-catalog-controls select { max-width: 100%; }
+    .catalog-choices { display: grid; gap: 4px; margin: 8px 0 16px; }
+    .catalog-choice {
+      display: flex; align-items: center; gap: 12px; min-height: 44px;
+      padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; overflow-wrap: anywhere;
+    }
+    .catalog-choice input { flex: none; width: 20px; height: 20px; margin: 0; }
+    .catalog-choice:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .catalog-preview { display: block; width: 100%; height: 540px; border: 1px solid var(--border); border-radius: var(--radius); }
+    #catalogPublicLink, #posterCaption { overflow-wrap: anywhere; }
+    #catalogPublicLink { width: fit-content; display: flex; align-items: center; min-height: 44px; }
+    #publicCatalogCard .btn, #posterCopyCaptionBtn { min-height: 44px; }
+    #catalogArtwork { min-height: 44px; }
+
     .poster-preview-image {
       display: block;
       width: min(100%, 440px);
@@ -1784,6 +1802,9 @@
 
           <div id="katalogMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
             <div class="card">
+              <a href="#studio-creative" class="btn btn-secondary" data-route="studio-creative">Siapkan katalog publik</a>
+            </div>
+            <div class="card">
               <div class="card-header">
                 <div>
                   <h2>Tambah Produk atau Jasa Baru</h2>
@@ -2276,6 +2297,38 @@
             <a href="#profil" class="btn btn-secondary" data-route="profil">Buka Profil Usaha</a>
           </div>
           <div id="posterMain" class="hidden">
+            <section class="card" id="publicCatalogCard" aria-labelledby="publicCatalogTitle">
+              <header class="card-header"><h2 id="publicCatalogTitle">Katalog publik</h2></header>
+              <fieldset id="catalogControls" class="public-catalog-controls" disabled>
+                <legend class="field-label">Pilih produk dan jasa yang akan terlihat</legend>
+                <div id="catalogChoices" class="catalog-choices"></div>
+                <div class="field">
+                  <label class="field-label" for="catalogArtwork">Gambar katalog (opsional)</label>
+                  <select id="catalogArtwork"></select>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-primary" id="catalogPreviewBtn" type="button">Pratinjau katalog</button>
+                </div>
+                <div id="catalogReview" class="hidden">
+                  <h3 id="catalogReviewTitle" tabindex="-1">Pratinjau katalog publik</h3>
+                  <div id="catalogFrameContainer"></div>
+                  <p class="muted">Siapa pun yang memiliki tautan dapat melihat versi yang diterbitkan. Tautan versi lama dicabut saat versi baru terbit.</p>
+                  <div class="form-actions">
+                    <button class="btn btn-primary" id="catalogPublishBtn" type="button">Terbitkan versi ini</button>
+                  </div>
+                </div>
+                <div id="catalogPublished" class="hidden">
+                  <h3>Versi publik aktif</h3>
+                  <a id="catalogPublicLink" target="_blank" rel="noopener noreferrer">Buka katalog publik</a>
+                  <div class="form-actions">
+                    <button class="btn btn-secondary" id="catalogCopyLinkBtn" type="button">Salin URL publik</button>
+                    <button class="btn btn-secondary" id="catalogUnpublishBtn" type="button">Tarik publikasi</button>
+                  </div>
+                </div>
+              </fieldset>
+              <button class="btn btn-secondary hidden" id="catalogReloadBtn" type="button">Muat ulang pilihan katalog</button>
+              <p class="status" id="catalogPublishStatus" aria-live="polite"></p>
+            </section>
             <section class="card">
               <header class="card-header">
                 <h2>Draft poster</h2>
@@ -2301,6 +2354,12 @@
               <div class="form-actions">
                 <button id="posterPreviewBtn" class="btn btn-primary" type="button" disabled>Tampilkan pratinjau</button>
                 <button id="posterExportBtn" class="btn btn-secondary" type="button" disabled>Unduh poster</button>
+              </div>
+              <div id="posterCaptionPanel" class="hidden">
+                <h3>Caption promosi</h3>
+                <p id="posterCaption"></p>
+                <button id="posterCopyCaptionBtn" class="btn btn-secondary" type="button">Salin caption</button>
+                <p id="posterCopyStatus" class="status" aria-live="polite"></p>
               </div>
               <p id="posterStatus" class="status" aria-live="polite"></p>
             </section>
@@ -2815,7 +2874,7 @@
         pageTitle.textContent = SCREEN_TITLES[route] || SCREEN_TITLES.ringkasan;
       }
 
-      if (route === "studio-creative") loadPosterStudio();
+      if (route === "studio-creative") loadCreativeStudio();
 
       if (route === "studio-intelligence" && activeWorkspaceId) {
         loadAiReviewConfig();
@@ -2916,7 +2975,7 @@
       renderSummaryPreferences();
       document.getElementById("posterNoWorkspace").classList.toggle("hidden", hasWs);
       document.getElementById("posterMain").classList.toggle("hidden", !hasWs);
-      if (currentRoute === "studio-creative" && hasWs) loadPosterStudio();
+      if (currentRoute === "studio-creative" && hasWs) loadCreativeStudio();
       document.getElementById("ringkasanEmptyState").classList.toggle("hidden", hasWs);
       document.getElementById("ringkasanPopulated").classList.toggle("hidden", !hasWs);
 
@@ -2957,6 +3016,7 @@
     function resetWorkspaceScopedUiState() {
       workspaceUiVersion++;
       resetPosterStudio();
+      resetPublicCatalog();
       catalogWorkspaceId = "";
       offeringsCache = [];
       activeReportCache = null;
@@ -4381,6 +4441,7 @@
 
     function updatePosterControls() {
       posterSampleBtn.disabled = posterBusy;
+      byId("posterCopyCaptionBtn").disabled = posterBusy;
       posterDraftSelect.disabled = posterBusy || !posterDrafts.length;
       posterAssetSelect.disabled = posterBusy || !posterDraftSelect.value;
       posterFormat.disabled = posterBusy;
@@ -4402,6 +4463,9 @@
       posterLoaded = false;
       posterBusy = false;
       posterDrafts = [];
+      byId("posterCaptionPanel").classList.add("hidden");
+      byId("posterCaption").textContent = "";
+      setStatus(byId("posterCopyStatus"), "");
       posterDraftSelect.replaceChildren();
       posterAssetSelect.replaceChildren();
       posterFormat.value = "svg";
@@ -4428,6 +4492,9 @@
     function selectPosterDraft() {
       const draft = posterDrafts.find(item => item.draft_id === posterDraftSelect.value);
       posterAssetSelect.value = draft?.asset_id || "";
+      byId("posterCaption").textContent = draft?.caption || "";
+      byId("posterCaptionPanel").classList.toggle("hidden", !draft?.caption);
+      setStatus(byId("posterCopyStatus"), "");
       clearPosterPreview();
       setStatus(posterStatus, "");
     }
@@ -4573,6 +4640,196 @@
         setStatus(posterStatus, `Unduhan poster v${item.draft.version} dimulai.`);
       });
     });
+
+    function catalogJson(path, payload) {
+      const options = payload === undefined ? {} : {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      };
+      return apiFetch(path, options).then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Permintaan katalog gagal.");
+        return data;
+      });
+    }
+
+    const byId = id => document.getElementById(id);
+    const catalogControls = byId("catalogControls");
+    const catalogChoices = byId("catalogChoices");
+    const catalogArtwork = byId("catalogArtwork");
+    const catalogPreviewBtn = byId("catalogPreviewBtn");
+    const catalogStatus = byId("catalogPublishStatus");
+    let catalogLoaded = false;
+    let catalogBusy = false;
+    let catalogDraft = null;
+    let catalogPublicPath = null;
+
+    function showCatalogDraft(draft) {
+      catalogDraft = draft;
+      byId("catalogReview").classList.toggle("hidden", !draft);
+      catalogPreviewBtn.classList.toggle("btn-primary", !draft);
+      catalogPreviewBtn.classList.toggle("btn-secondary", Boolean(draft));
+      const container = byId("catalogFrameContainer");
+      container.replaceChildren();
+      if (draft) {
+        const frame = document.createElement("iframe");
+        frame.id = "catalogFrame";
+        frame.title = "Pratinjau katalog publik";
+        frame.className = "catalog-preview";
+        frame.setAttribute("sandbox", "");
+        frame.srcdoc = draft.html;
+        container.append(frame);
+      }
+    }
+
+    function showCatalogState(item) {
+      showCatalogDraft(item.draft);
+      catalogPublicPath = item.public_path;
+      byId("catalogPublished").classList.toggle("hidden", !catalogPublicPath);
+      const link = byId("catalogPublicLink");
+      if (catalogPublicPath) link.href = catalogPublicPath;
+      else link.removeAttribute("href");
+    }
+
+    function resetPublicCatalog() {
+      catalogLoaded = false;
+      catalogBusy = false;
+      catalogControls.disabled = true;
+      catalogChoices.replaceChildren();
+      catalogArtwork.replaceChildren();
+      showCatalogState({ draft: null, public_path: null });
+      byId("catalogReloadBtn").classList.add("hidden");
+      setStatus(catalogStatus, "");
+    }
+
+    async function runCatalogAction(message, action) {
+      if (!getActiveWorkspace() || catalogBusy) return;
+      const root = `/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}`;
+      const scope = workspaceUiVersion;
+      const isCurrent = () => scope === workspaceUiVersion;
+      catalogBusy = true;
+      catalogControls.disabled = true;
+      byId("catalogReloadBtn").classList.add("hidden");
+      setStatus(catalogStatus, message, "info");
+      let focus;
+      try {
+        focus = await action(root, isCurrent);
+      } catch (error) {
+        if (isCurrent()) {
+          setStatus(catalogStatus, error.message, "err");
+          byId("catalogReloadBtn").classList.remove("hidden");
+        }
+      } finally {
+        if (isCurrent()) {
+          catalogBusy = false;
+          catalogControls.disabled = !catalogLoaded;
+          focus?.focus();
+        }
+      }
+    }
+
+    function loadPublicCatalog() {
+      return runCatalogAction("Memuat pilihan katalog…", async (root, isCurrent) => {
+        const [{ item }, offerings, assets] = await Promise.all([
+          catalogJson(`${root}/catalog`),
+          catalogJson(`${root}/offerings`),
+          catalogJson(`${root}/creative-assets`)
+        ]);
+        if (!isCurrent()) return;
+        const selected = new Set(item.draft?.selection.offering_ids || []);
+        catalogChoices.replaceChildren(...offerings.items.map(offering => {
+          const label = document.createElement("label");
+          label.className = "catalog-choice";
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.value = offering.offering_id;
+          input.checked = selected.has(offering.offering_id);
+          const name = document.createElement("span");
+          name.textContent = offering.name;
+          label.append(input, name);
+          return label;
+        }));
+        fillPosterOptions(catalogArtwork, [
+          ["Tanpa gambar", ""],
+          ...assets.items.filter(asset => asset.license_status === "verified").map(asset => [asset.title, asset.asset_id])
+        ]);
+        catalogArtwork.value = item.draft?.selection.asset_id || "";
+        showCatalogState(item);
+        catalogLoaded = true;
+        catalogPreviewBtn.disabled = !offerings.items.length;
+        setStatus(catalogStatus, offerings.items.length ? "" : "Tambahkan produk atau jasa di Katalog.");
+      });
+    }
+
+    function loadCreativeStudio() {
+      loadPosterStudio();
+      loadPublicCatalog();
+    }
+
+    byId("catalogReloadBtn").addEventListener("click", loadPublicCatalog);
+    for (const control of [catalogChoices, catalogArtwork]) {
+      control.addEventListener("change", () => {
+        showCatalogDraft(null);
+        setStatus(catalogStatus, "Tinjau perubahan sebelum menerbitkan.");
+      });
+    }
+
+    catalogPreviewBtn.addEventListener("click", () => {
+      const offering_ids = [...catalogChoices.querySelectorAll("input:checked")].map(input => input.value);
+      if (!offering_ids.length) {
+        setStatus(catalogStatus, "Pilih sedikitnya satu produk atau jasa.", "err");
+        catalogChoices.querySelector("input")?.focus();
+        return;
+      }
+      const selection = { offering_ids, asset_id: catalogArtwork.value || null };
+      return runCatalogAction("Menyiapkan pratinjau…", async (root, isCurrent) => {
+        const { item } = await catalogJson(`${root}/catalog/preview`, selection);
+        if (!isCurrent()) return;
+        showCatalogState(item);
+        setStatus(catalogStatus, "Pratinjau siap ditinjau.");
+        return byId("catalogReviewTitle");
+      });
+    });
+
+    byId("catalogPublishBtn").addEventListener("click", () => {
+      if (!catalogDraft) return;
+      const version_id = catalogDraft.version_id;
+      return runCatalogAction("Menerbitkan katalog…", async (root, isCurrent) => {
+        const { item } = await catalogJson(`${root}/catalog/publish`, { version_id });
+        if (!isCurrent()) return;
+        showCatalogState(item);
+        setStatus(catalogStatus, "Katalog publik telah terbit.");
+        return byId("catalogPublicLink");
+      });
+    });
+
+    byId("catalogUnpublishBtn").addEventListener("click", () => {
+      if (!catalogPublicPath || !window.confirm("Tarik katalog? Tautan versi ini akan berhenti berfungsi.")) return;
+      const token = catalogPublicPath.split("/").pop();
+      return runCatalogAction("Menarik publikasi…", async (root, isCurrent) => {
+        const { item } = await catalogJson(`${root}/catalog/unpublish`, { token });
+        if (!isCurrent()) return;
+        showCatalogState(item);
+        setStatus(catalogStatus, "Publikasi ditarik. URL versi ini sudah tidak aktif.");
+        return catalogPreviewBtn;
+      });
+    });
+
+    async function copyStudioText(text, status, success) {
+      const scope = workspaceUiVersion;
+      try {
+        await navigator.clipboard.writeText(text);
+        if (scope === workspaceUiVersion) setStatus(status, success);
+      } catch {
+        if (scope === workspaceUiVersion) setStatus(status, "Akses papan klip gagal. Salin teks secara manual.", "err");
+      }
+    }
+
+    byId("catalogCopyLinkBtn").addEventListener("click", () =>
+      copyStudioText(byId("catalogPublicLink").href, catalogStatus, "URL publik disalin."));
+    byId("posterCopyCaptionBtn").addEventListener("click", () =>
+      copyStudioText(byId("posterCaption").textContent, byId("posterCopyStatus"), "Caption disalin."));
 
     // Initial boot: restore route from hash or localStorage, prefill date, load workspaces
     (function initApp() {

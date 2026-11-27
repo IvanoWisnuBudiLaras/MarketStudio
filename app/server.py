@@ -45,6 +45,10 @@ _RE_CREATIVE_DRAFT_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts
 _RE_CREATIVE_DRAFT_PREVIEW = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)/preview$")
 _RE_CREATIVE_DRAFT_EXPORT = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)/export$")
 
+_RE_CATALOG = re.compile(r"^/v1/workspaces/([^/]+)/catalog$")
+_RE_CATALOG_ACTION = re.compile(r"^/v1/workspaces/([^/]+)/catalog/(preview|publish|unpublish)$")
+_RE_PUBLIC_CATALOG = re.compile(r"^/katalog/([A-Za-z0-9_-]{32})$")
+
 
 class BaselineHTTPHandler(BaseHTTPRequestHandler):
     """HTTP handler serving the single browser entry point and /v1 JSON API."""
@@ -53,7 +57,8 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         # Keep test output clean; server logs can be enabled via env if needed.
-        if os.environ.get("MARKETSTUDIO_QUIET_LOGS") == "1":
+        if (os.environ.get("MARKETSTUDIO_QUIET_LOGS") == "1"
+                or getattr(self, "path", "").startswith("/katalog/")):
             return
         super().log_message(format, *args)
 
@@ -62,6 +67,9 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        path = urlparse(self.path).path
+        if _RE_CATALOG.fullmatch(path) or _RE_CATALOG_ACTION.fullmatch(path):
+            self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -123,11 +131,42 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         token = auth[7:].strip() if auth.startswith("Bearer ") else self.headers.get("X-Session-Token")
         return self.service.resolve_session(token)
 
+    def _serve_public_catalog(self, path: str, *, head_only: bool = False) -> None:
+        match = _RE_PUBLIC_CATALOG.fullmatch(path)
+        page = self.service.get_public_catalog(match[1]) if match else None
+        body = (page or "Katalog tidak ditemukan.").encode("utf-8")
+        self.send_response(200 if page else 404)
+        self.send_header("Content-Type", "text/html; charset=utf-8" if page else "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'none'")
+        self.end_headers()
+        if not head_only:
+            self.wfile.write(body)
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+        if path.startswith("/katalog/"):
+            self._serve_public_catalog(path, head_only=True)
+        else:
+            self.send_error(405)
+
     def do_GET(self) -> None:  # noqa: N802
         request_id = f"req_{uuid.uuid4().hex[:10]}"
         path = urlparse(self.path).path
 
         try:
+            if path.startswith("/katalog/"):
+                self._serve_public_catalog(path)
+                return
+
+            if catalog := _RE_CATALOG.fullmatch(path):
+                item = self.service.get_catalog(catalog[1], self._require_actor())
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
             if path in ("/", "/index.html") or path in BRAND_ASSETS:
                 asset = BRAND_ASSETS.get(path)
                 body = (asset or WEB_INDEX_PATH).read_bytes()
@@ -231,6 +270,19 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         idem_key = self.headers.get("Idempotency-Key")
 
         try:
+            if catalog := _RE_CATALOG_ACTION.fullmatch(path):
+                workspace_id, action = catalog.groups()
+                actor = self._require_actor()
+                body = self._read_json_body()
+                if action == "preview":
+                    item = self.service.preview_catalog(workspace_id, actor, body)
+                elif action == "publish":
+                    item = self.service.publish_catalog(workspace_id, actor, body.get("version_id"))
+                else:
+                    item = self.service.unpublish_catalog(workspace_id, actor, body.get("token"))
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
             if path == "/v1/sessions":
                 body = self._read_json_body()
                 session = self.service.create_session(
