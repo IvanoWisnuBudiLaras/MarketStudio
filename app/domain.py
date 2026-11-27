@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 VALID_OFFERING_TYPES = ("goods", "service", "hybrid")
 VALID_TAX_STATUSES = ("not_assessed", "unknown")
 DEFAULT_TAX_REASON = "Pajak belum dinilai pada baseline sintetis (tidak diasumsikan 0)."
+POLICY_VERSION = "v1-wa-not-assessed"
 _NAME_PATTERN = re.compile(r"^[\w\s\-.,/+&()]+$", re.UNICODE)
 
 
@@ -29,6 +31,27 @@ class DomainError(Exception):
         self.field_errors = field_errors or {}
 
 
+def parse_positive_decimal(value: Any, field: str, errors: dict[str, str]) -> Decimal | None:
+    """Parse a positive Decimal from string/int/float without binary float drift."""
+    if isinstance(value, bool) or value is None:
+        errors[field] = f"{field} wajib diisi dan harus > 0."
+        return None
+    try:
+        dec = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        errors[field] = f"{field} harus berupa angka desimal yang valid."
+        return None
+    if dec <= 0:
+        errors[field] = f"{field} harus lebih besar dari 0."
+        return None
+    return dec
+
+
+def round_idr(value: Decimal) -> int:
+    """Round a Decimal Rupiah value half-up to integer."""
+    return int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
 @dataclass(frozen=True)
 class WorkspaceInput:
     name: str
@@ -46,6 +69,27 @@ class OfferingInput:
     valuation_method: str | None = None
     tax_status: str = "not_assessed"
     tax_reason: str = DEFAULT_TAX_REASON
+
+
+@dataclass(frozen=True)
+class PurchaseInput:
+    offering_id: str
+    qty: Decimal
+    total_cost_idr: int
+    occurred_at: str | None = None
+
+
+@dataclass(frozen=True)
+class SaleLineInput:
+    offering_id: str
+    qty: Decimal
+    total_price_idr: int | None = None
+
+
+@dataclass(frozen=True)
+class SaleInput:
+    lines: list[SaleLineInput]
+    occurred_at: str | None = None
 
 
 def validate_workspace_input(payload: dict[str, Any]) -> WorkspaceInput:
@@ -105,7 +149,6 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
     if errors:
         raise DomainError(422, "validation_error", "Data produk/jasa tidak valid.", errors)
 
-    # Services never require stock movement; goods/hybrid default to True unless specified.
     if offering_type == "service":
         requires_stock = False
         valuation_method = None
@@ -124,3 +167,68 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
         tax_status=tax_status,
         tax_reason=tax_reason,
     )
+
+
+def validate_purchase_input(payload: dict[str, Any]) -> PurchaseInput:
+    """Validate cash purchase payload."""
+    errors: dict[str, str] = {}
+    offering_id = payload.get("offering_id")
+    if not isinstance(offering_id, str) or not offering_id.strip():
+        errors["offering_id"] = "offering_id wajib diisi."
+
+    qty = parse_positive_decimal(payload.get("qty"), "qty", errors)
+
+    total_cost_idr = payload.get("total_cost_idr")
+    if isinstance(total_cost_idr, bool) or not isinstance(total_cost_idr, int) or total_cost_idr < 0:
+        errors["total_cost_idr"] = "total_cost_idr harus bilangan bulat >= 0."
+
+    if errors or qty is None:
+        raise DomainError(422, "validation_error", "Data pembelian tidak valid.", errors)
+
+    return PurchaseInput(
+        offering_id=offering_id.strip(),
+        qty=qty,
+        total_cost_idr=total_cost_idr,
+        occurred_at=payload.get("occurred_at"),
+    )
+
+
+def validate_sale_input(payload: dict[str, Any]) -> SaleInput:
+    """Validate sale payload with one or more lines."""
+    errors: dict[str, str] = {}
+    raw_lines = payload.get("lines")
+    if not isinstance(raw_lines, list) or len(raw_lines) == 0:
+        raise DomainError(
+            422,
+            "validation_error",
+            "Data penjualan tidak valid.",
+            {"lines": "Minimal 1 baris penjualan wajib diisi."},
+        )
+
+    lines: list[SaleLineInput] = []
+    for idx, raw_line in enumerate(raw_lines):
+        if not isinstance(raw_line, dict):
+            errors[f"lines[{idx}]"] = "Baris penjualan harus berupa object."
+            continue
+        off_id = raw_line.get("offering_id")
+        if not isinstance(off_id, str) or not off_id.strip():
+            errors[f"lines[{idx}].offering_id"] = "offering_id wajib diisi."
+        qty = parse_positive_decimal(raw_line.get("qty"), f"lines[{idx}].qty", errors)
+        total_price = raw_line.get("total_price_idr")
+        if total_price is not None and (
+            isinstance(total_price, bool) or not isinstance(total_price, int) or total_price < 0
+        ):
+            errors[f"lines[{idx}].total_price_idr"] = "total_price_idr harus bilangan bulat >= 0."
+        if qty is not None and isinstance(off_id, str) and off_id.strip():
+            lines.append(
+                SaleLineInput(
+                    offering_id=off_id.strip(),
+                    qty=qty,
+                    total_price_idr=total_price,
+                )
+            )
+
+    if errors:
+        raise DomainError(422, "validation_error", "Data penjualan tidak valid.", errors)
+
+    return SaleInput(lines=lines, occurred_at=payload.get("occurred_at"))

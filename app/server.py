@@ -10,7 +10,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from app.db import DEFAULT_DB_PATH, init_db
 from app.domain import DomainError
@@ -19,6 +19,9 @@ from app.service import BaselineService
 WEB_INDEX_PATH = Path(__file__).resolve().parent / "web" / "index.html"
 _RE_OFFERINGS = re.compile(r"^/v1/workspaces/([^/]+)/offerings$")
 _RE_OFFERING_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)$")
+_RE_PURCHASES = re.compile(r"^/v1/workspaces/([^/]+)/purchases$")
+_RE_SALES = re.compile(r"^/v1/workspaces/([^/]+)/sales$")
+_RE_REPORT_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily$")
 
 
 class BaselineHTTPHandler(BaseHTTPRequestHandler):
@@ -91,7 +94,8 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_list:
                 ws_id = m_list.group(1)
                 caller_ws = self.headers.get("X-Workspace-Id")
-                items = self.service.list_offerings(ws_id, caller_ws)
+                actor_status = self.headers.get("X-Actor-Status")
+                items = self.service.list_offerings(ws_id, caller_ws, actor_status=actor_status)
                 self._send_json(200, {"items": items, "request_id": request_id})
                 return
 
@@ -99,8 +103,22 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_detail:
                 ws_id, off_id = m_detail.group(1), m_detail.group(2)
                 caller_ws = self.headers.get("X-Workspace-Id")
-                item = self.service.get_offering(ws_id, off_id, caller_ws)
+                actor_status = self.headers.get("X-Actor-Status")
+                item = self.service.get_offering(ws_id, off_id, caller_ws, actor_status=actor_status)
                 self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_report = _RE_REPORT_DAILY.match(path)
+            if m_report:
+                ws_id = m_report.group(1)
+                caller_ws = self.headers.get("X-Workspace-Id")
+                actor_status = self.headers.get("X-Actor-Status")
+                qs = parse_qs(urlparse(self.path).query)
+                date_str = qs.get("date", [None])[0]
+                report = self.service.get_daily_report(
+                    ws_id, caller_ws, date_str=date_str, actor_status=actor_status
+                )
+                self._send_json(200, {"report": report, "request_id": request_id})
                 return
 
             self._send_error_envelope(DomainError(404, "not_found", "Endpoint tidak ditemukan."), request_id)
@@ -123,9 +141,46 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_list:
                 ws_id = m_list.group(1)
                 caller_ws = self.headers.get("X-Workspace-Id")
+                actor_status = self.headers.get("X-Actor-Status")
                 body = self._read_json_body()
                 status, item = self.service.create_offering(
-                    ws_id, caller_workspace_id=caller_ws, payload=body, idempotency_key=idem_key
+                    ws_id,
+                    caller_workspace_id=caller_ws,
+                    payload=body,
+                    idempotency_key=idem_key,
+                    actor_status=actor_status,
+                )
+                self._send_json(status, {"item": item, "request_id": request_id})
+                return
+
+            m_pur = _RE_PURCHASES.match(path)
+            if m_pur:
+                ws_id = m_pur.group(1)
+                caller_ws = self.headers.get("X-Workspace-Id")
+                actor_status = self.headers.get("X-Actor-Status")
+                body = self._read_json_body()
+                status, item = self.service.create_purchase(
+                    ws_id,
+                    caller_workspace_id=caller_ws,
+                    payload=body,
+                    idempotency_key=idem_key,
+                    actor_status=actor_status,
+                )
+                self._send_json(status, {"item": item, "request_id": request_id})
+                return
+
+            m_sale = _RE_SALES.match(path)
+            if m_sale:
+                ws_id = m_sale.group(1)
+                caller_ws = self.headers.get("X-Workspace-Id")
+                actor_status = self.headers.get("X-Actor-Status")
+                body = self._read_json_body()
+                status, item = self.service.create_sale(
+                    ws_id,
+                    caller_workspace_id=caller_ws,
+                    payload=body,
+                    idempotency_key=idem_key,
+                    actor_status=actor_status,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})
                 return
