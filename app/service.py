@@ -184,12 +184,6 @@ class BaselineService:
                     (f"principal:{actor}", "create_workspace", idempotency_key),
                 ).fetchone()
                 if existing:
-                    if existing["request_hash"] != req_hash:
-                        raise DomainError(
-                            409,
-                            "idempotency_conflict",
-                            "Idempotency-Key sudah dipakai dengan payload berbeda.",
-                        )
                     replayed = json.loads(existing["response_body"])
                     ws_id = replayed["workspace_id"]
                     mem = conn.execute(
@@ -198,6 +192,12 @@ class BaselineService:
                     ).fetchone()
                     if not mem or mem["revoked_at"] is not None:
                         raise DomainError(403, "forbidden_workspace", "Keanggotaan workspace telah dicabut.")
+                    if existing["request_hash"] != req_hash:
+                        raise DomainError(
+                            409,
+                            "idempotency_conflict",
+                            "Idempotency-Key sudah dipakai dengan payload berbeda.",
+                        )
                     return existing["status_code"], replayed
 
             workspace_id = f"ws_{uuid.uuid4().hex[:12]}"
@@ -316,11 +316,11 @@ class BaselineService:
     def list_offerings(
         self,
         workspace_id: str,
-        caller_workspace_id: str | None,
+        actor_id: str | None,
         actor_status: str | None = None,
     ) -> list[dict[str, Any]]:
         with db_transaction(self.db_path) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
+            self._assert_workspace_access(conn, workspace_id, actor_id)
             rows = conn.execute(
                 "SELECT * FROM offerings WHERE workspace_id = ? ORDER BY created_at ASC",
                 (workspace_id,),
@@ -331,11 +331,11 @@ class BaselineService:
         self,
         workspace_id: str,
         offering_id: str,
-        caller_workspace_id: str | None,
+        actor_id: str | None,
         actor_status: str | None = None,
     ) -> dict[str, Any]:
         with db_transaction(self.db_path) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
+            self._assert_workspace_access(conn, workspace_id, actor_id)
             row = conn.execute(
                 "SELECT * FROM offerings WHERE workspace_id = ? AND offering_id = ?",
                 (workspace_id, offering_id),
@@ -347,14 +347,14 @@ class BaselineService:
     def create_offering(
         self,
         workspace_id: str,
-        caller_workspace_id: str | None,
+        actor_id: str | None,
         payload: dict[str, Any],
         idempotency_key: str | None = None,
         actor: str = "synthetic_owner",
         actor_status: str | None = None,
     ) -> tuple[int, dict[str, Any]]:
         with db_transaction(self.db_path, immediate=True) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
+            self._assert_workspace_access(conn, workspace_id, actor_id)
             validated = validate_offering_input(payload)
             req_hash = _hash_payload(payload)
 
@@ -409,14 +409,14 @@ class BaselineService:
     def create_purchase(
         self,
         workspace_id: str,
-        caller_workspace_id: str | None,
+        actor_id: str | None,
         payload: dict[str, Any],
         idempotency_key: str | None = None,
         actor: str = "synthetic_owner",
         actor_status: str | None = None,
     ) -> tuple[int, dict[str, Any]]:
         with db_transaction(self.db_path, immediate=True) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
+            self._assert_workspace_access(conn, workspace_id, actor_id)
             validated = validate_purchase_input(payload)
             req_hash = _hash_payload(payload)
 
@@ -530,7 +530,7 @@ class BaselineService:
     def create_sale(
         self,
         workspace_id: str,
-        caller_workspace_id: str | None,
+        actor_id: str | None,
         payload: dict[str, Any],
         idempotency_key: str | None = None,
         actor: str = "synthetic_owner",
@@ -539,7 +539,7 @@ class BaselineService:
         fault_stage: str = "pre_commit",
     ) -> tuple[int, dict[str, Any]]:
         with db_transaction(self.db_path, immediate=True) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
+            self._assert_workspace_access(conn, workspace_id, actor_id)
             validated = validate_sale_input(payload)
             req_hash = _hash_payload(payload)
 
@@ -764,12 +764,12 @@ class BaselineService:
     def get_daily_report(
         self,
         workspace_id: str,
-        caller_workspace_id: str | None,
+        actor_id: str | None,
         date_str: str | None = None,
         actor_status: str | None = None,
     ) -> dict[str, Any]:
         with db_transaction(self.db_path) as conn:
-            self._assert_workspace_access(conn, workspace_id, caller_workspace_id)
+            self._assert_workspace_access(conn, workspace_id, actor_id)
 
             ws_row = conn.execute(
                 "SELECT timezone FROM workspaces WHERE workspace_id = ?",

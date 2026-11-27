@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from contextlib import closing, contextmanager
+from decimal import Decimal
 from pathlib import Path
 from typing import Iterator
 
@@ -180,23 +181,31 @@ CREATE TABLE IF NOT EXISTS audit_events (
 
 
 def init_db(db_path: str = DEFAULT_DB_PATH) -> str:
-    """Initialize SQLite database, apply schema, and backfill inventory_pools idempotently."""
+    """Initialize SQLite database, apply schema, and backfill inventory_pools with exact Decimal."""
     if db_path != ":memory:":
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(db_path, timeout=10.0)) as conn:
+        conn.row_factory = sqlite3.Row
         conn.executescript(SCHEMA_SQL)
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO inventory_pools (workspace_id, offering_id, qty_on_hand, total_value_idr)
-            SELECT
-                workspace_id,
-                offering_id,
-                CAST(COALESCE(SUM(CAST(qty_delta AS REAL)), 0) AS TEXT),
-                COALESCE(SUM(CASE WHEN movement_type = 'purchase_in' THEN total_cost_idr ELSE -total_cost_idr END), 0)
-            FROM stock_movements
-            GROUP BY workspace_id, offering_id;
-            """
-        )
+        rows = conn.execute(
+            "SELECT workspace_id, offering_id, movement_type, qty_delta, total_cost_idr FROM stock_movements"
+        ).fetchall()
+        pools: dict[tuple[str, str], list[Any]] = {}
+        for r in rows:
+            key = (r["workspace_id"], r["offering_id"])
+            if key not in pools:
+                pools[key] = [Decimal("0"), 0]
+            pools[key][0] += Decimal(r["qty_delta"])
+            cost = int(r["total_cost_idr"] or 0)
+            pools[key][1] += cost if r["movement_type"] == "purchase_in" else -cost
+        for (ws_id, off_id), (qty, val) in pools.items():
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO inventory_pools (workspace_id, offering_id, qty_on_hand, total_value_idr)
+                VALUES (?, ?, ?, ?)
+                """,
+                (ws_id, off_id, str(qty.normalize() if qty != 0 else Decimal("0")), val),
+            )
         conn.commit()
     return db_path
 

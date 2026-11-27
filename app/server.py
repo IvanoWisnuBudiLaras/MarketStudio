@@ -162,7 +162,7 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 body = self._read_json_body()
                 status, item = self.service.create_offering(
                     ws_id,
-                    caller_workspace_id=actor_id,
+                    actor_id=actor_id,
                     payload=body,
                     idempotency_key=idem_key,
                     actor=actor_id,
@@ -177,7 +177,7 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 body = self._read_json_body()
                 status, item = self.service.create_purchase(
                     ws_id,
-                    caller_workspace_id=actor_id,
+                    actor_id=actor_id,
                     payload=body,
                     idempotency_key=idem_key,
                     actor=actor_id,
@@ -192,7 +192,7 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 body = self._read_json_body()
                 status, item = self.service.create_sale(
                     ws_id,
-                    caller_workspace_id=actor_id,
+                    actor_id=actor_id,
                     payload=body,
                     idempotency_key=idem_key,
                     actor=actor_id,

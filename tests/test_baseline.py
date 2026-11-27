@@ -122,6 +122,17 @@ class BaselineIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(s1["item"]["total_cogs_idr"], 5500)
         self.assertEqual(s1["item"]["gross_profit_idr"], 2500)
+
+        # Idempotency conflict 409 on same key with different payload
+        s_conf, e_conf = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {"lines": [{"offering_id": off_a_id, "qty": "1.0", "total_price_idr": 16000}]},
+            headers={"Idempotency-Key": "fa-s1"},
+            token=self.token_a,
+        )
+        self.assertEqual(s_conf, 409)
+        self.assertEqual(e_conf["code"], "idempotency_conflict")
         _, rep_fa = self._request("GET", f"/v1/workspaces/{ws_id}/reports/daily?date=2026-11-27", token=self.token_a)
         self.assertEqual(rep_fa["report"]["ending_inventory"]["total_qty"], "2.5")
         self.assertEqual(rep_fa["report"]["ending_inventory"]["total_value_idr"], 27500)
@@ -191,6 +202,34 @@ class BaselineIntegrationTest(unittest.TestCase):
         self.assertEqual(sale_svc["item"]["cogs_status"], "open")
         self.assertIsNone(sale_svc["item"]["total_cogs_idr"])
 
+        # Service purchase rejected -> 422 service_no_stock
+        s_pur_svc, e_pur_svc = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": svc_id, "qty": "1", "total_cost_idr": 10000},
+            token=self.token_a,
+        )
+        self.assertEqual(s_pur_svc, 422)
+        self.assertEqual(e_pur_svc["code"], "service_no_stock")
+
+        # Service with explicit valuation_method='WA' rejected -> 422
+        s_svc_wa, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/offerings",
+            {"name": "Jasa WA", "offering_type": "service", "unit_price_idr": 1000, "valuation_method": "WA"},
+            token=self.token_a,
+        )
+        self.assertEqual(s_svc_wa, 422)
+
+        # unit_price_idr = 10**25 -> 422
+        s_big, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/offerings",
+            {"name": "Mahal", "offering_type": "goods", "unit_price_idr": 10**25},
+            token=self.token_a,
+        )
+        self.assertEqual(s_big, 422)
+
         # Concurrent identical idempotency + last-unit race
         _, g = self._request(
             "POST",
@@ -250,6 +289,29 @@ class BaselineIntegrationTest(unittest.TestCase):
         t4.join()
         self.assertEqual(sorted(race_codes), [201, 409])
 
+        # Hybrid sale (goods + service in one sale) -> report gross_profit_status == 'unavailable'
+        self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": g_id, "qty": "1", "total_cost_idr": 4000},
+            token=self.token_a,
+        )
+        s_hyb, hyb_res = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {
+                "lines": [
+                    {"offering_id": g_id, "qty": "1", "total_price_idr": 10000},
+                    {"offering_id": svc_id, "qty": "1", "total_price_idr": 50000},
+                ]
+            },
+            token=self.token_a,
+        )
+        self.assertEqual(s_hyb, 201)
+        self.assertEqual(hyb_res["item"]["cogs_status"], "open")
+        _, rep_hyb = self._request("GET", f"/v1/workspaces/{ws_id}/reports/daily", token=self.token_a)
+        self.assertEqual(rep_hyb["report"]["gross_profit_status"], "unavailable")
+
     def test_p0_route_isolation_and_revoked_workspace_replay(self) -> None:
         s_bad, _ = self._request("POST", "/v1/sessions", {"actor_id": "actor_a", "passcode": "wrong"})
         self.assertEqual(s_bad, 401)
@@ -263,18 +325,47 @@ class BaselineIntegrationTest(unittest.TestCase):
         )
         self.assertNotEqual(ws_a_id, ws_b["item"]["workspace_id"])
 
-        # Anti-enumeration: non-member vs unknown -> identical 404
-        s_nm, e_nm = self._request("GET", f"/v1/workspaces/{ws_a_id}/offerings", token=self.token_b)
+        # Anti-enumeration: non-member vs unknown -> identical 404 across all 6 P0 routes
+        s_unauth, _ = self._request("GET", "/v1/workspaces")
+        self.assertEqual(s_unauth, 401)
+        _, off_a = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a_id}/offerings",
+            {"name": "Produk A", "offering_type": "goods", "unit_price_idr": 10000},
+            headers={"Idempotency-Key": "off-a-1"},
+            token=self.token_a,
+        )
+        off_a_id = off_a["item"]["offering_id"]
+        routes = [
+            ("GET", f"/v1/workspaces/{ws_a_id}/offerings", None),
+            ("GET", f"/v1/workspaces/{ws_a_id}/offerings/{off_a_id}", None),
+            ("POST", f"/v1/workspaces/{ws_a_id}/offerings", {"name": "X", "offering_type": "goods", "unit_price_idr": 1}),
+            ("POST", f"/v1/workspaces/{ws_a_id}/purchases", {"offering_id": off_a_id, "qty": "1", "total_cost_idr": 100}),
+            ("POST", f"/v1/workspaces/{ws_a_id}/sales", {"lines": [{"offering_id": off_a_id, "qty": "1"}]}),
+            ("GET", f"/v1/workspaces/{ws_a_id}/reports/daily", None),
+        ]
+        for method, path, body in routes:
+            s_nm, e_nm = self._request(method, path, body, token=self.token_b)
+            self.assertEqual(s_nm, 404, f"Expected 404 for Actor B on {method} {path}")
+            self.assertEqual(e_nm["code"], "workspace_not_found")
         s_uk, e_uk = self._request("GET", "/v1/workspaces/ws_missing/offerings", token=self.token_b)
-        self.assertEqual((s_nm, s_uk), (404, 404))
-        self.assertEqual(e_nm["code"], e_uk["code"])
+        self.assertEqual(s_uk, 404)
+        self.assertEqual(e_uk["code"], "workspace_not_found")
 
-        # Revoke membership -> POST /v1/workspaces replay with same key is rejected (403)
+        # Revoke membership -> POST /v1/workspaces replay with same key (even mismatched payload) is rejected (403)
         BaselineService(db_path=self.db_path).revoke_membership(ws_a_id, "actor_a")
         s_rep, _ = self._request(
-            "POST", "/v1/workspaces", {"name": "WS A"}, headers={"Idempotency-Key": "ws-k1"}, token=self.token_a
+            "POST", "/v1/workspaces", {"name": "WS A Different"}, headers={"Idempotency-Key": "ws-k1"}, token=self.token_a
         )
         self.assertEqual(s_rep, 403)
+        s_off_rev, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_a_id}/offerings",
+            {"name": "Produk A", "offering_type": "goods", "unit_price_idr": 10000},
+            headers={"Idempotency-Key": "off-a-1"},
+            token=self.token_a,
+        )
+        self.assertEqual(s_off_rev, 404)
 
     def test_chronology_audit_cutoff_and_strict_validation(self) -> None:
         # Invalid timezone -> 422
@@ -388,17 +479,46 @@ class BaselineIntegrationTest(unittest.TestCase):
                     fault_stage=stage,
                 )
 
-        # Simulate pre-inventory_pools DB and verify init_db() backfills accurately
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            sales_cnt = conn.execute("SELECT COUNT(*) FROM sales WHERE workspace_id = ?", (ws_id,)).fetchone()[0]
+            lines_cnt = conn.execute("SELECT COUNT(*) FROM sale_lines WHERE workspace_id = ?", (ws_id,)).fetchone()[0]
+            mov_cnt = conn.execute("SELECT COUNT(*) FROM stock_movements WHERE workspace_id = ?", (ws_id,)).fetchone()[0]
+            cash_cnt = conn.execute("SELECT COUNT(*) FROM cash_movements WHERE workspace_id = ?", (ws_id,)).fetchone()[0]
+            idem_cnt = conn.execute("SELECT COUNT(*) FROM idempotency_keys WHERE workspace_id = ?", (ws_id,)).fetchone()[0]
+            pool_pre = conn.execute(
+                "SELECT qty_on_hand, total_value_idr FROM inventory_pools WHERE workspace_id = ? AND offering_id = ?",
+                (ws_id, off_id),
+            ).fetchone()
+            self.assertEqual((sales_cnt, lines_cnt, mov_cnt, cash_cnt, idem_cnt), (0, 0, 1, 1, 0))
+            self.assertEqual((float(pool_pre[0]), pool_pre[1]), (2.0, 4000))
+
+        # Simulate pre-inventory_pools DB with decimal 0.1 + 0.2 movements and verify exact Decimal backfill
+        _, off_dec = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/offerings",
+            {"name": "Dec", "offering_type": "goods", "unit_price_idr": 1000},
+            token=self.token_a,
+        )
+        off_dec_id = off_dec["item"]["offering_id"]
+        self._request("POST", f"/v1/workspaces/{ws_id}/purchases", {"offering_id": off_dec_id, "qty": "0.1", "total_cost_idr": 100}, token=self.token_a)
+        self._request("POST", f"/v1/workspaces/{ws_id}/purchases", {"offering_id": off_dec_id, "qty": "0.2", "total_cost_idr": 200}, token=self.token_a)
         with closing(sqlite3.connect(self.db_path)) as conn:
             conn.execute("DELETE FROM inventory_pools WHERE workspace_id = ?", (ws_id,))
             conn.commit()
         init_db(self.db_path)
         with closing(sqlite3.connect(self.db_path)) as conn:
-            pool = conn.execute(
+            pool_dec = conn.execute(
                 "SELECT qty_on_hand, total_value_idr FROM inventory_pools WHERE workspace_id = ? AND offering_id = ?",
-                (ws_id, off_id),
+                (ws_id, off_dec_id),
             ).fetchone()
-            self.assertEqual((float(pool[0]), pool[1]), (2.0, 4000))
+            self.assertEqual((pool_dec[0], pool_dec[1]), ("0.3", 300))
+        s_dec_sale, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {"lines": [{"offering_id": off_dec_id, "qty": "0.3", "total_price_idr": 500}]},
+            token=self.token_a,
+        )
+        self.assertEqual(s_dec_sale, 201)
 
 
 if __name__ == "__main__":

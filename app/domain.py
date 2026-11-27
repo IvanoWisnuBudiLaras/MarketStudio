@@ -129,8 +129,8 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
         errors["offering_type"] = f"Tipe harus salah satu dari: {', '.join(VALID_OFFERING_TYPES)}."
 
     raw_price = payload.get("unit_price_idr")
-    if isinstance(raw_price, bool) or not isinstance(raw_price, int) or raw_price < 0:
-        errors["unit_price_idr"] = "Harga satuan (IDR) harus bilangan bulat >= 0."
+    if isinstance(raw_price, bool) or not isinstance(raw_price, int) or raw_price < 0 or raw_price > 10**15:
+        errors["unit_price_idr"] = "Harga satuan (IDR) harus bilangan bulat 0..10^15."
 
     raw_unit = payload.get("unit", "pcs")
     unit = raw_unit.strip() if isinstance(raw_unit, str) and raw_unit.strip() else ""
@@ -158,7 +158,9 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
             errors["requires_stock_movement"] = "Offering tipe 'goods' wajib memiliki requires_stock_movement=true."
 
     raw_val_method = payload.get("valuation_method")
-    if raw_val_method is not None and raw_val_method != "WA":
+    if offering_type == "service" and raw_val_method is not None:
+        errors["valuation_method"] = "Offering tipe 'service' tidak boleh memiliki valuation_method."
+    elif raw_val_method is not None and raw_val_method != "WA":
         errors["valuation_method"] = "Metode valuasi terkunci pada 'WA' (Weighted Average) untuk baseline ini."
 
     if errors:
@@ -194,8 +196,8 @@ def validate_purchase_input(payload: dict[str, Any]) -> PurchaseInput:
     qty = parse_positive_decimal(payload.get("qty"), "qty", errors)
 
     total_cost_idr = payload.get("total_cost_idr")
-    if isinstance(total_cost_idr, bool) or not isinstance(total_cost_idr, int) or total_cost_idr < 0:
-        errors["total_cost_idr"] = "total_cost_idr harus bilangan bulat >= 0."
+    if isinstance(total_cost_idr, bool) or not isinstance(total_cost_idr, int) or total_cost_idr < 0 or total_cost_idr > 10**15:
+        errors["total_cost_idr"] = "total_cost_idr harus bilangan bulat 0..10^15."
 
     payment_method = payload.get("payment_method", "cash")
     if payment_method != "cash":
@@ -235,9 +237,9 @@ def validate_sale_input(payload: dict[str, Any]) -> SaleInput:
         qty = parse_positive_decimal(raw_line.get("qty"), f"lines[{idx}].qty", errors)
         total_price = raw_line.get("total_price_idr")
         if total_price is not None and (
-            isinstance(total_price, bool) or not isinstance(total_price, int) or total_price < 0
+            isinstance(total_price, bool) or not isinstance(total_price, int) or total_price < 0 or total_price > 10**15
         ):
-            errors[f"lines[{idx}].total_price_idr"] = "total_price_idr harus bilangan bulat >= 0."
+            errors[f"lines[{idx}].total_price_idr"] = "total_price_idr harus bilangan bulat 0..10^15."
         if qty is not None and isinstance(off_id, str) and off_id.strip():
             lines.append(
                 SaleLineInput(
