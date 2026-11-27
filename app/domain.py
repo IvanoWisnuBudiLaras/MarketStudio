@@ -146,6 +146,14 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
     if "tax_amount" in payload and payload["tax_amount"] is not None:
         errors["tax_amount"] = "tax_amount tidak boleh diisi pada baseline (pajak belum dinilai)."
 
+    if "requires_stock_movement" in payload and payload["requires_stock_movement"] is not None:
+        if not isinstance(payload["requires_stock_movement"], bool):
+            errors["requires_stock_movement"] = "requires_stock_movement harus berupa boolean (true/false)."
+
+    raw_val_method = payload.get("valuation_method")
+    if raw_val_method is not None and raw_val_method != "WA":
+        errors["valuation_method"] = "Metode valuasi terkunci pada 'WA' (Weighted Average) untuk baseline ini."
+
     if errors:
         raise DomainError(422, "validation_error", "Data produk/jasa tidak valid.", errors)
 
@@ -154,8 +162,8 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
         valuation_method = None
     else:
         req = payload.get("requires_stock_movement")
-        requires_stock = True if req is None else bool(req)
-        valuation_method = payload.get("valuation_method") or ("WA" if requires_stock else None)
+        requires_stock = True if req is None else req
+        valuation_method = "WA" if requires_stock else None
 
     return OfferingInput(
         name=name,

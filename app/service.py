@@ -84,7 +84,6 @@ def _row_to_offering(row: Any) -> dict[str, Any]:
         "valuation_method": row["valuation_method"],
         "tax_status": row["tax_status"],
         "tax_reason": row["tax_reason"],
-        "tax_amount": row["tax_amount"],
         "created_at": row["created_at"],
     }
 
@@ -106,9 +105,49 @@ class BaselineService:
     def __init__(self, db_path: str = DEFAULT_DB_PATH) -> None:
         self.db_path = db_path
 
-    def list_workspaces(self) -> list[dict[str, Any]]:
+    def create_session(self, actor_id: str) -> dict[str, Any]:
+        clean_actor = actor_id.strip() if isinstance(actor_id, str) else ""
+        if not clean_actor:
+            raise DomainError(422, "validation_error", "actor_id wajib diisi.", {"actor_id": "Wajib diisi."})
+        token = f"sess_{uuid.uuid4().hex}"
+        created_at = _utc_now()
+        with db_transaction(self.db_path, immediate=True) as conn:
+            conn.execute(
+                "INSERT INTO sessions (token, actor_id, created_at, revoked_at) VALUES (?, ?, ?, NULL)",
+                (token, clean_actor, created_at),
+            )
+        return {"token": token, "actor_id": clean_actor, "created_at": created_at}
+
+    def resolve_session(self, token: str | None) -> str:
+        if not token:
+            raise DomainError(401, "unauthenticated", "Session token wajib disertakan.")
         with db_transaction(self.db_path) as conn:
-            rows = conn.execute("SELECT * FROM workspaces ORDER BY created_at ASC").fetchall()
+            row = conn.execute(
+                "SELECT actor_id, revoked_at FROM sessions WHERE token = ?",
+                (token,),
+            ).fetchone()
+            if not row or row["revoked_at"] is not None:
+                raise DomainError(401, "unauthenticated", "Session tidak valid atau telah dicabut.")
+            return str(row["actor_id"])
+
+    def revoke_membership(self, workspace_id: str, actor_id: str) -> None:
+        with db_transaction(self.db_path, immediate=True) as conn:
+            conn.execute(
+                "UPDATE workspace_memberships SET revoked_at = ? WHERE workspace_id = ? AND actor_id = ?",
+                (_utc_now(), workspace_id, actor_id),
+            )
+
+    def list_workspaces(self, actor_id: str) -> list[dict[str, Any]]:
+        with db_transaction(self.db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT w.* FROM workspaces w
+                JOIN workspace_memberships m ON m.workspace_id = w.workspace_id
+                WHERE m.actor_id = ? AND m.revoked_at IS NULL
+                ORDER BY w.created_at ASC
+                """,
+                (actor_id,),
+            ).fetchall()
             return [_row_to_workspace(r) for r in rows]
 
     def create_workspace(
@@ -148,6 +187,13 @@ class BaselineService:
                 """,
                 (workspace_id, validated.name, validated.business_type, validated.timezone, created_at),
             )
+            conn.execute(
+                """
+                INSERT INTO workspace_memberships (workspace_id, actor_id, role, created_at, revoked_at)
+                VALUES (?, ?, 'owner', ?, NULL)
+                """,
+                (workspace_id, actor, created_at),
+            )
             result = {
                 "workspace_id": workspace_id,
                 "name": validated.name,
@@ -173,23 +219,32 @@ class BaselineService:
         self,
         conn: Any,
         workspace_id: str,
-        caller_workspace_id: str | None,
+        actor_id: str | None,
         actor_status: str | None = None,
     ) -> None:
+        if not actor_id:
+            raise DomainError(401, "unauthenticated", "Aktor tidak terautentikasi.")
         if actor_status == "revoked":
             raise DomainError(403, "actor_revoked", "Akses aktor telah dicabut.")
-        if not caller_workspace_id or caller_workspace_id != workspace_id:
-            raise DomainError(
-                403,
-                "forbidden_workspace",
-                "Akses lintas workspace ditolak (X-Workspace-Id tidak cocok).",
-            )
         ws = conn.execute(
             "SELECT workspace_id FROM workspaces WHERE workspace_id = ?",
             (workspace_id,),
         ).fetchone()
         if not ws:
             raise DomainError(404, "workspace_not_found", "Workspace tidak ditemukan.")
+        membership = conn.execute(
+            """
+            SELECT role, revoked_at FROM workspace_memberships
+            WHERE workspace_id = ? AND actor_id = ?
+            """,
+            (workspace_id, actor_id),
+        ).fetchone()
+        if not membership or membership["revoked_at"] is not None:
+            raise DomainError(
+                403,
+                "forbidden_workspace",
+                "Akses lintas workspace ditolak (bukan anggota aktif workspace).",
+            )
 
     def _check_idempotency(
         self,
@@ -326,7 +381,6 @@ class BaselineService:
                 "valuation_method": validated.valuation_method,
                 "tax_status": validated.tax_status,
                 "tax_reason": validated.tax_reason,
-                "tax_amount": None,
                 "created_at": created_at,
             }
             _record_audit(conn, workspace_id, actor, "offering.created", "offering", offering_id, result)

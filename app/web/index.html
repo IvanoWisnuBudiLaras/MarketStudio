@@ -229,7 +229,13 @@
 
   <script>
     const STORAGE_KEY = "marketstudio_active_workspace_id";
+    const SESSION_KEY = "marketstudio_session_token";
     let activeWorkspaceId = localStorage.getItem(STORAGE_KEY) || "";
+    let sessionToken = localStorage.getItem(SESSION_KEY) || "";
+    let fetchSeq = 0;
+    let pendingPurKey = "";
+    let pendingSaleKey = "";
+
     const wsSelect = document.getElementById("workspaceSelect");
     const wsStatus = document.getElementById("wsStatus");
     const offStatus = document.getElementById("offStatus");
@@ -249,15 +255,47 @@
       return "Rp " + Number(val).toLocaleString("id-ID");
     }
 
-    async function loadWorkspaces() {
-      const res = await fetch("/v1/workspaces");
+    async function ensureSession() {
+      if (sessionToken) return sessionToken;
+      const res = await fetch("/v1/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actor_id: "synthetic_owner" })
+      });
       const data = await res.json();
-      wsSelect.innerHTML = "";
+      sessionToken = data.item.token;
+      localStorage.setItem(SESSION_KEY, sessionToken);
+      return sessionToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      await ensureSession();
+      const headers = Object.assign({}, options.headers || {}, {
+        "Authorization": "Bearer " + sessionToken
+      });
+      let res = await fetch(url, Object.assign({}, options, { headers }));
+      if (res.status === 401) {
+        sessionToken = "";
+        localStorage.removeItem(SESSION_KEY);
+        await ensureSession();
+        headers["Authorization"] = "Bearer " + sessionToken;
+        res = await fetch(url, Object.assign({}, options, { headers }));
+      }
+      return res;
+    }
+
+    async function loadWorkspaces() {
+      const res = await apiFetch("/v1/workspaces");
+      const data = await res.json();
+      wsSelect.textContent = "";
       if (!data.items || data.items.length === 0) {
-        wsSelect.innerHTML = '<option value="">-- Belum ada workspace --</option>';
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "-- Belum ada workspace --";
+        wsSelect.appendChild(opt);
         activeWorkspaceId = "";
         localStorage.removeItem(STORAGE_KEY);
-        offBody.innerHTML = "";
+        offBody.textContent = "";
         return;
       }
       data.items.forEach((ws) => {
@@ -275,23 +313,43 @@
 
     async function loadOfferings() {
       if (!activeWorkspaceId) return;
-      const res = await fetch(`/v1/workspaces/${activeWorkspaceId}/offerings`, {
-        headers: { "X-Workspace-Id": activeWorkspaceId }
-      });
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++fetchSeq;
+      const res = await apiFetch(`/v1/workspaces/${reqWsId}/offerings`);
       const data = await res.json();
-      if (!res.ok) return;
-      offBody.innerHTML = "";
-      purOffering.innerHTML = "";
-      saleOffering.innerHTML = "";
+      if (reqWsId !== activeWorkspaceId || reqSeq !== fetchSeq || !res.ok) return;
+
+      offBody.textContent = "";
+      purOffering.textContent = "";
+      saleOffering.textContent = "";
       (data.items || []).forEach((item) => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${item.name}</td>
-          <td><span class="badge">${item.offering_type}</span></td>
-          <td>${fmtIdr(item.unit_price_idr)} / ${item.unit}</td>
-          <td>${item.requires_stock_movement ? "Ya (" + (item.valuation_method || "WA") + ")" : "Tidak"}</td>
-          <td>${item.tax_status} (amount: null)</td>
-        `;
+
+        const tdName = document.createElement("td");
+        tdName.textContent = item.name;
+        tr.appendChild(tdName);
+
+        const tdType = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = item.offering_type;
+        tdType.appendChild(badge);
+        tr.appendChild(tdType);
+
+        const tdPrice = document.createElement("td");
+        tdPrice.textContent = `${fmtIdr(item.unit_price_idr)} / ${item.unit}`;
+        tr.appendChild(tdPrice);
+
+        const tdStock = document.createElement("td");
+        tdStock.textContent = item.requires_stock_movement
+          ? `Ya (${item.valuation_method || "WA"})`
+          : "Tidak";
+        tr.appendChild(tdStock);
+
+        const tdTax = document.createElement("td");
+        tdTax.textContent = `${item.tax_status} (nominal absen)`;
+        tr.appendChild(tdTax);
+
         offBody.appendChild(tr);
 
         const optSale = document.createElement("option");
@@ -310,34 +368,55 @@
 
     async function loadReport() {
       if (!activeWorkspaceId) return;
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++fetchSeq;
       const dateVal = document.getElementById("reportDate").value;
       const qs = dateVal ? `?date=${encodeURIComponent(dateVal)}` : "";
-      const res = await fetch(`/v1/workspaces/${activeWorkspaceId}/reports/daily${qs}`, {
-        headers: { "X-Workspace-Id": activeWorkspaceId }
-      });
+      const res = await apiFetch(`/v1/workspaces/${reqWsId}/reports/daily${qs}`);
       const data = await res.json();
-      if (!res.ok) return;
+      if (reqWsId !== activeWorkspaceId || reqSeq !== fetchSeq || !res.ok) return;
+
       const r = data.report;
-      document.getElementById("kpiGrid").innerHTML = `
-        <div class="kpi"><div class="label">Omzet</div><div class="val">${fmtIdr(r.revenue_idr)}</div></div>
-        <div class="kpi"><div class="label">HPP (${r.cogs_status})</div><div class="val">${fmtIdr(r.cogs_idr)}</div></div>
-        <div class="kpi"><div class="label">Laba Kotor (${r.gross_profit_status})</div><div class="val">${fmtIdr(r.gross_profit_idr)}</div></div>
-        <div class="kpi"><div class="label">Arus Kas Bersih</div><div class="val">${fmtIdr(r.net_cash_flow_idr)}</div></div>
-        <div class="kpi"><div class="label">Nilai Stok Akhir</div><div class="val">${fmtIdr(r.ending_inventory.total_value_idr)}</div></div>
-        <div class="kpi"><div class="label">Pajak</div><div class="val">${r.tax_status}</div></div>
-      `;
+      const grid = document.getElementById("kpiGrid");
+      grid.textContent = "";
+      const kpis = [
+        ["Omzet", fmtIdr(r.revenue_idr)],
+        [`HPP (${r.cogs_status})`, fmtIdr(r.cogs_idr)],
+        [`Laba Kotor (${r.gross_profit_status})`, fmtIdr(r.gross_profit_idr)],
+        ["Arus Kas Bersih", fmtIdr(r.net_cash_flow_idr)],
+        ["Nilai Stok Akhir", fmtIdr(r.ending_inventory.total_value_idr)],
+        ["Pajak", r.tax_status]
+      ];
+      kpis.forEach(([label, val]) => {
+        const box = document.createElement("div");
+        box.className = "kpi";
+        const lbl = document.createElement("div");
+        lbl.className = "label";
+        lbl.textContent = label;
+        const v = document.createElement("div");
+        v.className = "val";
+        v.textContent = val;
+        box.appendChild(lbl);
+        box.appendChild(v);
+        grid.appendChild(box);
+      });
       document.getElementById("drillDownPre").textContent = JSON.stringify(r.drill_down, null, 2);
     }
 
     wsSelect.addEventListener("change", async () => {
       activeWorkspaceId = wsSelect.value;
       localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      pendingPurKey = "";
+      pendingSaleKey = "";
       await Promise.all([loadOfferings(), loadReport()]);
     });
 
+    document.getElementById("purchaseForm").addEventListener("input", () => { pendingPurKey = ""; });
+    document.getElementById("saleForm").addEventListener("input", () => { pendingSaleKey = ""; });
+
     document.getElementById("workspaceForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const res = await fetch("/v1/workspaces", {
+      const res = await apiFetch("/v1/workspaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -357,9 +436,9 @@
     document.getElementById("offeringForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!activeWorkspaceId) return setStatus(offStatus, "Pilih workspace dulu.", true);
-      const res = await fetch(`/v1/workspaces/${activeWorkspaceId}/offerings`, {
+      const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/offerings`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Workspace-Id": activeWorkspaceId },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: document.getElementById("offName").value,
           offering_type: document.getElementById("offType").value,
@@ -377,14 +456,11 @@
     document.getElementById("purchaseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!activeWorkspaceId) return setStatus(purStatus, "Pilih workspace dulu.", true);
+      if (!pendingPurKey) pendingPurKey = "ui-pur-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
       setStatus(purStatus, "Menyimpan pembelian...");
-      const res = await fetch(`/v1/workspaces/${activeWorkspaceId}/purchases`, {
+      const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/purchases`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Workspace-Id": activeWorkspaceId,
-          "Idempotency-Key": "ui-pur-" + Date.now()
-        },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": pendingPurKey },
         body: JSON.stringify({
           offering_id: purOffering.value,
           qty: document.getElementById("purQty").value,
@@ -393,6 +469,7 @@
       });
       const data = await res.json();
       if (!res.ok) return setStatus(purStatus, data.message || "Gagal", true);
+      pendingPurKey = "";
       setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}).`);
       await loadReport();
     });
@@ -400,14 +477,11 @@
     document.getElementById("saleForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!activeWorkspaceId) return setStatus(saleStatus, "Pilih workspace dulu.", true);
+      if (!pendingSaleKey) pendingSaleKey = "ui-sale-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
       setStatus(saleStatus, "Saving penjualan...");
-      const res = await fetch(`/v1/workspaces/${activeWorkspaceId}/sales`, {
+      const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/sales`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Workspace-Id": activeWorkspaceId,
-          "Idempotency-Key": "ui-sale-" + Date.now()
-        },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": pendingSaleKey },
         body: JSON.stringify({
           lines: [{
             offering_id: saleOffering.value,
@@ -417,8 +491,12 @@
         })
       });
       const data = await res.json();
-      if (res.status === 409) return setStatus(saleStatus, `Conflict: ${data.message}`, true);
+      if (res.status === 409) {
+        pendingSaleKey = "";
+        return setStatus(saleStatus, `Conflict: ${data.message}`, true);
+      }
       if (!res.ok) return setStatus(saleStatus, `Error: ${data.message || "Gagal"}`, true);
+      pendingSaleKey = "";
       setStatus(saleStatus, `Saved (${data.item.sale_id}).`);
       await loadReport();
     });

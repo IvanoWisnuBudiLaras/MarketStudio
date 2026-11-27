@@ -67,6 +67,11 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             raise DomainError(422, "invalid_json", "Body JSON harus berupa object.")
         return data
 
+    def _require_actor(self) -> str:
+        auth = self.headers.get("Authorization", "")
+        token = auth[7:].strip() if auth.startswith("Bearer ") else self.headers.get("X-Session-Token")
+        return self.service.resolve_session(token)
+
     def do_GET(self) -> None:  # noqa: N802
         request_id = f"req_{uuid.uuid4().hex[:10]}"
         path = urlparse(self.path).path
@@ -86,37 +91,38 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/v1/workspaces":
-                items = self.service.list_workspaces()
+                actor_id = self._require_actor()
+                items = self.service.list_workspaces(actor_id)
                 self._send_json(200, {"items": items, "request_id": request_id})
                 return
 
             m_list = _RE_OFFERINGS.match(path)
             if m_list:
+                actor_id = self._require_actor()
                 ws_id = m_list.group(1)
-                caller_ws = self.headers.get("X-Workspace-Id")
                 actor_status = self.headers.get("X-Actor-Status")
-                items = self.service.list_offerings(ws_id, caller_ws, actor_status=actor_status)
+                items = self.service.list_offerings(ws_id, actor_id, actor_status=actor_status)
                 self._send_json(200, {"items": items, "request_id": request_id})
                 return
 
             m_detail = _RE_OFFERING_DETAIL.match(path)
             if m_detail:
+                actor_id = self._require_actor()
                 ws_id, off_id = m_detail.group(1), m_detail.group(2)
-                caller_ws = self.headers.get("X-Workspace-Id")
                 actor_status = self.headers.get("X-Actor-Status")
-                item = self.service.get_offering(ws_id, off_id, caller_ws, actor_status=actor_status)
+                item = self.service.get_offering(ws_id, off_id, actor_id, actor_status=actor_status)
                 self._send_json(200, {"item": item, "request_id": request_id})
                 return
 
             m_report = _RE_REPORT_DAILY.match(path)
             if m_report:
+                actor_id = self._require_actor()
                 ws_id = m_report.group(1)
-                caller_ws = self.headers.get("X-Workspace-Id")
                 actor_status = self.headers.get("X-Actor-Status")
                 qs = parse_qs(urlparse(self.path).query)
                 date_str = qs.get("date", [None])[0]
                 report = self.service.get_daily_report(
-                    ws_id, caller_ws, date_str=date_str, actor_status=actor_status
+                    ws_id, actor_id, date_str=date_str, actor_status=actor_status
                 )
                 self._send_json(200, {"report": report, "request_id": request_id})
                 return
@@ -131,23 +137,31 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         idem_key = self.headers.get("Idempotency-Key")
 
         try:
-            if path == "/v1/workspaces":
+            if path == "/v1/sessions":
                 body = self._read_json_body()
-                status, item = self.service.create_workspace(body, idempotency_key=idem_key)
+                session = self.service.create_session(body.get("actor_id", ""))
+                self._send_json(201, {"item": session, "request_id": request_id})
+                return
+
+            if path == "/v1/workspaces":
+                actor_id = self._require_actor()
+                body = self._read_json_body()
+                status, item = self.service.create_workspace(body, idempotency_key=idem_key, actor=actor_id)
                 self._send_json(status, {"item": item, "request_id": request_id})
                 return
 
             m_list = _RE_OFFERINGS.match(path)
             if m_list:
+                actor_id = self._require_actor()
                 ws_id = m_list.group(1)
-                caller_ws = self.headers.get("X-Workspace-Id")
                 actor_status = self.headers.get("X-Actor-Status")
                 body = self._read_json_body()
                 status, item = self.service.create_offering(
                     ws_id,
-                    caller_workspace_id=caller_ws,
+                    caller_workspace_id=actor_id,
                     payload=body,
                     idempotency_key=idem_key,
+                    actor=actor_id,
                     actor_status=actor_status,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})
@@ -155,15 +169,16 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
 
             m_pur = _RE_PURCHASES.match(path)
             if m_pur:
+                actor_id = self._require_actor()
                 ws_id = m_pur.group(1)
-                caller_ws = self.headers.get("X-Workspace-Id")
                 actor_status = self.headers.get("X-Actor-Status")
                 body = self._read_json_body()
                 status, item = self.service.create_purchase(
                     ws_id,
-                    caller_workspace_id=caller_ws,
+                    caller_workspace_id=actor_id,
                     payload=body,
                     idempotency_key=idem_key,
+                    actor=actor_id,
                     actor_status=actor_status,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})
@@ -171,15 +186,16 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
 
             m_sale = _RE_SALES.match(path)
             if m_sale:
+                actor_id = self._require_actor()
                 ws_id = m_sale.group(1)
-                caller_ws = self.headers.get("X-Workspace-Id")
                 actor_status = self.headers.get("X-Actor-Status")
                 body = self._read_json_body()
                 status, item = self.service.create_sale(
                     ws_id,
-                    caller_workspace_id=caller_ws,
+                    caller_workspace_id=actor_id,
                     payload=body,
                     idempotency_key=idem_key,
+                    actor=actor_id,
                     actor_status=actor_status,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})

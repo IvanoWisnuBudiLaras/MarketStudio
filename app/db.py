@@ -16,6 +16,13 @@ DEFAULT_DB_PATH = os.environ.get(
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    actor_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    revoked_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS workspaces (
     workspace_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -23,6 +30,16 @@ CREATE TABLE IF NOT EXISTS workspaces (
     currency TEXT NOT NULL DEFAULT 'IDR',
     timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta',
     created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workspace_memberships (
+    workspace_id TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'owner',
+    created_at TEXT NOT NULL,
+    revoked_at TEXT,
+    PRIMARY KEY (workspace_id, actor_id),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS offerings (
