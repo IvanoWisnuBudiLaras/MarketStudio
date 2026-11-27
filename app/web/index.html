@@ -712,6 +712,14 @@
       border-color: var(--accent);
     }
 
+    .poster-preview-image {
+      display: block;
+      width: min(100%, 440px);
+      height: auto;
+      margin: 12px auto;
+      border-radius: var(--radius);
+    }
+
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
@@ -1174,7 +1182,7 @@
                 <span aria-hidden="true">🎨</span>
                 <span>Creative Studio</span>
               </span>
-              <span class="pill pill-roadmap">Roadmap</span>
+              <span class="pill pill-active">Aktif</span>
             </a>
 
             <a href="#studio-commerce" class="nav-link" data-route="studio-commerce">
@@ -2057,6 +2065,51 @@
         </section>
 
         <!-- VIEW 7: ROADMAP STUDIOS -->
+        <section id="view-studio-creative" class="view-section hidden" aria-label="Creative Studio">
+          <div class="card" id="posterNoWorkspace">
+            <p>Buat atau pilih profil usaha untuk mulai membuat poster.</p>
+            <a href="#profil" class="btn btn-secondary" data-route="profil">Buka Profil Usaha</a>
+          </div>
+          <div id="posterMain" class="hidden">
+            <section class="card">
+              <header class="card-header">
+                <h2>Draft poster</h2>
+                <button id="posterSampleBtn" class="btn btn-secondary" type="button">Buat draft contoh</button>
+              </header>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="posterDraftSelect" class="field-label">Draft tersimpan</label>
+                  <select id="posterDraftSelect"></select>
+                </div>
+                <div class="field">
+                  <label for="posterAssetSelect" class="field-label">Aset berizin</label>
+                  <select id="posterAssetSelect"></select>
+                </div>
+                <div class="field">
+                  <label for="posterFormat" class="field-label">Format poster</label>
+                  <select id="posterFormat">
+                    <option value="svg">SVG</option>
+                    <option value="png">PNG</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button id="posterPreviewBtn" class="btn btn-primary" type="button" disabled>Tampilkan pratinjau</button>
+                <button id="posterExportBtn" class="btn btn-secondary" type="button" disabled>Unduh poster</button>
+              </div>
+              <p id="posterStatus" class="status" aria-live="polite"></p>
+            </section>
+            <section class="card hidden" id="posterPreviewCard">
+              <header class="card-header">
+                <h2>Pratinjau poster</h2>
+                <span id="posterVersion" class="pill pill-actual"></span>
+              </header>
+              <img id="posterPreviewImage" class="poster-preview-image" alt="Pratinjau poster">
+              <p id="posterAttribution"></p>
+            </section>
+          </div>
+        </section>
+
         <section id="view-roadmap" class="view-section hidden" aria-label="Status Roadmap Studio">
           <div class="card">
             <div class="card-header">
@@ -2130,12 +2183,6 @@
     let salePriceManualEdited = false;
 
     const ROADMAP_INFO = {
-      "studio-creative": {
-        title: "Creative Studio",
-        sub: "Desain materi promosi, poster katalog, dan aset visual usaha.",
-        body: "Creative Studio belum diaktifkan pada rilis baseline saat ini agar pengguna hanya memakai alat yang sudah teruji penuh.",
-        scope: "Fitur editor poster dan aset pemasaran dijadwalkan pada fase berikutnya setelah alur katalog, harga, dan pencatatan harian stabil."
-      },
       "studio-commerce": {
         title: "Commerce Studio",
         sub: "Sinkronisasi katalog & kanal penjualan multi-marketplace.",
@@ -2151,6 +2198,12 @@
     };
 
     const SCREEN_GUIDES = {
+      "studio-creative": {
+        title: "Creative Studio",
+        fungsi: "Siapkan satu poster dari draft dan aset berizin.",
+        input: "Pilih draft, ilustrasi, dan format pratinjau.",
+        hasil: "Unduh poster SVG atau PNG dari versi yang Anda tinjau."
+      },
       "ringkasan": {
         title: "Beranda / Ringkasan",
         fungsi: "Memantau hasil usaha harian (Omzet, HPP, Laba Kotor, Arus Kas Bersih, Nilai Stok Akhir) dan melakukan tutup hari.",
@@ -2471,7 +2524,7 @@
       if (clean === "analisis-benchmark") return { route: "analisis", subtab: "benchmark" };
       if (clean === "analisis" || clean === "analisis-simulasi") return { route: "analisis", subtab: "sim" };
       if (clean === "studio-intelligence" || clean === "intelligence") return { route: "studio-intelligence", subtab: null };
-      if (["ringkasan", "katalog", "profil"].includes(clean)) return { route: clean, subtab: null };
+      if (["ringkasan", "katalog", "profil", "studio-creative"].includes(clean)) return { route: clean, subtab: null };
       if (ROADMAP_INFO[clean]) return { route: clean, subtab: null };
       return null;
     }
@@ -2531,6 +2584,8 @@
         const targetSection = document.getElementById(sectionId);
         if (targetSection) targetSection.classList.remove("hidden");
       }
+
+      if (route === "studio-creative") loadPosterStudio();
 
       if (route === "studio-intelligence" && activeWorkspaceId) {
         loadAiReviewConfig();
@@ -2624,6 +2679,9 @@
       }
 
       const hasWs = Boolean(ws);
+      document.getElementById("posterNoWorkspace").classList.toggle("hidden", hasWs);
+      document.getElementById("posterMain").classList.toggle("hidden", !hasWs);
+      if (currentRoute === "studio-creative" && hasWs) loadPosterStudio();
       document.getElementById("ringkasanEmptyState").classList.toggle("hidden", hasWs);
       document.getElementById("ringkasanPopulated").classList.toggle("hidden", !hasWs);
 
@@ -2662,6 +2720,7 @@
     }
 
     function resetWorkspaceScopedUiState() {
+      resetPosterStudio();
       pendingPurKey = "";
       pendingSaleKey = "";
       salePriceManualEdited = false;
@@ -4003,6 +4062,216 @@
         if (reqWsId !== activeWorkspaceId || reqSeq !== aiReviewReqSeq) return;
         setStatus(aiReviewStatus, "Gangguan jaringan saat menjalankan AI Business Review.", "err");
       }
+    });
+
+    const posterDraftSelect = document.getElementById("posterDraftSelect");
+    const posterAssetSelect = document.getElementById("posterAssetSelect");
+    const posterFormat = document.getElementById("posterFormat");
+    const posterSampleBtn = document.getElementById("posterSampleBtn");
+    const posterPreviewBtn = document.getElementById("posterPreviewBtn");
+    const posterExportBtn = document.getElementById("posterExportBtn");
+    const posterPreviewImage = document.getElementById("posterPreviewImage");
+    const posterPreviewCard = document.getElementById("posterPreviewCard");
+    const posterStatus = document.getElementById("posterStatus");
+    let posterDrafts = [];
+    let posterPreview = null;
+    let posterLoaded = false;
+    let posterBusy = false;
+    let posterScope = 0;
+
+    function updatePosterControls() {
+      posterSampleBtn.disabled = posterBusy;
+      posterDraftSelect.disabled = posterBusy || !posterDrafts.length;
+      posterAssetSelect.disabled = posterBusy || !posterDraftSelect.value;
+      posterFormat.disabled = posterBusy;
+      posterPreviewBtn.disabled = posterBusy || !posterDraftSelect.value || !posterAssetSelect.value;
+      posterExportBtn.disabled = posterBusy || !posterPreview;
+    }
+
+    function clearPosterPreview() {
+      posterPreview = null;
+      posterPreviewImage.removeAttribute("src");
+      posterPreviewCard.classList.add("hidden");
+      document.getElementById("posterVersion").textContent = "";
+      document.getElementById("posterAttribution").textContent = "";
+      updatePosterControls();
+    }
+
+    function resetPosterStudio() {
+      posterScope++;
+      posterLoaded = false;
+      posterBusy = false;
+      posterDrafts = [];
+      posterDraftSelect.replaceChildren();
+      posterAssetSelect.replaceChildren();
+      posterFormat.value = "svg";
+      clearPosterPreview();
+      setStatus(posterStatus, "");
+    }
+
+    function fillPosterOptions(select, items, placeholder) {
+      select.replaceChildren();
+      if (!items.length) select.add(new Option(placeholder, ""));
+      for (const [label, value] of items) select.add(new Option(label, value));
+    }
+
+    function showPosterDrafts(draftId) {
+      fillPosterOptions(
+        posterDraftSelect,
+        posterDrafts.map(draft => [draft.title, draft.draft_id]),
+        "Belum ada draft poster"
+      );
+      if (draftId) posterDraftSelect.value = draftId;
+      selectPosterDraft();
+    }
+
+    function selectPosterDraft() {
+      const draft = posterDrafts.find(item => item.draft_id === posterDraftSelect.value);
+      posterAssetSelect.value = draft?.asset_id || "";
+      clearPosterPreview();
+      setStatus(posterStatus, "");
+    }
+
+    async function posterRequest(path, method = "GET", body = null, headers = {}) {
+      const options = { method, headers };
+      if (body !== null) {
+        options.headers = { ...headers, "Content-Type": "application/json" };
+        options.body = JSON.stringify(body);
+      }
+      const response = await apiFetch(path, options);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Permintaan poster gagal.");
+      }
+      return response;
+    }
+
+    async function runPosterAction(message, action) {
+      if (!getActiveWorkspace() || posterBusy) return;
+      const workspaceId = activeWorkspaceId;
+      const scope = posterScope;
+      const isCurrent = () => workspaceId === activeWorkspaceId && scope === posterScope;
+      const root = `/v1/workspaces/${encodeURIComponent(workspaceId)}`;
+      posterBusy = true;
+      updatePosterControls();
+      setStatus(posterStatus, message, "info");
+      try {
+        await action(root, isCurrent);
+      } catch (error) {
+        if (isCurrent()) {
+          clearPosterPreview();
+          setStatus(posterStatus, error.message === "Failed to fetch"
+            ? "Gangguan jaringan saat memuat poster. Coba lagi."
+            : error.message, "err");
+        }
+      } finally {
+        if (isCurrent()) {
+          posterBusy = false;
+          updatePosterControls();
+        }
+      }
+    }
+
+    function loadPosterStudio() {
+      if (posterLoaded) return;
+      return runPosterAction("Memuat draft dan aset…", async (root, isCurrent) => {
+        const [drafts, assets] = await Promise.all([
+          posterRequest(`${root}/creative-drafts`).then(response => response.json()),
+          posterRequest(`${root}/creative-assets`).then(response => response.json())
+        ]);
+        if (!isCurrent()) return;
+        posterLoaded = true;
+        posterDrafts = drafts.items;
+        fillPosterOptions(
+          posterAssetSelect,
+          assets.items.filter(asset => asset.license_status === "verified")
+            .map(asset => [`${asset.title} · ${asset.asset_license}`, asset.asset_id]),
+          "Belum ada aset berizin"
+        );
+        showPosterDrafts();
+        if (!posterDrafts.length) setStatus(posterStatus, "Buat draft contoh untuk mencoba ekspor poster.", "info");
+      });
+    }
+
+    posterSampleBtn.addEventListener("click", async () => {
+      if (!posterLoaded) await loadPosterStudio();
+      if (!posterLoaded) return;
+      await runPosterAction("Membuat draft contoh…", async (root, isCurrent) => {
+        const response = await posterRequest(`${root}/creative-drafts/sample`, "POST", {}, {
+          "Idempotency-Key": "creative-studio-sample-v1"
+        });
+        const { item } = await response.json();
+        const drafts = await posterRequest(`${root}/creative-drafts`).then(res => res.json());
+        if (!isCurrent()) return;
+        posterDrafts = drafts.items;
+        showPosterDrafts(item.draft_id);
+        setStatus(posterStatus, "Draft contoh siap dipratinjau.");
+      });
+    });
+
+    posterDraftSelect.addEventListener("change", selectPosterDraft);
+    for (const select of [posterAssetSelect, posterFormat]) {
+      select.addEventListener("change", () => {
+        clearPosterPreview();
+        setStatus(posterStatus, "Tampilkan pratinjau sebelum mengunduh.", "info");
+      });
+    }
+
+    posterPreviewBtn.addEventListener("click", () => {
+      const draft = posterDrafts.find(item => item.draft_id === posterDraftSelect.value);
+      const assetId = posterAssetSelect.value;
+      const format = posterFormat.value;
+      clearPosterPreview();
+      return runPosterAction("Menyiapkan pratinjau…", async (root, isCurrent) => {
+        const path = `${root}/creative-drafts/${encodeURIComponent(draft.draft_id)}`;
+        if (assetId !== draft.asset_id) {
+          const response = await posterRequest(path, "PATCH", {
+            asset_id: assetId, expected_version: draft.version
+          });
+          const { item } = await response.json();
+          if (!isCurrent()) return;
+          posterDrafts[posterDrafts.indexOf(draft)] = item;
+        }
+        const response = await posterRequest(`${path}/preview`, "POST", { format });
+        const { item } = await response.json();
+        if (!isCurrent()) return;
+        posterDrafts = posterDrafts.map(entry => entry.draft_id === item.draft.draft_id ? item.draft : entry);
+        posterAssetSelect.value = item.draft.asset_id;
+        posterPreviewImage.src = item.preview_data_url;
+        posterPreviewCard.classList.remove("hidden");
+        await posterPreviewImage.decode();
+        if (!isCurrent()) return;
+        posterPreview = item;
+        document.getElementById("posterVersion").textContent = `Draft v${item.draft.version} · ${format.toUpperCase()}`;
+        document.getElementById("posterAttribution").textContent =
+          `${item.asset.title} · ${item.asset.asset_license} · ${item.asset.attribution_text}`;
+        setStatus(posterStatus, "Pratinjau siap diunduh.");
+      });
+    });
+
+    posterExportBtn.addEventListener("click", () => {
+      const item = posterPreview;
+      return runPosterAction("Menyiapkan unduhan…", async (root, isCurrent) => {
+        const path = `${root}/creative-drafts/${encodeURIComponent(item.draft.draft_id)}/export`;
+        const response = await posterRequest(path, "POST", {
+          format: item.preview_format,
+          expected_version: item.draft.version,
+          expected_revision_hash: item.draft.revision_hash,
+          preview_sha256: item.preview_sha256
+        });
+        const blob = await response.blob();
+        if (!isCurrent()) return;
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = response.headers.get("Content-Disposition")?.match(/filename="([A-Za-z0-9_.-]+)"/)?.[1]
+          || `poster-v${item.draft.version}.${item.preview_format}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setStatus(posterStatus, `Unduhan poster v${item.draft.version} dimulai.`);
+      });
     });
 
     // Initial boot: restore route from hash or localStorage, prefill date, load workspaces

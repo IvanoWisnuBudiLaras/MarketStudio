@@ -20,3 +20,11 @@ Write request membawa idempotency key jika operasi berisiko duplicate; server me
 
 ## Implementation order
 Contract tests dan schema migration terlebih dahulu, service logic, API, UI states, integration tests, independent review. Jangan menambah library tanpa spike. Acceptance criteria adalah test design, bukan hasil test. Open: exact schema, limits, retention, dependency versions dan provider access. Atlas harus menyelesaikan open question yang memblokir ticket sebelum Forge coding.
+
+## Baseline lokal Issue #42
+
+Di Creative Studio, pilih profil usaha, buat atau pilih draft contoh, pilih aset dan format, tampilkan pratinjau, lalu unduh. Aset contoh PNG memiliki atribusi, lisensi CC0-1.0, dan SHA-256 di registry lokal. Draft menyimpan referensi offering opsional, teks, dan provenance copy serta aset untuk integrasi #16 dan #47.
+
+`POST /v1/workspaces/{workspace_id}/creative-drafts/{draft_id}/preview` mengembalikan gambar, versi, dan SHA-256 untuk format yang dipilih. Kirim kembali `format`, `expected_version`, dan `preview_sha256` ke `POST .../export` untuk mengunduh byte yang sama. Perubahan versi, format, atau hasil render memerlukan pratinjau ulang. Preview dan export tercatat di audit, dengan status poster tetap `draft` dan ledger tetap sama.
+
+Inisialisasi SQLite membuat tabel `creative_assets` dan `poster_drafts` secara aditif. Pada konfigurasi PostgreSQL, endpoint poster memeriksa akses workspace dan mengembalikan `poster_backend_unavailable` kepada anggota. Untuk rollback lokal, jalankan kembali versi aplikasi sebelumnya dengan basis data yang sama. Kedua tabel dapat dipertahankan agar pekerjaan poster tersedia saat fitur dipulihkan.
