@@ -3,371 +3,2385 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MarketStudio — MVP Baseline</title>
+  <title>MarketStudio — Ekosistem Bisnis Terintegrasi</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232563EB'/%3E%3Cpath d='M5 7L8.5 4L10.5 7H13.5L15.5 4L19 7V15.5C19 18 16.8 20 14 20H10C7.2 20 5 18 5 15.5V7Z' fill='white'/%3E%3Ccircle cx='9.5' cy='12.5' r='1.2' fill='%232563EB'/%3E%3Ccircle cx='14.5' cy='12.5' r='1.2' fill='%232563EB'/%3E%3C/svg%3E" />
   <style>
     :root {
       --accent: #2563EB;
-      --navy: #0F172A;
-      --bg: #F8FAFC;
-      --card: #FFFFFF;
-      --border: #E2E8F0;
-      --text: #1E293B;
-      --muted: #64748B;
-      --danger: #DC2626;
-      --ok: #16A34A;
+      --accent-hover: #1D4ED8;
+      --brand-navy: #142B52;
+      --canvas: #F7F8FA;
+      --surface: #FFFFFF;
+      --surface-elevated: #EFF6FF;
+      --text: #172033;
+      --muted: #526077;
+      --border: #E2E6EC;
+      --ok: #15803D;
+      --ok-bg: #F0FDF4;
+      --ok-border: #BBF7D0;
+      --warn: #9A3412;
+      --warn-bg: #FFF7ED;
+      --warn-border: #FED7AA;
+      --err: #B91C1C;
+      --err-bg: #FEF2F2;
+      --err-border: #FECACA;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(20, 43, 82, 0.05);
+      --shadow-md: 0 6px 20px rgba(20, 43, 82, 0.08);
     }
-    * { box-sizing: border-box; }
-    body {
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
       margin: 0;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: var(--bg);
+      padding: 0;
+      background: var(--canvas);
       color: var(--text);
+      font-family: "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
-    header {
-      background: var(--navy);
-      color: #fff;
-      padding: 1rem 1.5rem;
-      display: flex;
-      justify-content: space-between;
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 12px;
+      z-index: 100;
+      background: var(--brand-navy);
+      color: #FFFFFF;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      text-decoration: none;
+      min-height: 44px;
+      display: inline-flex;
       align-items: center;
     }
-    header h1 { margin: 0; font-size: 1.15rem; }
-    header span { font-size: 0.85rem; color: #94A3B8; }
-    main {
-      max-width: 1024px;
-      margin: 1.5rem auto;
-      padding: 0 1rem;
+
+    .skip-link:focus,
+    .skip-link:focus-visible {
+      position: fixed;
+      left: 12px;
+      top: 12px;
+    }
+
+    .app-shell {
       display: grid;
-      gap: 1.25rem;
+      grid-template-columns: 260px minmax(0, 1fr);
+      min-height: 100vh;
+      width: 100%;
     }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem;
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: 14px 12px;
+      gap: 12px;
+      min-width: 0;
     }
-    h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
-    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: end; }
-    label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; flex: 1; min-width: 150px; }
-    input, select, button {
-      padding: 0.5rem 0.65rem;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 0.9rem;
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 2px 4px;
     }
-    button {
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
       background: var(--accent);
-      color: #fff;
-      border: none;
+      color: #FFFFFF;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+
+    .mobile-close-btn {
+      display: none;
+      min-width: 44px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: var(--radius);
       cursor: pointer;
+      font-size: 18px;
       font-weight: 600;
     }
-    button:hover { opacity: 0.92; }
-    .status { font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2rem; }
-    .status.err { color: var(--danger); }
-    .status.ok { color: var(--ok); }
-    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.88rem; }
-    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }
-    th { color: var(--muted); font-weight: 600; }
-    .badge {
-      display: inline-block;
-      padding: 0.15rem 0.45rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      background: #EFF6FF;
+
+    .nav-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 8px;
+    }
+
+    .nav-group-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      padding: 4px 10px 2px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 44px;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 500;
+      border: 1px solid transparent;
+      transition: background-color 0.12s ease, border-color 0.12s ease;
+    }
+
+    .nav-link:hover {
+      background: var(--canvas);
+    }
+
+    .nav-link[aria-current="page"] {
+      background: var(--surface-elevated);
       color: var(--accent);
+      border-color: #BFDBFE;
+      font-weight: 700;
+    }
+
+    .nav-link-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .nav-link-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .nav-link-sub {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+
+    .nav-sub-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin: 0 0 4px 16px;
+      padding-left: 10px;
+      border-left: 2px solid var(--border);
+    }
+
+    .nav-sub-list .nav-link {
+      min-height: 44px;
+      padding: 6px 10px;
+      font-size: 13.5px;
+    }
+
+    .nav-studio-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px 2px;
+      font-weight: 600;
+      color: var(--brand-navy);
+      font-size: 13.5px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .pill-active {
+      background: var(--ok-bg);
+      color: var(--ok);
+      border: 1px solid var(--ok-border);
+    }
+
+    .pill-roadmap {
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid #CBD5E1;
+    }
+
+    .pill-demo {
+      background: var(--warn-bg);
+      color: var(--warn);
+      border: 1px solid var(--warn-border);
+    }
+
+    .pill-actual {
+      background: var(--surface-elevated);
+      color: var(--accent);
+      border: 1px solid #BFDBFE;
+    }
+
+    .pill-sim {
+      background: #F5F3FF;
+      color: #5B21B6;
+      border: 1px solid #DDD6FE;
+    }
+
+    .pill-hist {
+      background: #ECFEFF;
+      color: #155E75;
+      border: 1px solid #A5F3FC;
+    }
+
+    .sidebar-footer {
+      border: 1px solid var(--border);
+      background: var(--canvas);
+      border-radius: var(--radius);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .sidebar-ws-name {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--brand-navy);
+      overflow-wrap: anywhere;
+    }
+
+    .sidebar-ws-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Mobile Header & Bottom Nav */
+    .mobile-header {
+      display: none;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 12px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 56px;
+      width: 100%;
+    }
+
+    .mobile-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .menu-toggle-btn {
+      min-width: 44px;
+      min-height: 44px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: var(--radius);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0 10px;
+      flex-shrink: 0;
+    }
+
+    .mobile-brand-text {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--brand-navy);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      z-index: 40;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      padding: 4px;
+      gap: 2px;
+      box-shadow: 0 -2px 10px rgba(20, 43, 82, 0.06);
+    }
+
+    .mobile-nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      min-height: 50px;
+      min-width: 44px;
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
+      padding: 4px 2px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .mobile-nav-btn span {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mobile-nav-btn[aria-current="page"] {
+      color: var(--accent);
+      background: var(--surface-elevated);
+      border-color: #BFDBFE;
+    }
+
+    .drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 45;
+    }
+
+    .drawer-backdrop.open {
+      display: block;
+    }
+
+    /* Main Content Area */
+    .main-wrap {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .top-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .top-bar-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .top-bar-title h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.25;
+      color: var(--brand-navy);
+      overflow-wrap: anywhere;
+    }
+
+    .top-bar-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .top-bar-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    main {
+      padding: 20px 24px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+      max-width: 1120px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .card-elevated {
+      background: var(--surface-elevated);
+      border-color: #BFDBFE;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 17px;
+      color: var(--brand-navy);
+      line-height: 1.3;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: var(--brand-navy);
+      line-height: 1.35;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .banner {
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 13px;
+      min-width: 0;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .banner-demo {
+      background: var(--warn-bg);
+      border-color: var(--warn-border);
+      color: #7C2D12;
+    }
+
+    .banner-readonly {
+      background: #F5F3FF;
+      border-color: #DDD6FE;
+      color: #4C1D95;
+    }
+
+    .banner-info {
+      background: var(--surface-elevated);
+      border-color: #BFDBFE;
+      color: var(--brand-navy);
+    }
+
+    .screen-guide {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .guide-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .guide-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+    }
+
+    .guide-text {
+      font-size: 12.5px;
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    /* Buttons & Inputs */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      min-width: 44px;
+      padding: 9px 14px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      text-decoration: none;
+      line-height: 1.2;
+      transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #FFFFFF;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--canvas);
+    }
+
+    .btn-soft {
+      background: var(--surface-elevated);
+      color: var(--accent);
+      border-color: #BFDBFE;
+    }
+
+    .btn-soft:hover:not(:disabled) {
+      background: #DBEAFE;
+    }
+
+    button:disabled,
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 12px;
+    }
+
+    .chip-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--canvas);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .chip-btn:hover {
+      background: var(--surface-elevated);
+      border-color: #BFDBFE;
+      color: var(--accent);
+    }
+
+    .subtabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+
+    .subtab-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 13.5px;
+      cursor: pointer;
+    }
+
+    .subtab-btn[aria-selected="true"] {
+      background: var(--accent);
+      color: #FFFFFF;
+      border-color: var(--accent);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+      gap: 12px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .field-full {
+      grid-column: 1 / -1;
+    }
+
+    label.field-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="url"],
+    select {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    input[aria-invalid="true"],
+    select[aria-invalid="true"] {
+      border-color: var(--err);
+      background: var(--err-bg);
+    }
+
+    .unit-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 12px;
+      border-radius: var(--radius);
+      background: var(--surface-elevated);
+      border: 1px solid #BFDBFE;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .field-helper {
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 16px;
+      overflow-wrap: anywhere;
+    }
+
+    .field-error {
+      font-size: 12px;
+      color: var(--err);
+      font-weight: 600;
+      min-height: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .status {
+      font-size: 13px;
+      margin-top: 10px;
+      padding: 0;
+      border-radius: var(--radius);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .status.ok {
+      padding: 10px 12px;
+      background: var(--ok-bg);
+      border: 1px solid var(--ok-border);
+      color: var(--ok);
       font-weight: 600;
     }
+
+    .status.err {
+      padding: 10px 12px;
+      background: var(--err-bg);
+      border: 1px solid var(--err-border);
+      color: var(--err);
+      font-weight: 600;
+    }
+
+    .status.info {
+      padding: 10px 12px;
+      background: var(--surface-elevated);
+      border: 1px solid #BFDBFE;
+      color: var(--brand-navy);
+      font-weight: 600;
+    }
+
+    /* KPI Cards */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 0.75rem;
-      margin-top: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+      gap: 12px;
+      margin-top: 12px;
+      min-width: 0;
     }
+
     .kpi {
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.75rem;
-      background: #F8FAFC;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      background: var(--canvas);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      max-width: 100%;
     }
-    .kpi .label { font-size: 0.78rem; color: var(--muted); }
-    .kpi .val { font-size: 1.05rem; font-weight: 700; margin-top: 0.2rem; }
+
+    .kpi-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .kpi .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .kpi .val {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.3;
+    }
+
+    .kpi .sub {
+      font-size: 12px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* Tables */
+    .table-wrap {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 540px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--canvas);
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .num {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .id-chip {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11.5px;
+      color: var(--muted);
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      overflow-wrap: anywhere;
+    }
+
+    /* Drill-down & Details */
+    details {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 10px 14px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--brand-navy);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style-position: inside;
+    }
+
     pre {
       background: #0F172A;
       color: #E2E8F0;
-      padding: 0.75rem;
-      border-radius: 6px;
+      padding: 12px;
+      border-radius: var(--radius);
       overflow-x: auto;
-      font-size: 0.8rem;
-      max-height: 240px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      font-size: 12px;
+      max-height: 280px;
+      max-width: 100%;
+      margin: 10px 0 0;
+    }
+
+    /* Scenario & Empty State Cards */
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      gap: 14px;
+      margin-top: 12px;
+      min-width: 0;
+    }
+
+    .scenario-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: var(--canvas);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .scenario-dl {
+      margin: 0;
+      display: grid;
+      gap: 6px;
+      font-size: 12.5px;
+    }
+
+    .scenario-dl dt {
+      font-weight: 700;
+      color: var(--brand-navy);
+    }
+
+    .scenario-dl dd {
+      margin: 0;
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    .empty-state {
+      border: 1px dashed #93C5FD;
+      background: var(--surface-elevated);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .sidebar {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(296px, 86vw);
+        max-height: 100vh;
+        z-index: 50;
+        box-shadow: var(--shadow-md);
+      }
+
+      .sidebar.drawer-open {
+        display: flex;
+      }
+
+      .mobile-close-btn {
+        display: inline-flex;
+      }
+
+      .mobile-header {
+        display: flex;
+      }
+
+      .mobile-bottom-nav {
+        display: grid;
+      }
+
+      .top-bar {
+        padding: 12px 14px;
+      }
+
+      main {
+        padding: 14px 12px 92px;
+      }
+
+      .card {
+        padding: 14px;
+      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>MarketStudio — MVP Baseline</h1>
-    <span>Data Sintetis Lokal • Tenant-Isolated • WA Valuation</span>
-  </header>
-  <main>
-    <section class="card">
-      <h2>1. Profil Bisnis (Workspace)</h2>
-      <div class="row">
-        <label>
-          Pilih Workspace Aktif
-          <select id="workspaceSelect"></select>
-        </label>
-      </div>
-      <form id="workspaceForm" class="row" style="margin-top: 0.75rem;">
-        <label>
-          Nama Workspace Baru
-          <input id="wsName" type="text" placeholder="Contoh: Warung Bakso Sintetis" required />
-        </label>
-        <label>
-          Tipe Bisnis
-          <select id="wsType">
-            <option value="umkm_hybrid">UMKM Hybrid (Barang &amp; Jasa)</option>
-            <option value="goods_retail">Barang / Retail</option>
-            <option value="service_studio">Jasa / Layanan</option>
-          </select>
-        </label>
-        <button type="submit">Buat Workspace</button>
-      </form>
-      <div id="wsStatus" class="status"></div>
-    </section>
+  <a class="skip-link" href="#main-content">Langsung ke konten utama</a>
+  <div id="globalLiveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
 
-    <section class="card">
-      <h2>2. Katalog Produk &amp; Jasa (Offering)</h2>
-      <form id="offeringForm" class="row">
-        <label>
-          Nama Produk / Jasa
-          <input id="offName" type="text" placeholder="Contoh: Bakso Urat / Jasa Katering" required />
-        </label>
-        <label>
-          Tipe
-          <select id="offType">
-            <option value="goods">goods (Barang)</option>
-            <option value="service">service (Jasa - tanpa stok)</option>
-            <option value="hybrid">hybrid</option>
-          </select>
-        </label>
-        <label>
-          Harga Satuan (IDR)
-          <input id="offPrice" type="number" min="0" step="1" value="15000" required />
-        </label>
-        <label>
-          Satuan
-          <input id="offUnit" type="text" value="pcs" required />
-        </label>
-        <button type="submit">Tambah Offering</button>
-      </form>
-      <div id="offStatus" class="status"></div>
-      <table>
-        <thead>
-          <tr><th>Nama</th><th>Tipe</th><th>Harga (IDR)</th><th>Stok</th><th>Pajak</th></tr>
-        </thead>
-        <tbody id="offeringTableBody"></tbody>
-      </table>
-    </section>
-
-    <section class="card">
-      <h2>3. Pembelian Tunai (Purchase)</h2>
-      <form id="purchaseForm" class="row">
-        <label>
-          Offering (Barang/Hybrid)
-          <select id="purOffering"></select>
-        </label>
-        <label>
-          Qty
-          <input id="purQty" type="text" value="2" required />
-        </label>
-        <label>
-          Total Biaya (IDR)
-          <input id="purCost" type="number" min="0" step="1" value="20000" required />
-        </label>
-        <button type="submit">Catat Pembelian</button>
-      </form>
-      <div id="purStatus" class="status"></div>
-    </section>
-
-    <section class="card">
-      <h2>4. Penjualan Tunai (Idempotent Sale)</h2>
-      <form id="saleForm" class="row">
-        <label>
-          Offering
-          <select id="saleOffering"></select>
-        </label>
-        <label>
-          Qty
-          <input id="saleQty" type="text" value="0.5" required />
-        </label>
-        <label>
-          Total Harga Jual (IDR)
-          <input id="salePrice" type="number" min="0" step="1" value="8000" required />
-        </label>
-        <button type="submit">Catat Penjualan</button>
-      </form>
-      <div id="saleStatus" class="status"></div>
-    </section>
-
-    <section class="card">
-      <h2>5. Laporan Harian (Omzet, HPP, Laba, Kas) &amp; Drill-down</h2>
-      <div class="row">
-        <label>
-          Tanggal (Asia/Jakarta)
-          <input id="reportDate" type="date" />
-        </label>
-        <button type="button" id="refreshReportBtn">Muat Laporan</button>
-      </div>
-      <div id="kpiGrid" class="kpi-grid"></div>
-      <details style="margin-top: 0.75rem;">
-        <summary style="cursor:pointer; font-weight:600; font-size:0.9rem;">Drill-down Transaksi, Mutasi Stok &amp; Audit</summary>
-        <pre id="drillDownPre">{}</pre>
-      </details>
-    </section>
-
-    <section class="card">
-      <h2>6. Simulasi Harga &amp; Diskon (Read-Only)</h2>
-      <p class="muted" style="margin-top:0; font-size:0.85rem;">Simulasi bersifat read-only dan tidak mengubah offering, stok, atau ledger.</p>
-      <form id="simForm" class="row">
-        <label>
-          Offering (opsional)
-          <select id="simOffering">
-            <option value="">-- Input Manual --</option>
-          </select>
-        </label>
-        <label>
-          Harga Jual (IDR)
-          <input id="simPrice" type="number" min="0" step="1" value="5000" />
-        </label>
-        <label>
-          Biaya Unit (IDR, opsional)
-          <input id="simCost" type="number" min="0" step="1" value="3000" />
-        </label>
-        <label>
-          Diskon (%)
-          <input id="simDiscount" type="text" value="20" />
-        </label>
-        <button type="submit">Hitung Simulasi</button>
-      </form>
-      <div id="simStatus" class="status"></div>
-      <div id="simResultGrid" class="kpi-grid"></div>
-    </section>
-
-    <section class="card" id="benchmarkCard">
-      <h2>7. Benchmark Harga Pasar (#46)</h2>
-      <p class="muted">Bandingkan harga offering terhadap snapshot resmi ter-atribusi, demo sintetis, atau manual fallback dengan bukti (read-only, harga katalog tidak berubah).</p>
-      <form id="benchForm" class="row">
-        <label>
-          Offering
-          <select id="benchOfferingId" required></select>
-        </label>
-        <label>
-          Sumber Benchmark
-          <select id="benchSourceKind">
-            <option value="transcribed_official">Transkripsi Resmi Bapanas (Historis Maret 2026)</option>
-            <option value="synthetic_demo">Demo Sintetis (Bukan Observasi Nyata)</option>
-            <option value="manual_fallback">Manual Fallback (Input Operator dengan Bukti)</option>
-          </select>
-        </label>
-        <label id="benchSnapshotWrap">
-          Snapshot Komoditas
-          <select id="benchSnapshotId">
-            <option value="bapanas_beras_medium_maret_2026">[Resmi · Historis Maret 2026] Beras Medium — Rp 13.378 / 1 kg · Nasional</option>
-            <option value="demo_beras_medium_jkt">[Demo Sintetis] Beras Medium — Rp13.500 / 1 kg</option>
-            <option value="demo_gula_pasir_500g_jkt">[Demo Sintetis] Gula Konsumsi 500 g — Rp9.000 / 500 g</option>
-            <option value="demo_minyak_goreng_jkt">[Demo Sintetis] Minyak Goreng — Rp17.500 / 1 liter</option>
-          </select>
-        </label>
-        <div id="benchManualWrap" class="row" style="display:none; flex-basis: 100%;">
-          <label>
-            Label Sumber (wajib)
-            <input id="benchSourceLabel" type="text" placeholder="Survei Pasar Tradisional" />
-          </label>
-          <label>
-            Catatan Bukti / Evidence (wajib)
-            <input id="benchEvidenceNote" type="text" placeholder="Foto papan harga kios #12" />
-          </label>
-          <label>
-            Tanggal Observasi (ISO)
-            <input id="benchObservedAt" type="text" value="2026-11-27" />
-          </label>
-          <label>
-            Lokasi / Pasar
-            <input id="benchLocationMarket" type="text" placeholder="Pasar Baru, Bandung" />
-          </label>
-          <label>
-            Satuan
-            <input id="benchUnit" type="text" value="kg" />
-          </label>
-          <label>
-            Kuantitas
-            <input id="benchQuantity" type="text" value="1" />
-          </label>
-          <label>
-            Harga Observasi (IDR)
-            <input id="benchObservedPrice" type="number" min="0" step="1" value="14000" />
-          </label>
+  <div class="app-shell">
+    <aside id="appSidebar" class="sidebar" aria-label="Menu utama studio">
+      <div>
+        <div class="brand-row">
+          <a href="#ringkasan" class="brand-lockup">
+            <span class="brand-mark" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M5 7L8.5 4L10.5 7H13.5L15.5 4L19 7V15.5C19 18 16.8 20 14 20H10C7.2 20 5 18 5 15.5V7Z" fill="white" fill-opacity="0.95"/>
+                <circle cx="9.5" cy="12.5" r="1.2" fill="#2563EB"/>
+                <circle cx="14.5" cy="12.5" r="1.2" fill="#2563EB"/>
+              </svg>
+            </span>
+            <span>
+              <span class="brand-title" style="display:block;">MarketStudio</span>
+              <span class="brand-sub" style="display:block;">One Studio. Every Market.</span>
+            </span>
+          </a>
+          <button id="closeDrawerBtn" type="button" class="mobile-close-btn" aria-label="Tutup menu studio">✕</button>
         </div>
-        <button type="submit">Bandingkan Harga</button>
-      </form>
-      <div id="benchStatus" class="status"></div>
-      <div id="benchResultGrid" class="kpi-grid"></div>
-    </section>
 
-    <section class="card" id="aiReviewCard">
-      <h2>8. AI Business Review (#14/#40/#41)</h2>
-      <p style="font-size:0.85rem; color:#475569; margin-top:0;">
-        Read-only AI review berdasarkan snapshot laporan harian (tanpa mutasi ledger).
-      </p>
-      <div class="row">
-        <label>
-          Mode Eksekusi
-          <select id="aiStubMode">
-            <option value="">Provider Terkonfigurasi / Fallback Deterministik</option>
-            <option value="stub_valid">Simulasi Stub (Test Fixture: Valid)</option>
-            <option value="stub_timeout">Simulasi Stub (Test Fixture: Timeout -> Fallback)</option>
-            <option value="stub_fake_citation">Simulasi Stub (Test Fixture: Fake Citation -> Fallback)</option>
-          </select>
-        </label>
-        <div style="display:flex; align-items:flex-end;">
-          <button id="runAiReviewBtn" type="button">Jalankan AI Business Review</button>
-        </div>
+        <nav aria-label="Navigasi aplikasi">
+          <div class="nav-group">
+            <a href="#ringkasan" class="nav-link" data-route="ringkasan">
+              <span class="nav-link-main">
+                <span aria-hidden="true">🏠</span>
+                <span>Beranda / Ringkasan</span>
+              </span>
+              <span class="pill pill-active">Aktif</span>
+            </a>
+          </div>
+
+          <div class="nav-group">
+            <div class="nav-group-label">Studio</div>
+            <div class="nav-studio-head">
+              <span>📊 Business Studio</span>
+              <span class="pill pill-active">Aktif</span>
+            </div>
+            <div class="nav-sub-list">
+              <a href="#transaksi" class="nav-link" data-route="transaksi">
+                <span class="nav-link-main"><span>Transaksi</span></span>
+              </a>
+              <a href="#katalog" class="nav-link" data-route="katalog">
+                <span class="nav-link-main"><span>Katalog &amp; Stok</span></span>
+              </a>
+            </div>
+
+            <a href="#analisis" class="nav-link" data-route="analisis">
+              <span class="nav-link-main">
+                <span aria-hidden="true">🧮</span>
+                <span class="nav-link-text">
+                  <span>Spreadsheet Studio</span>
+                  <span class="nav-link-sub">Analisis &amp; Harga</span>
+                </span>
+              </span>
+              <span class="pill pill-active">Aktif</span>
+            </a>
+
+            <a href="#studio-intelligence" class="nav-link" data-route="studio-intelligence">
+              <span class="nav-link-main">
+                <span aria-hidden="true">✨</span>
+                <span class="nav-link-text">
+                  <span>Intelligence Studio</span>
+                  <span class="nav-link-sub">AI Business Review</span>
+                </span>
+              </span>
+              <span class="pill pill-sim">Preview</span>
+            </a>
+
+            <a href="#studio-creative" class="nav-link" data-route="studio-creative">
+              <span class="nav-link-main">
+                <span aria-hidden="true">🎨</span>
+                <span>Creative Studio</span>
+              </span>
+              <span class="pill pill-roadmap">Roadmap</span>
+            </a>
+
+            <a href="#studio-commerce" class="nav-link" data-route="studio-commerce">
+              <span class="nav-link-main">
+                <span aria-hidden="true">🛒</span>
+                <span>Commerce Studio</span>
+              </span>
+              <span class="pill pill-roadmap">Roadmap</span>
+            </a>
+
+            <a href="#studio-social" class="nav-link" data-route="studio-social">
+              <span class="nav-link-main">
+                <span aria-hidden="true">#</span>
+                <span>Social Studio</span>
+              </span>
+              <span class="pill pill-roadmap">Roadmap</span>
+            </a>
+          </div>
+
+          <div class="nav-group">
+            <div class="nav-group-label">Workspace</div>
+            <a href="#profil" class="nav-link" data-route="profil">
+              <span class="nav-link-main">
+                <span aria-hidden="true">🏢</span>
+                <span>Profil &amp; Demo</span>
+              </span>
+              <span class="pill pill-active">Aktif</span>
+            </a>
+          </div>
+        </nav>
       </div>
-      <div id="aiReviewStatus" class="status"></div>
-      <div id="aiReviewGrid" class="kpi-grid"></div>
-    </section>
-  </main>
+
+      <div class="sidebar-footer" aria-label="Pengalih workspace aktif">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+          <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">Usaha Aktif</span>
+          <span id="sidebarModeBadge" class="pill pill-roadmap">Kosong</span>
+        </div>
+        <div id="sidebarWsName" class="sidebar-ws-name">Belum ada profil usaha</div>
+        <div id="sidebarWsMeta" class="sidebar-ws-meta">IDR • Asia/Jakarta (WIB)</div>
+        <select id="sidebarWorkspaceSelect" aria-label="Pilih workspace aktif di sidebar"></select>
+        <button id="sidebarLoadDemoBtn" type="button" class="btn btn-soft" style="width:100%;">
+          Muat Demo Terisolasi
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <div class="mobile-header">
+        <div class="mobile-header-left">
+          <button id="mobileMenuBtn" type="button" class="menu-toggle-btn" aria-label="Buka menu Studio" aria-expanded="false" aria-controls="appSidebar">
+            ☰
+          </button>
+          <span class="mobile-brand-text">MarketStudio</span>
+        </div>
+        <span id="mobileContextBadge" class="pill pill-roadmap">Kosong</span>
+      </div>
+
+      <header class="top-bar">
+        <div class="top-bar-title">
+          <h1 id="pageTitle">Beranda / Ringkasan</h1>
+          <div class="top-bar-meta">
+            <span id="topWsName">Belum ada profil usaha</span>
+            <span>•</span>
+            <span id="topDataBadge" class="pill pill-roadmap">Belum Ada Usaha</span>
+            <span>•</span>
+            <span id="topTzLabel">Zona waktu: Asia/Jakarta (WIB)</span>
+          </div>
+        </div>
+        <div class="top-bar-actions">
+          <button id="topQuickDemoBtn" type="button" class="btn btn-soft">Muat Demo Terisolasi</button>
+          <a href="#transaksi" class="btn btn-primary" data-nav-cta="transaksi">+ Catat Transaksi</a>
+        </div>
+      </header>
+
+      <main id="main-content" tabindex="-1">
+        <div id="demoContextBanner" class="banner banner-demo hidden" role="note">
+          <div>
+            <strong>Mode Demo Sintetis Terisolasi:</strong> Workspace ini memakai data contoh sintetis dan terpisah penuh dari profil usaha nyata Anda. Data historis Bapanas di menu Benchmark tetap ditandai terpisah sebagai <em>Data Resmi · Historis</em>.
+          </div>
+          <a href="#profil" class="btn btn-secondary">Lihat Skenario &amp; Profil</a>
+        </div>
+
+        <section id="screenGuide" class="screen-guide" aria-label="Panduan layar aktif">
+          <div class="guide-cell">
+            <span class="guide-label">Fungsi</span>
+            <span id="guideFungsi" class="guide-text">-</span>
+          </div>
+          <div class="guide-cell">
+            <span class="guide-label">Input</span>
+            <span id="guideInput" class="guide-text">-</span>
+          </div>
+          <div class="guide-cell">
+            <span class="guide-label">Hasil</span>
+            <span id="guideHasil" class="guide-text">-</span>
+          </div>
+        </section>
+
+        <!-- VIEW 1: RINGKASAN -->
+        <section id="view-ringkasan" class="view-section" aria-label="Beranda dan Ringkasan Harian">
+          <div id="ringkasanEmptyState" class="card card-elevated">
+            <div class="card-header">
+              <div>
+                <h2>Mulai Kelola Usaha Anda di MarketStudio</h2>
+                <p class="muted" style="margin-top:4px;">Pilih salah satu langkah awal di bawah: buat profil usaha nyata Anda sendiri, atau muat mode demo terisolasi dengan data contoh Warung Bakso &amp; Sembako.</p>
+              </div>
+              <span class="pill pill-actual">Onboarding</span>
+            </div>
+            <div class="form-actions" style="margin-top:0; margin-bottom:14px;">
+              <button id="onboardingDemoBtn" type="button" class="btn btn-primary">Muat Demo Terisolasi</button>
+              <a href="#profil" class="btn btn-secondary">Buat Profil Usaha</a>
+            </div>
+            <form id="onboardingWsForm" class="form-grid" novalidate>
+              <div class="field">
+                <label class="field-label" for="onbWsName">Buat Cepat: Nama Usaha Anda</label>
+                <input id="onbWsName" type="text" placeholder="Contoh: Kedai Kopi Nusantara" aria-describedby="onbWsNameErr" />
+                <div id="onbWsNameErr" class="field-error"></div>
+              </div>
+              <div class="field">
+                <label class="field-label" for="onbWsType">Tipe Bisnis</label>
+                <select id="onbWsType">
+                  <option value="umkm_hybrid">UMKM Hybrid (Barang &amp; Jasa)</option>
+                  <option value="goods_retail">Barang / Retail</option>
+                  <option value="service_studio">Jasa / Layanan</option>
+                </select>
+              </div>
+              <div class="field" style="justify-content:end;">
+                <button type="submit" class="btn btn-soft">Simpan &amp; Mulai Usaha</button>
+              </div>
+            </form>
+            <div id="onbWsStatus" class="status" aria-live="polite"></div>
+          </div>
+
+          <div id="ringkasanPopulated" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Ringkasan Performa Harian &amp; Tutup Hari</h2>
+                  <p id="reportPeriodLabel" class="muted" style="margin-top:4px;">Periode aktif: Hari ini (Asia/Jakarta / WIB)</p>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:end;">
+                  <div class="field" style="min-width:165px;">
+                    <label class="field-label" for="reportDate">Tanggal (WIB)</label>
+                    <input id="reportDate" type="date" />
+                  </div>
+                  <button type="button" id="refreshReportBtn" class="btn btn-secondary">Muat Laporan</button>
+                </div>
+              </div>
+
+              <div id="kpiGrid" class="kpi-grid"></div>
+              <div id="cashVsProfitNote" class="banner banner-info hidden" style="margin-top:12px;"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Sisa Stok Terkini per Produk</h2>
+                  <p class="muted" style="margin-top:4px;">Menampilkan sisa unit aktual dan nilai persediaan Weighted Average (WA) hingga akhir tanggal laporan.</p>
+                </div>
+                <a href="#katalog" class="btn btn-secondary">Kelola Katalog &amp; Stok</a>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Produk</th>
+                      <th>Sisa Stok</th>
+                      <th>Nilai Persediaan (WA)</th>
+                      <th>Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ringkasanStockBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card">
+              <details id="drillDownDetails">
+                <summary>Rincian Transaksi, Mutasi Stok &amp; Log Audit (Asia/Jakarta)</summary>
+                <div style="display:flex; flex-direction:column; gap:14px; margin-top:12px; min-width:0;">
+                  <div>
+                    <h3>Transaksi Penjualan &amp; Pembelian</h3>
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Waktu (WIB)</th>
+                            <th>Jenis</th>
+                            <th>Produk / Jasa</th>
+                            <th>Qty</th>
+                            <th>Nominal</th>
+                            <th>HPP &amp; Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="drillTxBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3>Mutasi Persediaan (Stok Masuk / Keluar)</h3>
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Waktu (WIB)</th>
+                            <th>Arah</th>
+                            <th>Produk</th>
+                            <th>Perubahan Qty</th>
+                            <th>Biaya Unit (WA)</th>
+                            <th>Total Nilai</th>
+                          </tr>
+                        </thead>
+                        <tbody id="drillStockBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3>Log Audit Aktivitas</h3>
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Waktu (WIB)</th>
+                            <th>Aktor</th>
+                            <th>Aktivitas</th>
+                            <th>Entitas</th>
+                            <th>Referensi</th>
+                          </tr>
+                        </thead>
+                        <tbody id="drillAuditBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <details id="rawAuditDetails">
+                    <summary>Audit Teknis JSON (Untuk Verifikasi Developer)</summary>
+                    <pre id="drillDownPre">{}</pre>
+                  </details>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 2: TRANSAKSI -->
+        <section id="view-transaksi" class="view-section hidden" aria-label="Pencatatan Transaksi Harian">
+          <div id="transaksiNoWorkspace" class="empty-state hidden">
+            <h3>Belum Ada Profil Usaha Aktif</h3>
+            <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu sebelum mencatat penjualan maupun pembelian stok.</p>
+            <div class="form-actions" style="margin-top:0;">
+              <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
+              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+            </div>
+          </div>
+
+          <div id="transaksiMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+            <div class="card">
+              <div class="subtabs" role="tablist" aria-label="Jenis transaksi">
+                <button id="tabSaleBtn" type="button" class="subtab-btn" role="tab" aria-selected="true" aria-controls="salePanel">Penjualan Tunai</button>
+                <button id="tabPurchaseBtn" type="button" class="subtab-btn" role="tab" aria-selected="false" aria-controls="purchasePanel">Pembelian Stok</button>
+              </div>
+
+              <!-- Penjualan Panel -->
+              <div id="salePanel" role="tabpanel" aria-labelledby="tabSaleBtn">
+                <div id="saleNoOfferingEmpty" class="empty-state hidden">
+                  <h3>Katalog Produk / Jasa Masih Kosong</h3>
+                  <p class="muted">Tambahkan minimal satu produk atau jasa di Katalog &amp; Stok sebelum mencatat penjualan.</p>
+                  <a href="#katalog" class="btn btn-primary">Tambah Produk di Katalog</a>
+                </div>
+                <form id="saleForm" novalidate>
+                  <div class="form-grid">
+                    <div class="field">
+                      <label class="field-label" for="saleOffering">Produk / Jasa</label>
+                      <select id="saleOffering" aria-describedby="saleOfferingHelper saleOfferingErr"></select>
+                      <div id="saleOfferingHelper" class="field-helper">Pilih item yang dijual.</div>
+                      <div id="saleOfferingErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="saleQty">Kuantitas Terjual</label>
+                      <div class="input-group">
+                        <input id="saleQty" type="text" inputmode="decimal" placeholder="Contoh: 2" aria-describedby="saleQtyHelper saleQtyErr" />
+                        <span id="saleUnitBadge" class="unit-tag">pcs</span>
+                      </div>
+                      <div id="saleQtyHelper" class="field-helper">Mendukung angka bulat atau desimal (mis. 0.5).</div>
+                      <div id="saleQtyErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="salePrice">Total Harga Jual (IDR)</label>
+                      <input id="salePrice" type="number" min="0" step="1" placeholder="Otomatis dari qty × harga satuan" aria-describedby="salePriceHelper salePriceErr" />
+                      <div id="salePriceHelper" class="field-helper">Harga saran dihitung otomatis dan dapat diedit manual.</div>
+                      <div id="salePriceErr" class="field-error"></div>
+                    </div>
+                  </div>
+                  <div class="form-actions">
+                    <button id="saleSubmitBtn" type="submit" class="btn btn-primary">Catat Penjualan</button>
+                    <button id="saleSuggestResetBtn" type="button" class="btn btn-secondary">Hitung Ulang Harga Saran</button>
+                  </div>
+                  <div id="saleStatus" class="status" aria-live="polite"></div>
+                </form>
+              </div>
+
+              <!-- Pembelian Panel -->
+              <div id="purchasePanel" class="hidden" role="tabpanel" aria-labelledby="tabPurchaseBtn">
+                <div id="purNoOfferingEmpty" class="empty-state hidden">
+                  <h3>Belum Ada Produk Barang/Hybrid</h3>
+                  <p class="muted">Pembelian stok hanya berlaku untuk offering bertipe Barang atau Hybrid (bukan Jasa). Tambahkan produk barang di Katalog terlebih dahulu.</p>
+                  <a href="#katalog" class="btn btn-primary">Tambah Produk Barang di Katalog</a>
+                </div>
+                <form id="purchaseForm" novalidate>
+                  <div class="form-grid">
+                    <div class="field">
+                      <label class="field-label" for="purOffering">Produk (Barang / Hybrid)</label>
+                      <select id="purOffering" aria-describedby="purOfferingHelper purOfferingErr"></select>
+                      <div id="purOfferingHelper" class="field-helper">Hanya offering yang melacak stok.</div>
+                      <div id="purOfferingErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="purQty">Kuantitas Dibeli</label>
+                      <div class="input-group">
+                        <input id="purQty" type="text" inputmode="decimal" placeholder="Contoh: 5" aria-describedby="purQtyErr" />
+                        <span id="purUnitBadge" class="unit-tag">pcs</span>
+                      </div>
+                      <div id="purQtyErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="purCost">Total Biaya Beli Tunai (IDR)</label>
+                      <input id="purCost" type="number" min="0" step="1" placeholder="Contoh: 45000" aria-describedby="purCostHelper purCostErr" />
+                      <div id="purCostHelper" class="field-helper">Biaya rata-rata per unit akan dihitung otomatis (WA).</div>
+                      <div id="purCostErr" class="field-error"></div>
+                    </div>
+                  </div>
+                  <div class="form-actions">
+                    <button id="purSubmitBtn" type="submit" class="btn btn-primary">Catat Pembelian</button>
+                  </div>
+                  <div id="purStatus" class="status" aria-live="polite"></div>
+                </form>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Transaksi Hari Ini (Asia/Jakarta)</h2>
+                  <p class="muted" style="margin-top:4px;">Daftar pencatatan penjualan dan pembelian terbaru pada tanggal aktif.</p>
+                </div>
+                <a href="#ringkasan" class="btn btn-soft">Lihat Ringkasan &amp; Tutup Hari</a>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Waktu (WIB)</th>
+                      <th>Jenis</th>
+                      <th>Produk / Jasa</th>
+                      <th>Qty</th>
+                      <th>Nominal</th>
+                      <th>Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody id="txRecentBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 3: KATALOG & STOK -->
+        <section id="view-katalog" class="view-section hidden" aria-label="Katalog Produk, Jasa dan Stok">
+          <div id="katalogNoWorkspace" class="empty-state hidden">
+            <h3>Belum Ada Profil Usaha Aktif</h3>
+            <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu untuk mengelola katalog produk, jasa, dan sisa stok.</p>
+            <div class="form-actions" style="margin-top:0;">
+              <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
+              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+            </div>
+          </div>
+
+          <div id="katalogMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Tambah Produk atau Jasa Baru</h2>
+                  <p class="muted" style="margin-top:4px;">Gunakan tombol contoh cepat untuk mengisi format satuan umum UMKM.</p>
+                </div>
+                <span class="pill pill-actual">Business Studio</span>
+              </div>
+              <div class="chip-row" aria-label="Contoh isian cepat katalog">
+                <button type="button" class="chip-btn" data-preset-off="bakso">Contoh: Bakso Urat (pcs)</button>
+                <button type="button" class="chip-btn" data-preset-off="beras">Contoh: Beras Medium (kg)</button>
+                <button type="button" class="chip-btn" data-preset-off="jasa">Contoh: Jasa Katering (sesi)</button>
+              </div>
+              <form id="offeringForm" novalidate>
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="field-label" for="offName">Nama Produk / Jasa</label>
+                    <input id="offName" type="text" placeholder="Contoh: Bakso Urat / Jasa Katering" aria-describedby="offNameErr" />
+                    <div id="offNameErr" class="field-error"></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="offType">Tipe Penawaran</label>
+                    <select id="offType" aria-describedby="offTypeHelper offTypeErr">
+                      <option value="goods">Barang — melacak stok (WA)</option>
+                      <option value="service">Jasa — tanpa stok persediaan</option>
+                      <option value="hybrid">Hybrid — barang + layanan (lacak stok WA)</option>
+                    </select>
+                    <div id="offTypeHelper" class="field-helper">Barang/Hybrid mengikuti metode Weighted Average (WA).</div>
+                    <div id="offTypeErr" class="field-error"></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="offPrice">Harga Jual Satuan (IDR)</label>
+                    <input id="offPrice" type="number" min="0" step="1" placeholder="Contoh: 15000" aria-describedby="offPriceErr" />
+                    <div id="offPriceErr" class="field-error"></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="offUnit">Satuan Unit</label>
+                    <input id="offUnit" type="text" list="unitSuggestions" placeholder="kg / g / liter / ml / pcs / sesi" aria-describedby="offUnitHelper offUnitErr" />
+                    <datalist id="unitSuggestions">
+                      <option value="pcs"></option>
+                      <option value="kg"></option>
+                      <option value="g"></option>
+                      <option value="liter"></option>
+                      <option value="ml"></option>
+                      <option value="sesi"></option>
+                    </datalist>
+                    <div id="offUnitHelper" class="field-helper">Pilih satuan standar: kg, g, liter, ml, pcs, sesi.</div>
+                    <div id="offUnitErr" class="field-error"></div>
+                  </div>
+                </div>
+                <div class="chip-row" aria-label="Pilih cepat satuan">
+                  <button type="button" class="chip-btn js-unit-pick" data-unit="pcs">pcs</button>
+                  <button type="button" class="chip-btn js-unit-pick" data-unit="kg">kg</button>
+                  <button type="button" class="chip-btn js-unit-pick" data-unit="g">g</button>
+                  <button type="button" class="chip-btn js-unit-pick" data-unit="liter">liter</button>
+                  <button type="button" class="chip-btn js-unit-pick" data-unit="ml">ml</button>
+                  <button type="button" class="chip-btn js-unit-pick" data-unit="sesi">sesi</button>
+                </div>
+                <div class="form-actions">
+                  <button id="offSubmitBtn" type="submit" class="btn btn-primary">Tambah ke Katalog</button>
+                </div>
+                <div id="offStatus" class="status" aria-live="polite"></div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Daftar Katalog &amp; Sisa Stok Aktual</h2>
+                  <p class="muted" style="margin-top:4px;">Stok dan biaya rata-rata (WA) terbarui otomatis setiap pembelian dan penjualan.</p>
+                </div>
+                <a href="#transaksi" class="btn btn-soft">+ Beli Stok / Jual</a>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Produk / Jasa</th>
+                      <th>Tipe</th>
+                      <th>Harga Jual</th>
+                      <th>Sisa Stok Aktual</th>
+                      <th>Nilai Stok (WA)</th>
+                      <th>Status Pajak</th>
+                    </tr>
+                  </thead>
+                  <tbody id="offeringTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 4: ANALISIS & HARGA -->
+        <section id="view-analisis" class="view-section hidden" aria-label="Simulasi Harga dan Benchmark Pasar">
+          <div class="banner banner-readonly" role="note">
+            <div>
+              <strong>Mode Analisis (Read-Only):</strong> Perhitungan Simulasi dan Benchmark Pasar bersifat eksploratif dan <strong>tidak pernah mengubah</strong> harga katalog, stok persediaan, kas, maupun buku besar usaha.
+            </div>
+            <span class="pill pill-sim">Read-Only</span>
+          </div>
+
+          <div id="analisisNoWorkspace" class="empty-state hidden">
+            <h3>Belum Ada Profil Usaha Aktif</h3>
+            <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu agar analisis dapat merujuk produk/jasa di katalog Anda.</p>
+            <div class="form-actions" style="margin-top:0;">
+              <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
+              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+            </div>
+          </div>
+
+          <div id="analisisMain" class="card hidden">
+            <div class="subtabs" role="tablist" aria-label="Alat analisis harga">
+              <button id="tabSimBtn" type="button" class="subtab-btn" role="tab" aria-selected="true" aria-controls="simPanel">Simulasi Harga &amp; Diskon</button>
+              <button id="tabBenchBtn" type="button" class="subtab-btn" role="tab" aria-selected="false" aria-controls="benchPanel">Benchmark Harga Pasar</button>
+            </div>
+
+            <!-- SIMULASI PANEL -->
+            <div id="simPanel" role="tabpanel" aria-labelledby="tabSimBtn">
+              <div class="chip-row">
+                <button type="button" class="chip-btn" id="simPresetManualBtn">Contoh Manual (Rp 5.000 · Biaya Rp 3.000 · Diskon 20%)</button>
+                <button type="button" class="chip-btn" id="simPresetCatalogBtn">Pakai Produk Katalog Pertama</button>
+              </div>
+              <form id="simForm" novalidate>
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="field-label" for="simOffering">Referensi Produk/Jasa (Opsional)</label>
+                    <select id="simOffering" aria-describedby="simOfferingHelper">
+                      <option value="">-- Input Manual --</option>
+                    </select>
+                    <div id="simOfferingHelper" class="field-helper">Jika barang punya stok WA, biaya pokok otomatis diisi bila kolom biaya dikosongkan.</div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="simPrice">Harga Jual Simulasi (IDR)</label>
+                    <input id="simPrice" type="number" min="0" step="1" placeholder="Contoh: 5000" aria-describedby="simPriceErr" />
+                    <div id="simPriceErr" class="field-error"></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="simCost">Estimasi Biaya Unit (IDR, opsional)</label>
+                    <input id="simCost" type="number" min="0" step="1" placeholder="Kosongkan untuk WA otomatis" aria-describedby="simCostHelper simCostErr" />
+                    <div id="simCostHelper" class="field-helper">Untuk jasa atau stok 0, isi estimasi biaya manual agar margin dapat dihitung.</div>
+                    <div id="simCostErr" class="field-error"></div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="simDiscount">Diskon (%)</label>
+                    <input id="simDiscount" type="text" inputmode="decimal" placeholder="0 - 100" aria-describedby="simDiscountErr" />
+                    <div id="simDiscountErr" class="field-error"></div>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button id="simSubmitBtn" type="submit" class="btn btn-primary">Hitung Simulasi</button>
+                </div>
+                <div id="simStatus" class="status" aria-live="polite"></div>
+                <div id="simResultGrid" class="kpi-grid"></div>
+              </form>
+            </div>
+
+            <!-- BENCHMARK PANEL -->
+            <div id="benchPanel" class="hidden" role="tabpanel" aria-labelledby="tabBenchBtn">
+              <div id="benchNoOfferingEmpty" class="empty-state hidden">
+                <h3>Katalog Produk Masih Kosong</h3>
+                <p class="muted">Tambahkan minimal satu produk (mis. Beras Medium ber-satuan kg) di Katalog sebelum menjalankan perbandingan harga pasar.</p>
+                <a href="#katalog" class="btn btn-primary">Tambah Produk di Katalog</a>
+              </div>
+              <div id="benchFormWrap">
+                <div class="chip-row">
+                  <button type="button" class="chip-btn" id="benchPresetOfficialBtn">Contoh Cocok: Beras Medium (kg) vs Bapanas (Historis)</button>
+                  <button type="button" class="chip-btn" id="benchPresetManualBtn">Contoh Survei Manual Pasar Baru</button>
+                </div>
+                <form id="benchForm" novalidate>
+                  <div class="form-grid">
+                    <div class="field">
+                      <label class="field-label" for="benchOfferingId">Produk / Jasa di Katalog</label>
+                      <select id="benchOfferingId" aria-describedby="benchOfferingErr"></select>
+                      <div id="benchOfferingErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchSourceKind">Sumber Data Benchmark</label>
+                      <select id="benchSourceKind">
+                        <option value="transcribed_official">Data Resmi · Historis (Bapanas Maret 2026)</option>
+                        <option value="synthetic_demo">Demo Sintetis (Bukan Observasi Nyata)</option>
+                        <option value="manual_fallback">Survei Manual Operator (dengan Bukti)</option>
+                      </select>
+                    </div>
+                    <div id="benchSnapshotWrap" class="field field-full">
+                      <label class="field-label" for="benchSnapshotId">Snapshot Komoditas</label>
+                      <select id="benchSnapshotId"></select>
+                    </div>
+                  </div>
+
+                  <div id="benchManualWrap" class="form-grid hidden" style="margin-top:12px;">
+                    <div class="field">
+                      <label class="field-label" for="benchSourceLabel">Label Sumber Survei (wajib)</label>
+                      <input id="benchSourceLabel" type="text" placeholder="Contoh: Survei Pasar Tradisional" aria-describedby="benchSourceLabelErr" />
+                      <div id="benchSourceLabelErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchEvidenceNote">Catatan Bukti / Evidence (wajib)</label>
+                      <input id="benchEvidenceNote" type="text" placeholder="Contoh: Foto papan harga kios #12" aria-describedby="benchEvidenceNoteErr" />
+                      <div id="benchEvidenceNoteErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchSourceUrl">URL Referensi (opsional)</label>
+                      <input id="benchSourceUrl" type="url" placeholder="https://contoh.go.id/publikasi-harga..." aria-describedby="benchSourceUrlErr" />
+                      <div id="benchSourceUrlErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchObservedAt">Tanggal Observasi (ISO)</label>
+                      <input id="benchObservedAt" type="text" value="2026-11-27" aria-describedby="benchObservedAtErr" />
+                      <div id="benchObservedAtErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchLocationMarket">Lokasi / Pasar</label>
+                      <input id="benchLocationMarket" type="text" placeholder="Contoh: Pasar Baru, Bandung" aria-describedby="benchLocationMarketErr" />
+                      <div id="benchLocationMarketErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchUnit">Satuan Benchmark</label>
+                      <input id="benchUnit" type="text" value="kg" aria-describedby="benchUnitErr" />
+                      <div id="benchUnitErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchQuantity">Kuantitas Referensi</label>
+                      <input id="benchQuantity" type="text" inputmode="decimal" value="1" aria-describedby="benchQuantityErr" />
+                      <div id="benchQuantityErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchObservedPrice">Harga Observasi (IDR)</label>
+                      <input id="benchObservedPrice" type="number" min="0" step="1" value="14000" aria-describedby="benchObservedPriceErr" />
+                      <div id="benchObservedPriceErr" class="field-error"></div>
+                    </div>
+                  </div>
+
+                  <div id="benchUnitCompat" class="banner banner-info" style="margin-top:12px;"></div>
+
+                  <div class="form-actions">
+                    <button id="benchSubmitBtn" type="submit" class="btn btn-primary">Bandingkan Harga</button>
+                  </div>
+                  <div id="benchStatus" class="status" aria-live="polite"></div>
+                  <div id="benchResultGrid" class="kpi-grid"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 5: PROFIL & DEMO + SKENARIO PER FITUR -->
+        <section id="view-profil" class="view-section hidden" aria-label="Profil Usaha, Mode Demo Terisolasi, dan Skenario Fitur">
+          <div class="card card-elevated" id="demoControlCard">
+            <div class="card-header">
+              <div>
+                <h2>Mode Demo Terisolasi &amp; Transparansi Sumber Data</h2>
+                <p class="muted" style="margin-top:4px;">Uji seluruh alur MarketStudio dalam 1 klik tanpa mencemari workspace usaha nyata.</p>
+              </div>
+              <span class="pill pill-demo">Demo Sintetis Terisolasi</span>
+            </div>
+            <div class="kpi-grid" style="margin-top:0; margin-bottom:12px;">
+              <div class="kpi" style="background:var(--surface);">
+                <div class="kpi-top"><span class="label">1. Skenario Pengguna Demo</span><span class="pill pill-demo">Sintetis</span></div>
+                <div class="sub">Fixture interaktif <strong>Warung Bakso &amp; Sembako</strong> (idempoten: klik berulang tidak menggandakan data). Transaksi manual lanjutan tetap aksi eksplisit Anda.</div>
+              </div>
+              <div class="kpi" style="background:var(--surface);">
+                <div class="kpi-top"><span class="label">2. Data Nyata Historis</span><span class="pill pill-hist">Historis</span></div>
+                <div class="sub">Transkripsi resmi <strong>Bapanas Maret 2026</strong> (Beras Medium Rp 13.378/kg Nasional). Bukan harga spot hari ini dan tidak disamakan dengan data sintetis.</div>
+              </div>
+              <div class="kpi" style="background:var(--surface);">
+                <div class="kpi-top"><span class="label">3. Automated Test Suite</span><span class="pill pill-roadmap">Teknis</span></div>
+                <div class="sub">Pengujian otomatis <code>unittest</code> &amp; Playwright memakai DB SQLite sementara terpisah (<code>/tmp</code>) dan bukan skenario pengguna langsung.</div>
+              </div>
+            </div>
+            <div class="form-actions" style="margin-top:0;">
+              <button id="loadDemoBtn" type="button" class="btn btn-primary">Muat Demo Terisolasi: Warung Bakso &amp; Sembako</button>
+              <a href="#ringkasan" class="btn btn-secondary">Buka Ringkasan</a>
+            </div>
+            <div id="demoStatus" class="status" aria-live="polite"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Profil Usaha (Workspace)</h2>
+                <p class="muted" style="margin-top:4px;">Pilih workspace aktif atau buat profil usaha baru. Setiap workspace terisolasi penuh (tenant-isolated).</p>
+              </div>
+              <span class="pill pill-actual">Multi-Workspace</span>
+            </div>
+
+            <div class="field" style="max-width:520px; margin-bottom:14px;">
+              <label class="field-label" for="workspaceSelect">Pilih Usaha Aktif</label>
+              <select id="workspaceSelect"></select>
+              <div id="profilActiveMeta" class="field-helper">Zona waktu baku: Asia/Jakarta (WIB) • Mata uang: IDR</div>
+            </div>
+
+            <form id="workspaceForm" novalidate>
+              <div class="form-grid">
+                <div class="field">
+                  <label class="field-label" for="wsName">Nama Profil Usaha Baru</label>
+                  <input id="wsName" type="text" placeholder="Contoh: Warung Bakso Maju" aria-describedby="wsNameErr" />
+                  <div id="wsNameErr" class="field-error"></div>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="wsType">Tipe Bisnis</label>
+                  <select id="wsType">
+                    <option value="umkm_hybrid">UMKM Hybrid (Barang &amp; Jasa)</option>
+                    <option value="goods_retail">Barang / Retail</option>
+                    <option value="service_studio">Jasa / Layanan</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button id="wsSubmitBtn" type="submit" class="btn btn-primary">Buat Profil Usaha</button>
+              </div>
+              <div id="wsStatus" class="status" aria-live="polite"></div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Skenario Demo Per Fitur (Setup, Aksi, Input &amp; Expected Output)</h2>
+                <p class="muted" style="margin-top:4px;">Panduan uji manual untuk Product Owner. Seluruh angka di bawah diverifikasi cocok dengan perhitungan oracle sistem.</p>
+              </div>
+              <span class="pill pill-demo">Panduan Fitur</span>
+            </div>
+
+            <div class="scenario-grid">
+              <article class="scenario-card">
+                <div>
+                  <div class="kpi-top" style="margin-bottom:8px;">
+                    <h3>1. Demo Terisolasi &amp; Idempotensi</h3>
+                    <span class="pill pill-demo">Profil &amp; Demo</span>
+                  </div>
+                  <dl class="scenario-dl">
+                    <dt>Setup</dt>
+                    <dd>Buka layar Profil &amp; Demo atau tombol Muat Demo Terisolasi dari keadaan kosong maupun saat sudah ada usaha nyata.</dd>
+                    <dt>Aksi</dt>
+                    <dd>Klik <strong>Muat Demo Terisolasi</strong> 1 kali, lalu klik kembali 1 kali lagi.</dd>
+                    <dt>Input</dt>
+                    <dd>Skenario baku <code>warung_bakso_sembako_v1</code> (otomatis).</dd>
+                    <dt>Expected Output</dt>
+                    <dd>Terbuat 1 workspace demo terpisah berisi 3 produk/jasa, 2 pembelian (<code>Rp 90.000</code> + <code>Rp 120.000</code>), dan 1 penjualan (<code>Rp 60.000</code>). Klik kedua membuka workspace yang sama tanpa menduplikasi data.</dd>
+                  </dl>
+                </div>
+                <a href="#ringkasan" class="btn btn-soft">Lihat Hasil di Ringkasan</a>
+              </article>
+
+              <article class="scenario-card">
+                <div>
+                  <div class="kpi-top" style="margin-bottom:8px;">
+                    <h3>2. Katalog Produk/Jasa &amp; Sisa Stok</h3>
+                    <span class="pill pill-actual">Business Studio</span>
+                  </div>
+                  <dl class="scenario-dl">
+                    <dt>Setup</dt>
+                    <dd>Aktifkan workspace Demo Sintetis atau workspace milik sendiri.</dd>
+                    <dt>Aksi</dt>
+                    <dd>Buka menu <strong>Katalog &amp; Stok</strong>, cek daftar stok atau tambah item baru memakai preset.</dd>
+                    <dt>Input</dt>
+                    <dd><code>Bakso Urat</code> (<code>pcs</code>, Rp 15.000), <code>Beras Medium</code> (<code>kg</code>, Rp 14.500), <code>Jasa Katering Acara</code> (<code>sesi</code>, Rp 500.000).</dd>
+                    <dt>Expected Output</dt>
+                    <dd>Sisa stok tampil aktual: Bakso <code>6 pcs</code> (<code>Rp 54.000</code>), Beras <code>10 kg</code> (<code>Rp 120.000</code>), Jasa bertanda <em>Tidak melacak stok</em>, dan Pajak berstatus <em>Belum dinilai</em>.</dd>
+                  </dl>
+                </div>
+                <a href="#katalog" class="btn btn-soft">Buka Katalog &amp; Stok</a>
+              </article>
+
+              <article class="scenario-card">
+                <div>
+                  <div class="kpi-top" style="margin-bottom:8px;">
+                    <h3>3. Penjualan Tunai &amp; Tutup Hari</h3>
+                    <span class="pill pill-actual">Business Studio</span>
+                  </div>
+                  <dl class="scenario-dl">
+                    <dt>Setup</dt>
+                    <dd>Pada workspace demo awal: Omzet <code>Rp 60.000</code>, HPP <code>Rp 36.000</code>, Laba Kotor <code>Rp 24.000</code>, Arus Kas Bersih <code>-Rp 150.000</code> (gabungan beli Bakso <code>Rp 90.000</code> + beli Beras <code>Rp 120.000</code> - jual <code>Rp 60.000</code>), Stok Akhir <code>Rp 174.000</code> (<code>Rp 54.000 + Rp 120.000</code>). <em>(Catatan: -Rp 30.000 hanya berlaku bila skenario Bakso saja tanpa pembelian Beras.)</em></dd>
+                    <dt>Aksi</dt>
+                    <dd>Catat 1 penjualan lanjutan di menu <strong>Transaksi</strong>, lalu cek <strong>Ringkasan</strong>.</dd>
+                    <dt>Input</dt>
+                    <dd>Offering <code>Bakso Urat</code>, Qty <code>2 pcs</code>, Harga Jual saran <code>Rp 30.000</code>.</dd>
+                    <dt>Expected Output</dt>
+                    <dd>Stok Bakso berkurang menjadi <code>4 pcs</code> (<code>Rp 36.000</code>); Ringkasan Harian menjadi Omzet <code>Rp 90.000</code>, HPP <code>Rp 54.000</code>, Laba Kotor <code>Rp 36.000</code>, Arus Kas Bersih <code>-Rp 120.000</code>, Nilai Stok Akhir <code>Rp 156.000</code>.</dd>
+                  </dl>
+                </div>
+                <a href="#transaksi" class="btn btn-soft">Buka Transaksi Harian</a>
+              </article>
+
+              <article class="scenario-card">
+                <div>
+                  <div class="kpi-top" style="margin-bottom:8px;">
+                    <h3>4. Simulasi Harga &amp; Diskon</h3>
+                    <span class="pill pill-sim">Read-Only</span>
+                  </div>
+                  <dl class="scenario-dl">
+                    <dt>Setup</dt>
+                    <dd>Buka <strong>Spreadsheet Studio → Analisis &amp; Harga</strong>, tab Simulasi.</dd>
+                    <dt>Aksi</dt>
+                    <dd>Jalankan simulasi harga diskon secara aman tanpa menyentuh pembukuan.</dd>
+                    <dt>Input</dt>
+                    <dd>Harga Jual <code>Rp 5.000</code>, Biaya Unit <code>Rp 3.000</code>, Diskon <code>20%</code>.</dd>
+                    <dt>Expected Output</dt>
+                    <dd>Harga Nett <code>Rp 4.000</code>, Selisih Kotor <code>Rp 1.000</code>, Margin <code>25%</code>, Markup <code>33.33%</code>. Ditandai <em>Simulasi Read-Only</em> dan tidak mengubah aset atau omzet.</dd>
+                  </dl>
+                </div>
+                <a href="#analisis" class="btn btn-soft">Buka Simulasi Diskon</a>
+              </article>
+
+              <article class="scenario-card">
+                <div>
+                  <div class="kpi-top" style="margin-bottom:8px;">
+                    <h3>5. Benchmark Harga Pasar &amp; Bukti</h3>
+                    <span class="pill pill-hist">Historis / Manual</span>
+                  </div>
+                  <dl class="scenario-dl">
+                    <dt>Setup</dt>
+                    <dd>Buka tab <strong>Benchmark Harga Pasar</strong> dengan offering <code>Beras Medium (kg)</code>.</dd>
+                    <dt>Aksi</dt>
+                    <dd>Bandingkan harga katalog terhadap referensi resmi historis atau survei manual.</dd>
+                    <dt>Input</dt>
+                    <dd>Snapshot resmi <code>Beras Medium (Bapanas Maret 2026)</code> = <code>Rp 13.378 / kg</code>.</dd>
+                    <dt>Expected Output</dt>
+                    <dd>Selisih <code>+Rp 1.122 (8.39%)</code> dengan label <em>Data Resmi · Historis</em> dan catatan halaman PDF Bapanas. Harga katalog <code>Rp 14.500/kg</code> tetap tidak berubah.</dd>
+                  </dl>
+                </div>
+                <a href="#analisis-benchmark" class="btn btn-soft">Buka Benchmark Pasar</a>
+              </article>
+
+              <article class="scenario-card">
+                <div>
+                  <div class="kpi-top" style="margin-bottom:8px;">
+                    <h3>6. AI Business Review (#14/#40/#41)</h3>
+                    <span class="pill pill-sim">Intelligence Studio</span>
+                  </div>
+                  <dl class="scenario-dl">
+                    <dt>Setup</dt>
+                    <dd>Buka <strong>Intelligence Studio</strong> pada workspace demo atau workspace usaha aktif.</dd>
+                    <dt>Aksi</dt>
+                    <dd>Klik <strong>Jalankan AI Business Review</strong> pada mode default atau stub test fixture.</dd>
+                    <dt>Input</dt>
+                    <dd>Tanggal aktif laporan harian + <code>Mode Eksekusi</code> (tanpa menyertakan nama usaha/PII ke provider).</dd>
+                    <dt>Expected Output</dt>
+                    <dd>Jika provider AI belum dikonfigurasi, sistem mengembalikan <code>deterministic_fallback</code> dengan ringkasan aman, sitasi <code>snapshot_id</code> &amp; <code>source_ids</code>, serta <code>missing_data</code> tanpa mengubah ledger.</dd>
+                  </dl>
+                </div>
+                <a href="#studio-intelligence" class="btn btn-soft">Buka Intelligence Studio</a>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 6: INTELLIGENCE STUDIO (AI BUSINESS REVIEW #14/#40/#41) -->
+        <section id="view-intelligence" class="view-section hidden" aria-label="Intelligence Studio dan AI Business Review">
+          <div class="banner banner-readonly" role="note">
+            <div>
+              <strong>Mode Preview Read-Only (Tanpa Mutasi Ledger):</strong> AI Business Review hanya membaca <code>MetricSnapshot</code> harian teranonimisasi (tanpa nama usaha, aktor, PII, atau secret). Jika provider AI live belum dikonfigurasi, sistem menjalankan <strong>fallback deterministik</strong> secara aman.
+            </div>
+            <span class="pill pill-sim">Preview</span>
+          </div>
+
+          <div id="intelligenceNoWorkspace" class="empty-state hidden">
+            <h3>Belum Ada Profil Usaha Aktif</h3>
+            <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu agar Intelligence Studio dapat menganalisis snapshot laporan harian.</p>
+            <div class="form-actions" style="margin-top:0;">
+              <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
+              <button type="button" class="btn btn-soft js-load-demo">Muat Demo Terisolasi</button>
+            </div>
+          </div>
+
+          <div id="intelligenceMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
+            <section class="card" id="aiReviewCard">
+              <div class="card-header">
+                <div>
+                  <h2>AI Business Review (#14/#40/#41)</h2>
+                  <p class="muted" style="margin-top:4px;">Read-only AI review berdasarkan snapshot laporan harian (tanpa mutasi ledger).</p>
+                </div>
+                <span id="aiProviderBadge" class="pill pill-roadmap">Cek Provider...</span>
+              </div>
+
+              <div id="aiConfigHint" class="banner banner-info" style="margin-bottom:12px;">
+                Memeriksa status konfigurasi provider AI...
+              </div>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label class="field-label" for="aiStubMode">Mode Eksekusi</label>
+                  <select id="aiStubMode" aria-describedby="aiStubModeHelper">
+                    <option value="">Provider Terkonfigurasi / Fallback Deterministik</option>
+                    <option value="stub_valid">Simulasi Stub (Test Fixture: Valid)</option>
+                    <option value="stub_timeout">Simulasi Stub (Test Fixture: Timeout -&gt; Fallback)</option>
+                    <option value="stub_fake_citation">Simulasi Stub (Test Fixture: Fake Citation -&gt; Fallback)</option>
+                  </select>
+                  <div id="aiStubModeHelper" class="field-helper">Mode default memakai provider terkonfigurasi atau fallback deterministik jika env belum disetel.</div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button id="runAiReviewBtn" type="button" class="btn btn-primary">Jalankan AI Business Review</button>
+                <a href="#ringkasan" class="btn btn-secondary">Lihat Laporan Harian</a>
+              </div>
+              <div id="aiReviewStatus" class="status" aria-live="polite"></div>
+              <div id="aiReviewGrid" class="kpi-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- VIEW 7: ROADMAP STUDIOS -->
+        <section id="view-roadmap" class="view-section hidden" aria-label="Status Roadmap Studio">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 id="roadmapStudioTitle">Studio Roadmap</h2>
+                <p id="roadmapStudioSub" class="muted" style="margin-top:4px;">Bagian dari arsitektur 6 Studio MarketStudio.</p>
+              </div>
+              <span class="pill pill-roadmap">Roadmap — Belum Aktif</span>
+            </div>
+            <div class="banner banner-info" style="margin-bottom:14px;">
+              <div>
+                <strong>Transparansi Status:</strong> <span id="roadmapStudioBody">Studio ini masih dalam tahap roadmap dan belum diaktifkan pada rilis baseline saat ini.</span>
+              </div>
+            </div>
+            <p class="muted" id="roadmapStudioScope" style="margin-bottom:14px;"></p>
+            <div class="form-actions" style="margin-top:0;">
+              <a href="#ringkasan" class="btn btn-primary">Kembali ke Ringkasan</a>
+              <a href="#transaksi" class="btn btn-secondary">Buka Business Studio (Transaksi)</a>
+              <a href="#analisis" class="btn btn-secondary">Buka Analisis &amp; Harga</a>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="Navigasi cepat ponsel">
+    <a href="#ringkasan" class="mobile-nav-btn" data-route="ringkasan">
+      <span aria-hidden="true">🏠</span>
+      <span>Ringkasan</span>
+    </a>
+    <a href="#transaksi" class="mobile-nav-btn" data-route="transaksi">
+      <span aria-hidden="true">💳</span>
+      <span>Transaksi</span>
+    </a>
+    <a href="#katalog" class="mobile-nav-btn" data-route="katalog">
+      <span aria-hidden="true">📦</span>
+      <span>Katalog</span>
+    </a>
+    <a href="#analisis" class="mobile-nav-btn" data-route="analisis">
+      <span aria-hidden="true">🧮</span>
+      <span>Analisis</span>
+    </a>
+    <a href="#profil" class="mobile-nav-btn" data-route="profil">
+      <span aria-hidden="true">🏢</span>
+      <span>Profil</span>
+    </a>
+  </nav>
 
   <script>
     const STORAGE_KEY = "marketstudio_active_workspace_id";
+    const ROUTE_STORAGE_KEY = "marketstudio_active_route";
     const SESSION_KEY = "marketstudio_session_token";
     const PUR_KEY_STORAGE = "marketstudio_pending_pur_key";
     const SALE_KEY_STORAGE = "marketstudio_pending_sale_key";
+    const DEMO_SCENARIO_SLUG = "warung_bakso_sembako_v1";
+
     let activeWorkspaceId = localStorage.getItem(STORAGE_KEY) || "";
     let sessionToken = localStorage.getItem(SESSION_KEY) || "";
+    let workspacesCache = [];
+    let offeringsCache = [];
+    let activeReportCache = null;
+
     let catalogReqSeq = 0;
     let reportReqSeq = 0;
+    let simReqSeq = 0;
+    let benchReqSeq = 0;
+
     let pendingPurKey = localStorage.getItem(PUR_KEY_STORAGE) || "";
     let pendingSaleKey = localStorage.getItem(SALE_KEY_STORAGE) || "";
+    let salePriceManualEdited = false;
+
+    const ROADMAP_INFO = {
+      "studio-creative": {
+        title: "Creative Studio",
+        sub: "Desain materi promosi, poster katalog, dan aset visual usaha.",
+        body: "Creative Studio belum diaktifkan pada rilis baseline saat ini agar pengguna hanya memakai alat yang sudah teruji penuh.",
+        scope: "Fitur editor poster dan aset pemasaran dijadwalkan pada fase berikutnya setelah alur katalog, harga, dan pencatatan harian stabil."
+      },
+      "studio-commerce": {
+        title: "Commerce Studio",
+        sub: "Sinkronisasi katalog & kanal penjualan multi-marketplace.",
+        body: "Commerce Studio belum diaktifkan karena konektor marketplace eksternal memerlukan persetujuan API dan tata kelola publikasi.",
+        scope: "Untuk saat ini, kelola daftar produk, harga jual, dan stok Anda secara langsung di Business Studio → Katalog & Stok."
+      },
+      "studio-social": {
+        title: "Social Studio",
+        sub: "Kalender konten terjadwal dan ringkasan performa media sosial.",
+        body: "Social Studio belum diaktifkan agar tidak ada klaim publikasi otomatis tanpa koneksi kanal resmi dan persetujuan pemilik.",
+        scope: "Gunakan Business Studio dan Analisis & Harga untuk menyiapkan penawaran dan harga promosi sebelum integrasi sosial hadir."
+      }
+    };
+
+    const SCREEN_GUIDES = {
+      "ringkasan": {
+        title: "Beranda / Ringkasan",
+        fungsi: "Memantau hasil usaha harian (Omzet, HPP, Laba Kotor, Arus Kas Bersih, Nilai Stok Akhir) dan melakukan tutup hari.",
+        input: "Pilih tanggal laporan (WIB) lalu muat laporan atau buka rincian audit transaksi.",
+        hasil: "Menampilkan angka aktual tercatat beserta rincian transaksi, mutasi stok, dan status pajak belum dinilai."
+      },
+      "transaksi": {
+        title: "Transaksi Harian — Business Studio",
+        fungsi: "Mencatat penjualan tunai pelanggan dan pembelian stok barang/hybrid dengan perlindungan idempoten.",
+        input: "Pilih produk/jasa, kuantitas beserta satuannya, dan total harga jual (saran otomatis dapat diedit) atau total biaya beli.",
+        hasil: "Mengubah kas tunai, mengurangi/menambah stok WA, menghitung HPP penjualan barang, dan memperbarui Ringkasan Harian."
+      },
+      "katalog": {
+        title: "Katalog & Stok — Business Studio",
+        fungsi: "Mengelola daftar produk barang, jasa, atau hybrid sekaligus memantau sisa stok aktual dan nilai persediaan WA.",
+        input: "Nama produk/jasa, tipe penawaran (barang/jasa/hybrid), harga satuan IDR, dan satuan (kg, g, liter, ml, pcs, sesi).",
+        hasil: "Menyimpan offering ke katalog workspace dan menampilkan sisa unit aktual setiap transaksi tercatat."
+      },
+      "analisis": {
+        title: "Spreadsheet Studio — Analisis & Harga",
+        fungsi: "Menguji skenario diskon/margin dan membandingkan harga jual terhadap referensi pasar secara read-only.",
+        input: "Produk/jasa referensi (opsional), harga jual, estimasi biaya, diskon %, atau sumber benchmark (resmi historis/demo/manual).",
+        hasil: "Menghasilkan estimasi margin atau selisih benchmark tanpa mengubah katalog, stok, kas, ataupun pembukuan."
+      },
+      "studio-intelligence": {
+        title: "Intelligence Studio — AI Business Review",
+        fungsi: "Menyediakan ringkasan analitik read-only berbasis MetricSnapshot harian teranonimisasi dengan fallback deterministik.",
+        input: "Pilih Mode Eksekusi (provider terkonfigurasi/fallback atau stub test fixture) lalu jalankan review.",
+        hasil: "Menampilkan ringkasan, sitasi snapshot & source IDs, missing_data, serta status fallback tanpa mutasi ledger."
+      },
+      "profil": {
+        title: "Profil Usaha & Mode Demo",
+        fungsi: "Mengelola workspace usaha, beralih antar profil, memuat mode demo terisolasi, dan melihat skenario fitur.",
+        input: "Nama profil usaha baru dan tipe bisnis, atau 1 klik Muat Demo Terisolasi.",
+        hasil: "Menyiapkan ruang kerja terisolasi antar-tenant beserta panduan Setup, Aksi, Input, dan Expected Output tiap fitur."
+      }
+    };
+
+    let benchmarkSnapshots = [
+      {
+        snapshot_id: "bapanas_beras_medium_maret_2026",
+        source_kind: "transcribed_official",
+        observation_period: "Maret 2026",
+        commodity_name: "Beras Medium",
+        observed_price_idr: 13378,
+        quantity: "1",
+        unit: "kg",
+        location_market: "Nasional (Tingkat Konsumen)"
+      },
+      {
+        snapshot_id: "demo_beras_medium_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Beras Medium (Demo Sintetis)",
+        observed_price_idr: 13500,
+        quantity: "1",
+        unit: "kg",
+        location_market: "Pasar Induk Kramat Jati, DKI Jakarta (Sintetis)"
+      },
+      {
+        snapshot_id: "demo_gula_pasir_500g_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Gula Konsumsi 500 g (Demo Sintetis)",
+        observed_price_idr: 9000,
+        quantity: "500",
+        unit: "g",
+        location_market: "Pasar Senen, DKI Jakarta (Sintetis)"
+      },
+      {
+        snapshot_id: "demo_minyak_goreng_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Minyak Goreng Kemasan Sederhana (Demo Sintetis)",
+        observed_price_idr: 17500,
+        quantity: "1",
+        unit: "liter",
+        location_market: "Pasar Minggu, DKI Jakarta (Sintetis)"
+      }
+    ];
+
+    // DOM refs
+    const globalLiveRegion = document.getElementById("globalLiveRegion");
+    const appSidebar = document.getElementById("appSidebar");
+    const drawerBackdrop = document.getElementById("drawerBackdrop");
+    const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+    const closeDrawerBtn = document.getElementById("closeDrawerBtn");
 
     const wsSelect = document.getElementById("workspaceSelect");
+    const sidebarWsSelect = document.getElementById("sidebarWorkspaceSelect");
+    const sidebarWsName = document.getElementById("sidebarWsName");
+    const sidebarWsMeta = document.getElementById("sidebarWsMeta");
+    const sidebarModeBadge = document.getElementById("sidebarModeBadge");
+    const mobileContextBadge = document.getElementById("mobileContextBadge");
+    const topWsName = document.getElementById("topWsName");
+    const topDataBadge = document.getElementById("topDataBadge");
+    const topTzLabel = document.getElementById("topTzLabel");
+    const demoContextBanner = document.getElementById("demoContextBanner");
+
+    const pageTitle = document.getElementById("pageTitle");
+    const screenGuide = document.getElementById("screenGuide");
+    const guideFungsi = document.getElementById("guideFungsi");
+    const guideInput = document.getElementById("guideInput");
+    const guideHasil = document.getElementById("guideHasil");
+
     const wsStatus = document.getElementById("wsStatus");
+    const onbWsStatus = document.getElementById("onbWsStatus");
+    const demoStatus = document.getElementById("demoStatus");
     const offStatus = document.getElementById("offStatus");
     const purStatus = document.getElementById("purStatus");
     const saleStatus = document.getElementById("saleStatus");
+    const simStatus = document.getElementById("simStatus");
+    const benchStatus = document.getElementById("benchStatus");
+
     const offBody = document.getElementById("offeringTableBody");
     const purOffering = document.getElementById("purOffering");
     const saleOffering = document.getElementById("saleOffering");
+    const simOffering = document.getElementById("simOffering");
+    const benchOffering = document.getElementById("benchOfferingId");
 
-    function setStatus(el, msg, isErr = false) {
+    function announce(msg) {
+      globalLiveRegion.textContent = "";
+      setTimeout(() => {
+        globalLiveRegion.textContent = msg;
+      }, 20);
+    }
+
+    function setStatus(el, msg, variant = "ok") {
+      if (!el) return;
       el.textContent = msg;
-      el.className = "status " + (isErr ? "err" : "ok");
+      if (!msg) {
+        el.className = "status";
+        el.removeAttribute("role");
+        return;
+      }
+      const cls = variant === true || variant === "err" ? "err" : (variant === "info" ? "info" : "ok");
+      el.className = "status " + cls;
+      if (cls === "err") {
+        el.setAttribute("role", "alert");
+      } else {
+        el.removeAttribute("role");
+      }
+      announce(msg);
+    }
+
+    function clearFieldErrors(container) {
+      container.querySelectorAll("[aria-invalid='true']").forEach((el) => el.removeAttribute("aria-invalid"));
+      container.querySelectorAll(".field-error").forEach((el) => {
+        el.textContent = "";
+      });
+    }
+
+    function setFieldError(inputId, errId, msg) {
+      const input = document.getElementById(inputId);
+      const err = document.getElementById(errId);
+      if (input) input.setAttribute("aria-invalid", "true");
+      if (err) err.textContent = msg;
     }
 
     function fmtIdr(val) {
-      if (val === null || val === undefined) return "open / unavailable";
-      return "Rp " + Number(val).toLocaleString("id-ID");
+      if (val === null || val === undefined) return "Belum dinilai";
+      const n = Number(val);
+      const abs = Math.abs(n).toLocaleString("id-ID");
+      return n < 0 ? `-Rp ${abs}` : `Rp ${abs}`;
+    }
+
+    function fmtBusinessType(code) {
+      if (code === "goods_retail") return "Barang / Retail";
+      if (code === "service_studio") return "Jasa / Layanan";
+      return "UMKM Hybrid";
+    }
+
+    function fmtOfferingType(code) {
+      if (code === "goods") return "Barang";
+      if (code === "service") return "Jasa";
+      if (code === "hybrid") return "Hybrid";
+      return code || "-";
+    }
+
+    function fmtQty(raw) {
+      if (raw === null || raw === undefined) return "0";
+      const s = String(raw);
+      return s.includes(".") ? s.replace(/\.?0+$/, "") : s;
+    }
+
+    function todayJakartaIso() {
+      try {
+        return new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Jakarta",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }).format(new Date());
+      } catch {
+        return new Date().toISOString().slice(0, 10);
+      }
+    }
+
+    function fmtJakartaDateTime(isoStr) {
+      if (!isoStr) return "-";
+      const dt = new Date(isoStr);
+      if (Number.isNaN(dt.getTime())) return isoStr;
+      try {
+        return new Intl.DateTimeFormat("id-ID", {
+          timeZone: "Asia/Jakarta",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(dt) + " WIB";
+      } catch {
+        return isoStr;
+      }
+    }
+
+    function fmtJakartaDateLabel(ymd) {
+      if (!ymd) return "Hari ini (Asia/Jakarta / WIB)";
+      const dt = new Date(`${ymd}T12:00:00+07:00`);
+      if (Number.isNaN(dt.getTime())) return `${ymd} (Asia/Jakarta / WIB)`;
+      try {
+        return new Intl.DateTimeFormat("id-ID", {
+          timeZone: "Asia/Jakarta",
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        }).format(dt) + " (Asia/Jakarta / WIB)";
+      } catch {
+        return `${ymd} (Asia/Jakarta / WIB)`;
+      }
+    }
+
+    function makePill(text, cls) {
+      const span = document.createElement("span");
+      span.className = "pill " + cls;
+      span.textContent = text;
+      return span;
     }
 
     async function ensureSession() {
@@ -391,11 +2405,15 @@
       const headers = Object.assign({}, options.headers || {}, {
         "Authorization": "Bearer " + sessionToken
       });
-      const res = await fetch(url, Object.assign({}, options, { headers }));
+      let res = await fetch(url, Object.assign({}, options, { headers }));
       if (res.status === 401) {
         sessionToken = "";
         localStorage.removeItem(SESSION_KEY);
-        setStatus(wsStatus, "Sesi tidak valid (401). Muat ulang halaman untuk login ulang.", true);
+        await ensureSession();
+        const retryHeaders = Object.assign({}, options.headers || {}, {
+          "Authorization": "Bearer " + sessionToken
+        });
+        res = await fetch(url, Object.assign({}, options, { headers: retryHeaders }));
       }
       return res;
     }
@@ -413,232 +2431,1041 @@
       return key;
     }
 
+    function getActiveWorkspace() {
+      return workspacesCache.find((w) => w.workspace_id === activeWorkspaceId) || null;
+    }
+
+    // Drawer control for mobile
+    function openMobileDrawer() {
+      appSidebar.classList.add("drawer-open");
+      drawerBackdrop.classList.add("open");
+      mobileMenuBtn.setAttribute("aria-expanded", "true");
+      closeDrawerBtn.focus();
+    }
+
+    function closeMobileDrawer(returnFocus = false) {
+      appSidebar.classList.remove("drawer-open");
+      drawerBackdrop.classList.remove("open");
+      mobileMenuBtn.setAttribute("aria-expanded", "false");
+      if (returnFocus) mobileMenuBtn.focus();
+    }
+
+    mobileMenuBtn.addEventListener("click", openMobileDrawer);
+    closeDrawerBtn.addEventListener("click", () => closeMobileDrawer(true));
+    drawerBackdrop.addEventListener("click", () => closeMobileDrawer(true));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && appSidebar.classList.contains("drawer-open")) {
+        closeMobileDrawer(true);
+      }
+    });
+
+    // Routing & Deep Links
+    function normalizeRouteFromHash(rawHash) {
+      const clean = (rawHash || "").replace(/^#/, "").trim().toLowerCase();
+      if (clean === "transaksi-pembelian") return { route: "transaksi", subtab: "purchase" };
+      if (clean === "transaksi" || clean === "transaksi-penjualan") return { route: "transaksi", subtab: "sale" };
+      if (clean === "analisis-benchmark") return { route: "analisis", subtab: "benchmark" };
+      if (clean === "analisis" || clean === "analisis-simulasi") return { route: "analisis", subtab: "sim" };
+      if (clean === "studio-intelligence" || clean === "intelligence") return { route: "studio-intelligence", subtab: null };
+      if (["ringkasan", "katalog", "profil"].includes(clean)) return { route: clean, subtab: null };
+      if (ROADMAP_INFO[clean]) return { route: clean, subtab: null };
+      return null;
+    }
+
+    function setTxSubtab(mode) {
+      const isPur = mode === "purchase";
+      document.getElementById("tabSaleBtn").setAttribute("aria-selected", isPur ? "false" : "true");
+      document.getElementById("tabPurchaseBtn").setAttribute("aria-selected", isPur ? "true" : "false");
+      document.getElementById("salePanel").classList.toggle("hidden", isPur);
+      document.getElementById("purchasePanel").classList.toggle("hidden", !isPur);
+    }
+
+    function setAnalisisSubtab(mode) {
+      const isBench = mode === "benchmark";
+      document.getElementById("tabSimBtn").setAttribute("aria-selected", isBench ? "false" : "true");
+      document.getElementById("tabBenchBtn").setAttribute("aria-selected", isBench ? "true" : "false");
+      document.getElementById("simPanel").classList.toggle("hidden", isBench);
+      document.getElementById("benchPanel").classList.toggle("hidden", !isBench);
+    }
+
+    let currentRoute = "ringkasan";
+
+    function applyRoute(routeInfo, updateHash = false) {
+      const route = routeInfo ? routeInfo.route : "ringkasan";
+      currentRoute = route;
+      localStorage.setItem(ROUTE_STORAGE_KEY, route);
+
+      if (updateHash) {
+        let targetHash = "#" + route;
+        if (route === "transaksi" && routeInfo && routeInfo.subtab === "purchase") targetHash = "#transaksi-pembelian";
+        if (route === "analisis" && routeInfo && routeInfo.subtab === "benchmark") targetHash = "#analisis-benchmark";
+        if (window.location.hash !== targetHash) {
+          window.location.hash = targetHash;
+        }
+      }
+
+      document.querySelectorAll(".view-section").forEach((sec) => sec.classList.add("hidden"));
+
+      const isRoadmap = Boolean(ROADMAP_INFO[route]);
+      if (isRoadmap) {
+        const info = ROADMAP_INFO[route];
+        pageTitle.textContent = info.title;
+        screenGuide.classList.add("hidden");
+        document.getElementById("roadmapStudioTitle").textContent = info.title;
+        document.getElementById("roadmapStudioSub").textContent = info.sub;
+        document.getElementById("roadmapStudioBody").textContent = info.body;
+        document.getElementById("roadmapStudioScope").textContent = info.scope;
+        document.getElementById("view-roadmap").classList.remove("hidden");
+      } else {
+        const g = SCREEN_GUIDES[route] || SCREEN_GUIDES.ringkasan;
+        pageTitle.textContent = g.title;
+        guideFungsi.textContent = g.fungsi;
+        guideInput.textContent = g.input;
+        guideHasil.textContent = g.hasil;
+        screenGuide.classList.remove("hidden");
+        const sectionId = route === "studio-intelligence" ? "view-intelligence" : `view-${route}`;
+        const targetSection = document.getElementById(sectionId);
+        if (targetSection) targetSection.classList.remove("hidden");
+      }
+
+      if (route === "studio-intelligence" && activeWorkspaceId) {
+        loadAiReviewConfig();
+      }
+
+      if (route === "transaksi" && routeInfo && routeInfo.subtab) {
+        setTxSubtab(routeInfo.subtab);
+      }
+      if (route === "analisis" && routeInfo && routeInfo.subtab) {
+        setAnalisisSubtab(routeInfo.subtab);
+      }
+
+      document.querySelectorAll("[data-route]").forEach((link) => {
+        if (link.dataset.route === route) {
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+
+      closeMobileDrawer(false);
+    }
+
+    window.addEventListener("hashchange", () => {
+      const parsed = normalizeRouteFromHash(window.location.hash);
+      if (parsed) applyRoute(parsed, false);
+    });
+
+    document.querySelectorAll("a[href^='#']").forEach((a) => {
+      a.addEventListener("click", (e) => {
+        const parsed = normalizeRouteFromHash(a.getAttribute("href"));
+        if (parsed) {
+          e.preventDefault();
+          applyRoute(parsed, true);
+        }
+      });
+    });
+
+    document.getElementById("tabSaleBtn").addEventListener("click", () => {
+      setTxSubtab("sale");
+      window.location.hash = "#transaksi";
+    });
+    document.getElementById("tabPurchaseBtn").addEventListener("click", () => {
+      setTxSubtab("purchase");
+      window.location.hash = "#transaksi-pembelian";
+    });
+    document.getElementById("tabSimBtn").addEventListener("click", () => {
+      setAnalisisSubtab("sim");
+      window.location.hash = "#analisis";
+    });
+    document.getElementById("tabBenchBtn").addEventListener("click", () => {
+      setAnalisisSubtab("benchmark");
+      window.location.hash = "#analisis-benchmark";
+    });
+
+    // Context & Empty State Sync
+    function renderWorkspaceContext() {
+      const ws = getActiveWorkspace();
+      if (!ws) {
+        sidebarWsName.textContent = "Belum ada profil usaha";
+        sidebarWsMeta.textContent = "IDR • Asia/Jakarta (WIB)";
+        sidebarModeBadge.textContent = "Kosong";
+        sidebarModeBadge.className = "pill pill-roadmap";
+        mobileContextBadge.textContent = "Kosong";
+        mobileContextBadge.className = "pill pill-roadmap";
+        topWsName.textContent = "Belum ada profil usaha";
+        topDataBadge.textContent = "Belum Ada Usaha";
+        topDataBadge.className = "pill pill-roadmap";
+        topTzLabel.textContent = "Zona waktu: Asia/Jakarta (WIB)";
+        demoContextBanner.classList.add("hidden");
+        document.getElementById("profilActiveMeta").textContent = "Pilih atau buat profil usaha baru untuk memulai.";
+      } else {
+        const isDemo = Boolean(ws.is_demo);
+        const typeLabel = fmtBusinessType(ws.business_type);
+        const modeText = isDemo ? "Demo Sintetis" : "Data Lokal";
+        const modeCls = isDemo ? "pill pill-demo" : "pill pill-actual";
+
+        sidebarWsName.textContent = ws.name;
+        sidebarWsMeta.textContent = `${typeLabel} • ${ws.currency} • ${ws.timezone}`;
+        sidebarModeBadge.textContent = modeText;
+        sidebarModeBadge.className = modeCls;
+        mobileContextBadge.textContent = modeText;
+        mobileContextBadge.className = modeCls;
+        topWsName.textContent = ws.name;
+        topDataBadge.textContent = modeText;
+        topDataBadge.className = modeCls;
+        topTzLabel.textContent = `Zona waktu: ${ws.timezone} (WIB)`;
+        demoContextBanner.classList.toggle("hidden", !isDemo);
+        document.getElementById("profilActiveMeta").textContent =
+          `${ws.name} • ${typeLabel} • ${ws.currency} • ${ws.timezone} (${modeText})`;
+      }
+
+      const hasWs = Boolean(ws);
+      document.getElementById("ringkasanEmptyState").classList.toggle("hidden", hasWs);
+      document.getElementById("ringkasanPopulated").classList.toggle("hidden", !hasWs);
+
+      document.getElementById("transaksiNoWorkspace").classList.toggle("hidden", hasWs);
+      document.getElementById("transaksiMain").classList.toggle("hidden", !hasWs);
+
+      document.getElementById("katalogNoWorkspace").classList.toggle("hidden", hasWs);
+      document.getElementById("katalogMain").classList.toggle("hidden", !hasWs);
+
+      document.getElementById("analisisNoWorkspace").classList.toggle("hidden", hasWs);
+      document.getElementById("analisisMain").classList.toggle("hidden", !hasWs);
+
+      document.getElementById("intelligenceNoWorkspace").classList.toggle("hidden", hasWs);
+      document.getElementById("intelligenceMain").classList.toggle("hidden", !hasWs);
+    }
+
+    function populateWorkspaceSelects() {
+      [wsSelect, sidebarWsSelect].forEach((sel) => {
+        sel.textContent = "";
+        if (workspacesCache.length === 0) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "-- Belum ada profil usaha --";
+          sel.appendChild(opt);
+          return;
+        }
+        workspacesCache.forEach((ws) => {
+          const opt = document.createElement("option");
+          opt.value = ws.workspace_id;
+          const prefix = ws.is_demo ? "[Demo Sintetis] " : "";
+          opt.textContent = `${prefix}${ws.name} (${fmtBusinessType(ws.business_type)})`;
+          sel.appendChild(opt);
+        });
+        sel.value = activeWorkspaceId;
+      });
+    }
+
+    async function switchWorkspace(newWsId) {
+      activeWorkspaceId = newWsId || "";
+      if (activeWorkspaceId) {
+        localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      pendingPurKey = "";
+      pendingSaleKey = "";
+      localStorage.removeItem(PUR_KEY_STORAGE);
+      localStorage.removeItem(SALE_KEY_STORAGE);
+      simReqSeq++;
+      benchReqSeq++;
+      clearAiReviewResults();
+      document.getElementById("simResultGrid").textContent = "";
+      setStatus(simStatus, "");
+      document.getElementById("benchResultGrid").textContent = "";
+      setStatus(benchStatus, "");
+      populateWorkspaceSelects();
+      renderWorkspaceContext();
+      if (activeWorkspaceId) {
+        await Promise.all([loadOfferings(), loadReport(), loadBenchmarkSnapshots(), loadAiReviewConfig()]);
+      } else {
+        offeringsCache = [];
+        activeReportCache = null;
+      }
+    }
+
+    wsSelect.addEventListener("change", () => switchWorkspace(wsSelect.value));
+    sidebarWsSelect.addEventListener("change", () => switchWorkspace(sidebarWsSelect.value));
+
     async function loadWorkspaces() {
       const res = await apiFetch("/v1/workspaces");
-      if (res.status === 401) return;
+      if (!res.ok) return;
       const data = await res.json();
-      wsSelect.textContent = "";
-      if (!data.items || data.items.length === 0) {
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "-- Belum ada workspace --";
-        wsSelect.appendChild(opt);
+      workspacesCache = data.items || [];
+      if (workspacesCache.length === 0) {
         activeWorkspaceId = "";
         localStorage.removeItem(STORAGE_KEY);
-        offBody.textContent = "";
+        offeringsCache = [];
+        activeReportCache = null;
+        clearAiReviewResults();
+        populateWorkspaceSelects();
+        renderWorkspaceContext();
         return;
       }
-      data.items.forEach((ws) => {
-        const opt = document.createElement("option");
-        opt.value = ws.workspace_id;
-        opt.textContent = `${ws.name} (${ws.workspace_id})`;
-        wsSelect.appendChild(opt);
-      });
-      const exists = data.items.some((w) => w.workspace_id === activeWorkspaceId);
-      activeWorkspaceId = exists ? activeWorkspaceId : data.items[0].workspace_id;
-      wsSelect.value = activeWorkspaceId;
+      const exists = workspacesCache.some((w) => w.workspace_id === activeWorkspaceId);
+      activeWorkspaceId = exists ? activeWorkspaceId : workspacesCache[0].workspace_id;
       localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
-      await Promise.all([loadOfferings(), loadReport()]);
+      populateWorkspaceSelects();
+      renderWorkspaceContext();
+      await Promise.all([loadOfferings(), loadReport(), loadBenchmarkSnapshots(), loadAiReviewConfig()]);
+    }
+
+    // Create Workspace Helper (shared between onboarding & profil forms)
+    async function submitCreateWorkspace(nameVal, typeVal, statusEl, inputId, errId, formEl) {
+      clearFieldErrors(formEl);
+      clearAiReviewResults();
+      const cleanName = (nameVal || "").trim();
+      if (cleanName.length < 2) {
+        setFieldError(inputId, errId, "Nama profil usaha wajib diisi minimal 2 karakter.");
+        setStatus(statusEl, "Periksa kolom nama usaha sebelum melanjutkan.", "err");
+        return false;
+      }
+      setStatus(statusEl, "Menyimpan profil usaha...", "info");
+      try {
+        const res = await apiFetch("/v1/workspaces", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: cleanName, business_type: typeVal })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.field_errors && data.field_errors.name) {
+            setFieldError(inputId, errId, data.field_errors.name);
+          }
+          setStatus(statusEl, data.message || "Gagal membuat profil usaha.", "err");
+          return false;
+        }
+        activeWorkspaceId = data.item.workspace_id;
+        localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+        clearAiReviewResults();
+        document.getElementById(inputId).value = "";
+        setStatus(statusEl, `Profil usaha '${data.item.name}' berhasil dibuat.`, "ok");
+        await loadWorkspaces();
+        return true;
+      } catch {
+        setStatus(statusEl, "Gangguan jaringan saat membuat profil usaha.", "err");
+        return false;
+      }
+    }
+
+    document.getElementById("onboardingWsForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await submitCreateWorkspace(
+        document.getElementById("onbWsName").value,
+        document.getElementById("onbWsType").value,
+        onbWsStatus,
+        "onbWsName",
+        "onbWsNameErr",
+        e.target
+      );
+    });
+
+    document.getElementById("workspaceForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await submitCreateWorkspace(
+        document.getElementById("wsName").value,
+        document.getElementById("wsType").value,
+        wsStatus,
+        "wsName",
+        "wsNameErr",
+        e.target
+      );
+    });
+
+    // Idempotent 1-click Demo Mode Loader
+    async function triggerIsolatedDemoLoad() {
+      clearAiReviewResults();
+      setStatus(demoStatus, "Memuat mode demo terisolasi...", "info");
+      try {
+        const res = await apiFetch("/v1/workspaces/demo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scenario_slug: DEMO_SCENARIO_SLUG })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(demoStatus, data.message || "Gagal memuat demo terisolasi.", "err");
+          return;
+        }
+        const info = data.item;
+        activeWorkspaceId = info.workspace.workspace_id;
+        localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
+        if (info.demo_date) {
+          document.getElementById("reportDate").value = info.demo_date;
+        }
+        await loadWorkspaces();
+        const msg = info.idempotent_replay
+          ? `Mode demo terisolasi sudah aktif (${info.workspace.name}) — tidak ada data duplikat.`
+          : `Mode demo terisolasi '${info.workspace.name}' berhasil dimuat.`;
+        setStatus(demoStatus, msg, "ok");
+        if (currentRoute === "profil") {
+          announce(msg);
+        } else {
+          applyRoute({ route: "ringkasan", subtab: null }, true);
+        }
+      } catch {
+        setStatus(demoStatus, "Gangguan jaringan saat memuat demo terisolasi.", "err");
+      }
+    }
+
+    document.getElementById("loadDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
+    document.getElementById("sidebarLoadDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
+    document.getElementById("topQuickDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
+    document.getElementById("onboardingDemoBtn").addEventListener("click", triggerIsolatedDemoLoad);
+    document.querySelectorAll(".js-load-demo").forEach((btn) => {
+      btn.addEventListener("click", triggerIsolatedDemoLoad);
+    });
+
+    // Offerings & Stock Sync
+    function getSelectedOffering(selectEl) {
+      const id = selectEl.value;
+      return offeringsCache.find((o) => o.offering_id === id) || null;
+    }
+
+    function updateSaleContextHints(recalculatePrice = false) {
+      const off = getSelectedOffering(saleOffering);
+      const unitBadge = document.getElementById("saleUnitBadge");
+      const helper = document.getElementById("saleOfferingHelper");
+      const qtyInput = document.getElementById("saleQty");
+      const priceInput = document.getElementById("salePrice");
+      const priceHelper = document.getElementById("salePriceHelper");
+
+      if (!off) {
+        unitBadge.textContent = "pcs";
+        helper.textContent = "Tambahkan offering di Katalog terlebih dahulu.";
+        priceHelper.textContent = "Harga saran dihitung otomatis dari qty × harga satuan.";
+        return;
+      }
+
+      unitBadge.textContent = off.unit;
+      if (off.requires_stock_movement) {
+        helper.textContent = `Tipe ${fmtOfferingType(off.offering_type)} • Harga jual ${fmtIdr(off.unit_price_idr)}/${off.unit} • Stok tersedia: ${fmtQty(off.qty_on_hand)} ${off.unit}.`;
+      } else {
+        helper.textContent = `Tipe Jasa • Harga jual ${fmtIdr(off.unit_price_idr)}/${off.unit} • Jasa tidak melacak stok (HPP tetap belum dinilai).`;
+      }
+
+      const rawQty = qtyInput.value.trim();
+      const qtyNum = Number(rawQty);
+      if (rawQty !== "" && Number.isFinite(qtyNum) && qtyNum > 0) {
+        const suggested = Math.round(qtyNum * Number(off.unit_price_idr));
+        priceHelper.textContent = `Saran sistem: ${fmtIdr(suggested)} (${fmtQty(rawQty)} × ${fmtIdr(off.unit_price_idr)}) — dapat diedit manual.`;
+        if (recalculatePrice || !salePriceManualEdited || priceInput.value.trim() === "") {
+          priceInput.value = String(suggested);
+          salePriceManualEdited = false;
+        }
+      } else {
+        priceHelper.textContent = `Harga satuan katalog: ${fmtIdr(off.unit_price_idr)} / ${off.unit}.`;
+      }
+    }
+
+    function updatePurchaseContextHints() {
+      const off = getSelectedOffering(purOffering);
+      const unitBadge = document.getElementById("purUnitBadge");
+      const helper = document.getElementById("purOfferingHelper");
+      const costHelper = document.getElementById("purCostHelper");
+      if (!off) {
+        unitBadge.textContent = "pcs";
+        helper.textContent = "Belum ada offering Barang/Hybrid di katalog.";
+        costHelper.textContent = "Biaya rata-rata per unit akan dihitung otomatis (WA).";
+        return;
+      }
+      unitBadge.textContent = off.unit;
+      const waText = off.wa_unit_cost_idr !== null ? fmtIdr(off.wa_unit_cost_idr) + "/" + off.unit : "belum ada stok";
+      helper.textContent = `Stok saat ini: ${fmtQty(off.qty_on_hand)} ${off.unit} • Rata-rata WA: ${waText}.`;
+
+      const qtyNum = Number(document.getElementById("purQty").value.trim());
+      const costNum = Number(document.getElementById("purCost").value.trim());
+      if (Number.isFinite(qtyNum) && qtyNum > 0 && Number.isFinite(costNum) && costNum >= 0 && document.getElementById("purCost").value.trim() !== "") {
+        const perUnit = Math.round(costNum / qtyNum);
+        costHelper.textContent = `Estimasi biaya beli per ${off.unit}: ${fmtIdr(perUnit)}.`;
+      } else {
+        costHelper.textContent = "Biaya rata-rata per unit akan dihitung otomatis (WA).";
+      }
+    }
+
+    function updateSimContextHints() {
+      const off = getSelectedOffering(simOffering);
+      const helper = document.getElementById("simOfferingHelper");
+      if (!off) {
+        helper.textContent = "Mode input manual: isi Harga Jual dan Estimasi Biaya Unit sendiri.";
+        return;
+      }
+      if (!off.requires_stock_movement) {
+        helper.textContent = `Jasa '${off.name}' tidak memiliki biaya stok WA. Isi Estimasi Biaya Unit manual bila ingin menghitung margin.`;
+      } else if (off.wa_unit_cost_idr === null) {
+        helper.textContent = `Stok '${off.name}' masih 0 (${off.unit}); biaya pokok WA belum tersedia. Catat pembelian atau isi Estimasi Biaya Unit manual.`;
+      } else {
+        helper.textContent = `Stok tersedia ${fmtQty(off.qty_on_hand)} ${off.unit} dengan biaya pokok WA ${fmtIdr(off.wa_unit_cost_idr)}/${off.unit}.`;
+      }
+    }
+
+    function updateBenchmarkCompatibility() {
+      const box = document.getElementById("benchUnitCompat");
+      const off = getSelectedOffering(benchOffering);
+      if (!off) {
+        box.textContent = "Pilih produk/jasa di katalog untuk memeriksa kecocokan satuan benchmark.";
+        box.className = "banner banner-info";
+        return;
+      }
+      const kind = document.getElementById("benchSourceKind").value;
+      let targetUnit = "";
+      let targetLabel = "";
+      if (kind === "manual_fallback") {
+        targetUnit = (document.getElementById("benchUnit").value || "").trim().toLowerCase();
+        targetLabel = "Survei Manual";
+      } else {
+        const snapId = document.getElementById("benchSnapshotId").value;
+        const snap = benchmarkSnapshots.find((s) => s.snapshot_id === snapId);
+        if (snap) {
+          targetUnit = String(snap.unit || "").toLowerCase();
+          targetLabel = snap.commodity_name;
+        }
+      }
+      if (!targetUnit) {
+        box.textContent = `Satuan produk terpilih: ${off.unit}. Isi satuan benchmark untuk mengecek kompatibilitas.`;
+        box.className = "banner banner-info";
+        return;
+      }
+      const offUnit = String(off.unit || "").toLowerCase();
+      const metricPairs = new Set(["kg:g", "g:kg", "liter:ml", "ml:liter"]);
+      if (offUnit === targetUnit) {
+        box.textContent = `Satuan cocok: ${off.name} (${offUnit}) sebanding langsung dengan ${targetLabel} (${targetUnit}).`;
+        box.className = "banner banner-info";
+      } else if (metricPairs.has(`${offUnit}:${targetUnit}`)) {
+        box.textContent = `Konversi metrik otomatis didukung: ${off.name} (${offUnit}) ↔ ${targetLabel} (${targetUnit}).`;
+        box.className = "banner banner-info";
+      } else {
+        box.textContent = `Peringatan satuan: '${off.name}' memakai satuan '${offUnit}' yang tidak sebanding dengan '${targetUnit}'. Pilih produk bersatuan '${targetUnit}' (mis. Beras Medium kg) atau gunakan Survei Manual bersatuan '${offUnit}'.`;
+        box.className = "banner banner-demo";
+      }
     }
 
     async function loadOfferings() {
       if (!activeWorkspaceId) return;
       const reqWsId = activeWorkspaceId;
       const reqSeq = ++catalogReqSeq;
-      const res = await apiFetch(`/v1/workspaces/${reqWsId}/offerings`);
+      const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/offerings`);
       const data = await res.json();
       if (reqWsId !== activeWorkspaceId || reqSeq !== catalogReqSeq || !res.ok) return;
 
+      offeringsCache = data.items || [];
       offBody.textContent = "";
       purOffering.textContent = "";
       saleOffering.textContent = "";
-      const simOffering = document.getElementById("simOffering");
       simOffering.textContent = "";
+      benchOffering.textContent = "";
+
       const simManualOpt = document.createElement("option");
       simManualOpt.value = "";
       simManualOpt.textContent = "-- Input Manual --";
       simOffering.appendChild(simManualOpt);
-      const benchOffering = document.getElementById("benchOfferingId");
-      benchOffering.textContent = "";
-      (data.items || []).forEach((item) => {
+
+      if (offeringsCache.length === 0) {
+        const emptyTr = document.createElement("tr");
+        const emptyTd = document.createElement("td");
+        emptyTd.colSpan = 6;
+        emptyTd.textContent = "Katalog masih kosong. Gunakan contoh cepat atau form di atas untuk menambahkan produk atau jasa pertama.";
+        emptyTr.appendChild(emptyTd);
+        offBody.appendChild(emptyTr);
+      }
+
+      let stockTrackedCount = 0;
+      offeringsCache.forEach((item) => {
         const tr = document.createElement("tr");
 
         const tdName = document.createElement("td");
-        tdName.textContent = item.name;
+        const nameStrong = document.createElement("strong");
+        nameStrong.textContent = item.name;
+        tdName.appendChild(nameStrong);
         tr.appendChild(tdName);
 
         const tdType = document.createElement("td");
-        const badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = item.offering_type;
-        tdType.appendChild(badge);
+        tdType.appendChild(makePill(fmtOfferingType(item.offering_type), "pill-actual"));
         tr.appendChild(tdType);
 
         const tdPrice = document.createElement("td");
+        tdPrice.className = "num";
         tdPrice.textContent = `${fmtIdr(item.unit_price_idr)} / ${item.unit}`;
         tr.appendChild(tdPrice);
 
         const tdStock = document.createElement("td");
-        tdStock.textContent = item.requires_stock_movement
-          ? `Ya (${item.valuation_method || "WA"})`
-          : "Tidak";
+        tdStock.className = "num";
+        if (item.requires_stock_movement) {
+          tdStock.textContent = `${fmtQty(item.qty_on_hand)} ${item.unit}`;
+        } else {
+          tdStock.textContent = "Tidak melacak stok";
+        }
         tr.appendChild(tdStock);
 
+        const tdVal = document.createElement("td");
+        tdVal.className = "num";
+        if (item.requires_stock_movement) {
+          const valText = fmtIdr(item.inventory_value_idr || 0);
+          tdVal.textContent = item.wa_unit_cost_idr !== null
+            ? `${valText} (WA ${fmtIdr(item.wa_unit_cost_idr)}/${item.unit})`
+            : `${valText} (belum ada stok)`;
+        } else {
+          tdVal.textContent = "Jasa (non-persediaan)";
+        }
+        tr.appendChild(tdVal);
+
         const tdTax = document.createElement("td");
-        tdTax.textContent = `${item.tax_status} (nominal absen)`;
+        tdTax.textContent = item.tax_status === "not_assessed"
+          ? "Belum dinilai (nominal absen)"
+          : `${item.tax_status} (nominal absen)`;
         tr.appendChild(tdTax);
 
         offBody.appendChild(tr);
 
         const optSale = document.createElement("option");
         optSale.value = item.offering_id;
-        optSale.textContent = `${item.name} (${item.offering_type})`;
+        optSale.textContent = item.requires_stock_movement
+          ? `${item.name} (${fmtOfferingType(item.offering_type)} · stok ${fmtQty(item.qty_on_hand)} ${item.unit} · ${fmtIdr(item.unit_price_idr)})`
+          : `${item.name} (${fmtOfferingType(item.offering_type)} · ${fmtIdr(item.unit_price_idr)}/${item.unit})`;
         saleOffering.appendChild(optSale);
 
         const optSim = document.createElement("option");
         optSim.value = item.offering_id;
-        optSim.textContent = `${item.name} (${item.offering_type})`;
+        optSim.textContent = `${item.name} (${fmtOfferingType(item.offering_type)} · ${fmtIdr(item.unit_price_idr)}/${item.unit})`;
         optSim.dataset.price = String(item.unit_price_idr);
         simOffering.appendChild(optSim);
 
         const optBench = document.createElement("option");
         optBench.value = item.offering_id;
-        optBench.textContent = `${item.name} (${item.offering_type} · ${item.unit} · ${fmtIdr(item.unit_price_idr)})`;
+        optBench.textContent = `${item.name} (${fmtOfferingType(item.offering_type)} · ${item.unit} · ${fmtIdr(item.unit_price_idr)})`;
         benchOffering.appendChild(optBench);
 
         if (item.requires_stock_movement) {
+          stockTrackedCount += 1;
           const optPur = document.createElement("option");
           optPur.value = item.offering_id;
-          optPur.textContent = `${item.name} (${item.unit})`;
+          optPur.textContent = `${item.name} (${item.unit} · stok ${fmtQty(item.qty_on_hand)})`;
           purOffering.appendChild(optPur);
         }
       });
+
+      const hasAnyOfferings = offeringsCache.length > 0;
+      document.getElementById("saleNoOfferingEmpty").classList.toggle("hidden", hasAnyOfferings);
+      document.getElementById("saleForm").classList.toggle("hidden", !hasAnyOfferings);
+
+      document.getElementById("purNoOfferingEmpty").classList.toggle("hidden", stockTrackedCount > 0);
+      document.getElementById("purchaseForm").classList.toggle("hidden", stockTrackedCount === 0);
+
+      document.getElementById("benchNoOfferingEmpty").classList.toggle("hidden", hasAnyOfferings);
+      document.getElementById("benchFormWrap").classList.toggle("hidden", !hasAnyOfferings);
+
+      updateSaleContextHints(true);
+      updatePurchaseContextHints();
+      updateSimContextHints();
+      updateBenchmarkCompatibility();
+    }
+
+    // Report & Drill-down rendering
+    function makeKpiCard(label, val, badgeText, badgeCls, subText = "") {
+      const box = document.createElement("div");
+      box.className = "kpi";
+      const top = document.createElement("div");
+      top.className = "kpi-top";
+      const lbl = document.createElement("span");
+      lbl.className = "label";
+      lbl.textContent = label;
+      top.appendChild(lbl);
+      if (badgeText) top.appendChild(makePill(badgeText, badgeCls));
+      const v = document.createElement("div");
+      v.className = "val";
+      v.textContent = val;
+      box.appendChild(top);
+      box.appendChild(v);
+      if (subText) {
+        const s = document.createElement("div");
+        s.className = "sub";
+        s.textContent = subText;
+        box.appendChild(s);
+      }
+      return box;
+    }
+
+    function renderTxRowsInto(tbody, report) {
+      tbody.textContent = "";
+      const dd = (report && report.drill_down) || {};
+      const purchases = (dd.purchases || []).map((p) => ({
+        ts: p.occurred_at,
+        kind: "Pembelian Stok",
+        name: p.offering_name || p.offering_id,
+        qty: `${fmtQty(p.qty)} ${p.unit || ""}`.trim(),
+        amount: `-${fmtIdr(p.total_cost_idr).replace("-", "")}`,
+        note: `Tunai • ID ${p.purchase_id}`
+      }));
+      const sales = (dd.sales || []).map((s) => {
+        const lines = s.lines || [];
+        const firstLine = lines[0];
+        const prodName = lines.length > 1
+          ? `${lines.length} item (${firstLine ? (firstLine.offering_name || firstLine.offering_id) : ""})`
+          : (firstLine ? (firstLine.offering_name || firstLine.offering_id) : "Penjualan");
+        const qtyLabel = lines.length === 1 && firstLine
+          ? `${fmtQty(firstLine.qty)} ${firstLine.unit || ""}`.trim()
+          : `${lines.length} baris`;
+        const hppLabel = s.cogs_status === "assessed"
+          ? `HPP ${fmtIdr(s.total_cogs_idr)}`
+          : "HPP belum dinilai (jasa/open)";
+        return {
+          ts: s.occurred_at,
+          kind: "Penjualan Tunai",
+          name: prodName,
+          qty: qtyLabel,
+          amount: fmtIdr(s.total_revenue_idr),
+          note: `${hppLabel} • ID ${s.sale_id}`
+        };
+      });
+      const combined = [...purchases, ...sales].sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+
+      if (combined.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 6;
+        td.textContent = "Belum ada transaksi penjualan atau pembelian pada tanggal ini.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      combined.forEach((row) => {
+        const tr = document.createElement("tr");
+        [row.ts ? fmtJakartaDateTime(row.ts) : "-", row.kind, row.name, row.qty, row.amount, row.note].forEach((val, idx) => {
+          const td = document.createElement("td");
+          if (idx === 3 || idx === 4) td.className = "num";
+          td.textContent = val;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderDrillDownTables(report) {
+      // 1. Stock Summary Table on Ringkasan
+      const stockSummaryBody = document.getElementById("ringkasanStockBody");
+      stockSummaryBody.textContent = "";
+      const invItems = (report.ending_inventory && report.ending_inventory.items) || [];
+      if (invItems.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 4;
+        td.textContent = "Belum ada stok barang tercatat hingga akhir tanggal ini.";
+        tr.appendChild(td);
+        stockSummaryBody.appendChild(tr);
+      } else {
+        invItems.forEach((item) => {
+          const tr = document.createElement("tr");
+          const tdName = document.createElement("td");
+          const strong = document.createElement("strong");
+          strong.textContent = item.name;
+          tdName.appendChild(strong);
+          const tdQty = document.createElement("td");
+          tdQty.className = "num";
+          tdQty.textContent = `${fmtQty(item.qty_remaining)} ${item.unit}`;
+          const tdVal = document.createElement("td");
+          tdVal.className = "num";
+          tdVal.textContent = fmtIdr(item.value_idr);
+          const tdNote = document.createElement("td");
+          tdNote.textContent = `Metode WA • ID ${item.offering_id}`;
+          tr.append(tdName, tdQty, tdVal, tdNote);
+          stockSummaryBody.appendChild(tr);
+        });
+      }
+
+      // 2. Human-readable transaction tables (both in Ringkasan drill-down and Transaksi history)
+      renderTxRowsInto(document.getElementById("drillTxBody"), report);
+      renderTxRowsInto(document.getElementById("txRecentBody"), report);
+
+      // 3. Stock Movements Table
+      const drillStockBody = document.getElementById("drillStockBody");
+      drillStockBody.textContent = "";
+      const movements = (report.drill_down && report.drill_down.stock_movements) || [];
+      if (movements.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 6;
+        td.textContent = "Belum ada mutasi stok pada tanggal ini.";
+        tr.appendChild(td);
+        drillStockBody.appendChild(tr);
+      } else {
+        movements.forEach((m) => {
+          const tr = document.createElement("tr");
+          const dirLabel = m.movement_type === "purchase_in" ? "Stok Masuk" : "Stok Keluar";
+          const unitCost = m.unit_cost_idr !== null && m.unit_cost_idr !== undefined
+            ? fmtIdr(Math.round(Number(m.unit_cost_idr)))
+            : "-";
+          [
+            fmtJakartaDateTime(m.occurred_at),
+            dirLabel,
+            m.offering_name || m.offering_id,
+            `${fmtQty(m.qty_delta)} ${m.unit || ""}`.trim(),
+            unitCost,
+            fmtIdr(m.total_cost_idr)
+          ].forEach((val, idx) => {
+            const td = document.createElement("td");
+            if (idx >= 3) td.className = "num";
+            td.textContent = val;
+            tr.appendChild(td);
+          });
+          drillStockBody.appendChild(tr);
+        });
+      }
+
+      // 4. Audit Events Table
+      const drillAuditBody = document.getElementById("drillAuditBody");
+      drillAuditBody.textContent = "";
+      const audits = (report.drill_down && report.drill_down.audit_events) || [];
+      if (audits.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = "Belum ada log audit pada tanggal ini.";
+        tr.appendChild(td);
+        drillAuditBody.appendChild(tr);
+      } else {
+        audits.forEach((evt) => {
+          const tr = document.createElement("tr");
+          [
+            fmtJakartaDateTime(evt.created_at),
+            evt.actor,
+            evt.action,
+            evt.entity_type,
+            evt.entity_id
+          ].forEach((val) => {
+            const td = document.createElement("td");
+            td.textContent = val;
+            tr.appendChild(td);
+          });
+          drillAuditBody.appendChild(tr);
+        });
+      }
+
+      document.getElementById("drillDownPre").textContent = JSON.stringify(report.drill_down || {}, null, 2);
     }
 
     async function loadReport() {
       if (!activeWorkspaceId) return;
       const reqWsId = activeWorkspaceId;
       const reqSeq = ++reportReqSeq;
-      const dateVal = document.getElementById("reportDate").value;
+      const dateInput = document.getElementById("reportDate");
+      if (!dateInput.value) dateInput.value = todayJakartaIso();
+      const dateVal = dateInput.value;
       const qs = dateVal ? `?date=${encodeURIComponent(dateVal)}` : "";
-      const res = await apiFetch(`/v1/workspaces/${reqWsId}/reports/daily${qs}`);
+      const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/reports/daily${qs}`);
       const data = await res.json();
       if (reqWsId !== activeWorkspaceId || reqSeq !== reportReqSeq || !res.ok) return;
 
       const r = data.report;
+      activeReportCache = r;
+      const ws = getActiveWorkspace();
+      const isDemo = Boolean(ws && ws.is_demo);
+      const badgeText = isDemo ? "Demo Sintetis" : "Aktual";
+      const badgeCls = isDemo ? "pill-demo" : "pill-actual";
+
+      if (r.period && r.period.date) {
+        dateInput.value = r.period.date;
+        document.getElementById("reportPeriodLabel").textContent = `Periode aktif: ${fmtJakartaDateLabel(r.period.date)}`;
+      }
+
       const grid = document.getElementById("kpiGrid");
       grid.textContent = "";
-      const kpis = [
-        ["Omzet", fmtIdr(r.revenue_idr)],
-        [`HPP (${r.cogs_status})`, fmtIdr(r.cogs_idr)],
-        [`Laba Kotor (${r.gross_profit_status})`, fmtIdr(r.gross_profit_idr)],
-        ["Arus Kas Bersih", fmtIdr(r.net_cash_flow_idr)],
-        ["Nilai Stok Akhir", fmtIdr(r.ending_inventory.total_value_idr)],
-        ["Pajak", r.tax_status]
-      ];
-      kpis.forEach(([label, val]) => {
-        const box = document.createElement("div");
-        box.className = "kpi";
-        const lbl = document.createElement("div");
-        lbl.className = "label";
-        lbl.textContent = label;
-        const v = document.createElement("div");
-        v.className = "val";
-        v.textContent = val;
-        box.appendChild(lbl);
-        box.appendChild(v);
-        grid.appendChild(box);
-      });
-      document.getElementById("drillDownPre").textContent = JSON.stringify(r.drill_down, null, 2);
+      grid.appendChild(makeKpiCard("Omzet", fmtIdr(r.revenue_idr), badgeText, badgeCls, "Total penjualan tercatat pada tanggal aktif"));
+      grid.appendChild(makeKpiCard(
+        "HPP (Harga Pokok)",
+        r.cogs_idr === null ? "Belum dinilai" : fmtIdr(r.cogs_idr),
+        r.cogs_status === "assessed" ? badgeText : "Belum Dinilai",
+        r.cogs_status === "assessed" ? badgeCls : "pill-roadmap",
+        r.cogs_status === "assessed" ? "Dihitung dengan metode Weighted Average (WA)" : "Terdapat penjualan jasa tanpa biaya pokok"
+      ));
+      grid.appendChild(makeKpiCard(
+        "Laba Kotor",
+        r.gross_profit_idr === null ? "Belum dinilai" : fmtIdr(r.gross_profit_idr),
+        r.gross_profit_status === "assessed" ? badgeText : "Belum Dinilai",
+        r.gross_profit_status === "assessed" ? badgeCls : "pill-roadmap",
+        r.gross_profit_status === "assessed" ? "Omzet dikurangi HPP terjual" : "Menunggu penilaian biaya jasa"
+      ));
+      grid.appendChild(makeKpiCard(
+        "Arus Kas Bersih",
+        fmtIdr(r.net_cash_flow_idr),
+        badgeText,
+        badgeCls,
+        `Masuk ${fmtIdr(r.cash_in_idr)} · Keluar ${fmtIdr(r.cash_out_idr)}`
+      ));
+
+      const invItems = (r.ending_inventory && r.ending_inventory.items) || [];
+      const invBreakdown = invItems.length > 0
+        ? invItems.map((it) => `${it.name}: ${fmtQty(it.qty_remaining)} ${it.unit} (${fmtIdr(it.value_idr)})`).join(" · ")
+        : "Belum ada stok akhir";
+      grid.appendChild(makeKpiCard(
+        "Nilai Stok Akhir",
+        fmtIdr(r.ending_inventory ? r.ending_inventory.total_value_idr : 0),
+        badgeText,
+        badgeCls,
+        invBreakdown
+      ));
+
+      grid.appendChild(makeKpiCard(
+        "Status Pajak",
+        r.tax_status === "not_assessed" ? "Belum dinilai" : r.tax_status,
+        "Belum Dinilai",
+        "pill-roadmap",
+        "Nominal pajak tidak ditampilkan atau diasumsikan Rp 0"
+      ));
+
+      const cashNote = document.getElementById("cashVsProfitNote");
+      if (r.net_cash_flow_idr < 0 && r.ending_inventory && r.ending_inventory.total_value_idr > 0) {
+        cashNote.textContent = `Catatan kas vs laba: Arus kas bersih (${fmtIdr(r.net_cash_flow_idr)}) bernilai negatif karena kas keluar dipakai membeli stok persediaan yang masih tersisa senilai ${fmtIdr(r.ending_inventory.total_value_idr)} — bukan otomatis berarti usaha rugi.`;
+        cashNote.classList.remove("hidden");
+      } else {
+        cashNote.classList.add("hidden");
+      }
+
+      renderDrillDownTables(r);
     }
 
-    wsSelect.addEventListener("change", async () => {
-      activeWorkspaceId = wsSelect.value;
-      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
-      pendingPurKey = "";
-      pendingSaleKey = "";
-      localStorage.removeItem(PUR_KEY_STORAGE);
-      localStorage.removeItem(SALE_KEY_STORAGE);
-      simReqSeq++;
-      simResultGrid.textContent = "";
-      simStatus.textContent = "";
-      benchReqSeq++;
-      benchResultGrid.textContent = "";
-      benchStatus.textContent = "";
-      await Promise.all([loadOfferings(), loadReport(), loadBenchmarkSnapshots()]);
-    });
+    // Form Listeners
+    document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
+    document.getElementById("reportDate").addEventListener("change", loadReport);
 
-    document.getElementById("purchaseForm").addEventListener("input", () => {
-      pendingPurKey = "";
-      localStorage.removeItem(PUR_KEY_STORAGE);
-    });
-    document.getElementById("saleForm").addEventListener("input", () => {
-      pendingSaleKey = "";
-      localStorage.removeItem(SALE_KEY_STORAGE);
-    });
-
-    document.getElementById("workspaceForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      clearAiReviewResults();
-      const res = await apiFetch("/v1/workspaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: document.getElementById("wsName").value,
-          business_type: document.getElementById("wsType").value
-        })
+    // Quick catalog presets & unit chips
+    document.querySelectorAll("[data-preset-off]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.presetOff;
+        if (key === "bakso") {
+          document.getElementById("offName").value = "Bakso Urat";
+          document.getElementById("offType").value = "goods";
+          document.getElementById("offPrice").value = "15000";
+          document.getElementById("offUnit").value = "pcs";
+        } else if (key === "beras") {
+          document.getElementById("offName").value = "Beras Medium";
+          document.getElementById("offType").value = "goods";
+          document.getElementById("offPrice").value = "14500";
+          document.getElementById("offUnit").value = "kg";
+        } else if (key === "jasa") {
+          document.getElementById("offName").value = "Jasa Katering Acara";
+          document.getElementById("offType").value = "service";
+          document.getElementById("offPrice").value = "500000";
+          document.getElementById("offUnit").value = "sesi";
+        }
+        clearFieldErrors(document.getElementById("offeringForm"));
       });
-      const data = await res.json();
-      if (!res.ok) return setStatus(wsStatus, data.message || "Gagal", true);
-      activeWorkspaceId = data.item.workspace_id;
-      localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
-      document.getElementById("wsName").value = "";
-      simReqSeq++;
-      simResultGrid.textContent = "";
-      simStatus.textContent = "";
-      benchReqSeq++;
-      benchResultGrid.textContent = "";
-      benchStatus.textContent = "";
-      setStatus(wsStatus, `Workspace '${data.item.name}' dibuat.`);
-      await loadWorkspaces();
-      await loadBenchmarkSnapshots();
+    });
+
+    document.querySelectorAll(".js-unit-pick").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById("offUnit").value = btn.dataset.unit || "pcs";
+      });
     });
 
     document.getElementById("offeringForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!activeWorkspaceId) return setStatus(offStatus, "Pilih workspace dulu.", true);
-      const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/offerings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: document.getElementById("offName").value,
-          offering_type: document.getElementById("offType").value,
-          unit_price_idr: parseInt(document.getElementById("offPrice").value, 10),
-          unit: document.getElementById("offUnit").value
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) return setStatus(offStatus, data.message || "Gagal", true);
-      document.getElementById("offName").value = "";
-      setStatus(offStatus, `Offering '${data.item.name}' tersimpan.`);
-      await loadOfferings();
+      clearFieldErrors(e.target);
+      if (!activeWorkspaceId) return setStatus(offStatus, "Pilih atau buat profil usaha dulu.", "err");
+
+      const name = document.getElementById("offName").value.trim();
+      const offType = document.getElementById("offType").value;
+      const rawPrice = document.getElementById("offPrice").value.trim();
+      const unit = document.getElementById("offUnit").value.trim();
+      let hasErr = false;
+
+      if (name.length < 2) {
+        setFieldError("offName", "offNameErr", "Nama produk/jasa wajib diisi minimal 2 karakter.");
+        hasErr = true;
+      }
+      if (rawPrice === "" || Number.isNaN(Number(rawPrice)) || Number(rawPrice) < 0 || !Number.isInteger(Number(rawPrice))) {
+        setFieldError("offPrice", "offPriceErr", "Harga satuan (IDR) wajib bilangan bulat >= 0.");
+        hasErr = true;
+      }
+      if (!unit) {
+        setFieldError("offUnit", "offUnitErr", "Satuan unit wajib diisi (mis. pcs, kg, g, liter, ml, sesi).");
+        hasErr = true;
+      }
+      if (hasErr) {
+        return setStatus(offStatus, "Lengkapi kolom katalog yang bertanda merah.", "err");
+      }
+
+      const btn = document.getElementById("offSubmitBtn");
+      btn.disabled = true;
+      setStatus(offStatus, "Menyimpan offering ke katalog...", "info");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/offerings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            offering_type: offType,
+            unit_price_idr: parseInt(rawPrice, 10),
+            unit
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const fe = data.field_errors || {};
+          if (fe.name) setFieldError("offName", "offNameErr", fe.name);
+          if (fe.offering_type) setFieldError("offType", "offTypeErr", fe.offering_type);
+          if (fe.unit_price_idr) setFieldError("offPrice", "offPriceErr", fe.unit_price_idr);
+          if (fe.unit) setFieldError("offUnit", "offUnitErr", fe.unit);
+          return setStatus(offStatus, data.message || "Gagal menyimpan offering.", "err");
+        }
+        document.getElementById("offName").value = "";
+        setStatus(offStatus, `Offering '${data.item.name}' (${fmtIdr(data.item.unit_price_idr)}/${data.item.unit}) tersimpan.`, "ok");
+        await loadOfferings();
+      } catch {
+        setStatus(offStatus, "Gangguan jaringan saat menyimpan offering.", "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Purchase Form
+    purOffering.addEventListener("change", updatePurchaseContextHints);
+    document.getElementById("purQty").addEventListener("input", updatePurchaseContextHints);
+    document.getElementById("purCost").addEventListener("input", updatePurchaseContextHints);
+    document.getElementById("purchaseForm").addEventListener("input", () => {
+      pendingPurKey = "";
+      localStorage.removeItem(PUR_KEY_STORAGE);
     });
 
     document.getElementById("purchaseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!activeWorkspaceId) return setStatus(purStatus, "Pilih workspace dulu.", true);
-      const btn = e.target.querySelector("button[type='submit']");
+      clearFieldErrors(e.target);
+      if (!activeWorkspaceId) return setStatus(purStatus, "Pilih profil usaha terlebih dahulu.", "err");
+
+      const offId = purOffering.value.trim();
+      const rawQty = document.getElementById("purQty").value.trim();
+      const rawCost = document.getElementById("purCost").value.trim();
+      let hasErr = false;
+
+      if (!offId) {
+        setFieldError("purOffering", "purOfferingErr", "Pilih produk barang/hybrid yang dibeli.");
+        hasErr = true;
+      }
+      if (!rawQty || Number.isNaN(Number(rawQty)) || Number(rawQty) <= 0) {
+        setFieldError("purQty", "purQtyErr", "Kuantitas beli wajib berupa angka > 0.");
+        hasErr = true;
+      }
+      if (rawCost === "" || Number.isNaN(Number(rawCost)) || Number(rawCost) < 0 || !Number.isInteger(Number(rawCost))) {
+        setFieldError("purCost", "purCostErr", "Total biaya tunai (IDR) wajib bilangan bulat >= 0.");
+        hasErr = true;
+      }
+      if (hasErr) {
+        return setStatus(purStatus, "Periksa kolom pembelian sebelum menyimpan.", "err");
+      }
+
+      const btn = document.getElementById("purSubmitBtn");
       if (btn.disabled) return;
       btn.disabled = true;
       const payload = {
-        offering_id: purOffering.value,
-        qty: document.getElementById("purQty").value,
-        total_cost_idr: parseInt(document.getElementById("purCost").value, 10)
+        offering_id: offId,
+        qty: rawQty,
+        total_cost_idr: parseInt(rawCost, 10)
       };
       pendingPurKey = getScopedKey(PUR_KEY_STORAGE, activeWorkspaceId, payload);
-      setStatus(purStatus, "Menyimpan pembelian...");
+      setStatus(purStatus, "Menyimpan pembelian tunai...", "info");
       try {
-        const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/purchases`, {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/purchases`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Idempotency-Key": pendingPurKey },
           body: JSON.stringify(payload)
@@ -647,37 +3474,82 @@
         if (res.status === 409 || res.status === 422) {
           pendingPurKey = "";
           localStorage.removeItem(PUR_KEY_STORAGE);
-          return setStatus(purStatus, data.message || "Gagal", true);
+          const fe = data.field_errors || {};
+          if (fe.offering_id) setFieldError("purOffering", "purOfferingErr", fe.offering_id);
+          if (fe.qty) setFieldError("purQty", "purQtyErr", fe.qty);
+          if (fe.total_cost_idr) setFieldError("purCost", "purCostErr", fe.total_cost_idr);
+          return setStatus(purStatus, data.message || "Data pembelian tidak valid.", "err");
         }
-        if (!res.ok) return setStatus(purStatus, data.message || "Gagal", true);
+        if (!res.ok) return setStatus(purStatus, data.message || "Gagal mencatat pembelian.", "err");
         pendingPurKey = "";
         localStorage.removeItem(PUR_KEY_STORAGE);
-        setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}).`);
-        await loadReport();
+        setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}). Stok dan kas diperbarui.`, "ok");
+        await Promise.all([loadOfferings(), loadReport()]);
       } catch {
-        setStatus(purStatus, "Network error: key dipertahankan untuk retry aman.", true);
+        setStatus(purStatus, "Gangguan jaringan: kunci idempoten dipertahankan agar aman dicoba ulang.", "err");
       } finally {
         btn.disabled = false;
       }
     });
 
+    // Sale Form with Editable Suggested Price
+    saleOffering.addEventListener("change", () => {
+      salePriceManualEdited = false;
+      updateSaleContextHints(true);
+    });
+    document.getElementById("saleQty").addEventListener("input", () => updateSaleContextHints(false));
+    document.getElementById("salePrice").addEventListener("input", () => {
+      salePriceManualEdited = true;
+    });
+    document.getElementById("saleSuggestResetBtn").addEventListener("click", () => {
+      salePriceManualEdited = false;
+      updateSaleContextHints(true);
+    });
+    document.getElementById("saleForm").addEventListener("input", () => {
+      pendingSaleKey = "";
+      localStorage.removeItem(SALE_KEY_STORAGE);
+    });
+
     document.getElementById("saleForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!activeWorkspaceId) return setStatus(saleStatus, "Pilih workspace dulu.", true);
-      const btn = e.target.querySelector("button[type='submit']");
+      clearFieldErrors(e.target);
+      if (!activeWorkspaceId) return setStatus(saleStatus, "Pilih profil usaha terlebih dahulu.", "err");
+
+      const offId = saleOffering.value.trim();
+      const rawQty = document.getElementById("saleQty").value.trim();
+      const rawPrice = document.getElementById("salePrice").value.trim();
+      let hasErr = false;
+
+      if (!offId) {
+        setFieldError("saleOffering", "saleOfferingErr", "Pilih produk atau jasa yang dijual.");
+        hasErr = true;
+      }
+      if (!rawQty || Number.isNaN(Number(rawQty)) || Number(rawQty) <= 0) {
+        setFieldError("saleQty", "saleQtyErr", "Kuantitas terjual wajib berupa angka > 0.");
+        hasErr = true;
+      }
+      if (rawPrice === "" || Number.isNaN(Number(rawPrice)) || Number(rawPrice) < 0 || !Number.isInteger(Number(rawPrice))) {
+        setFieldError("salePrice", "salePriceErr", "Total harga jual (IDR) wajib bilangan bulat >= 0.");
+        hasErr = true;
+      }
+      if (hasErr) {
+        return setStatus(saleStatus, "Periksa kolom penjualan sebelum menyimpan.", "err");
+      }
+
+      const btn = document.getElementById("saleSubmitBtn");
       if (btn.disabled) return;
       btn.disabled = true;
       const payload = {
         lines: [{
-          offering_id: saleOffering.value,
-          qty: document.getElementById("saleQty").value,
-          total_price_idr: parseInt(document.getElementById("salePrice").value, 10)
+          offering_id: offId,
+          qty: rawQty,
+          total_price_idr: parseInt(rawPrice, 10)
         }]
       };
       pendingSaleKey = getScopedKey(SALE_KEY_STORAGE, activeWorkspaceId, payload);
-      setStatus(saleStatus, "Saving penjualan...");
+      setStatus(saleStatus, "Menyimpan penjualan tunai...", "info");
       try {
-        const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/sales`, {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/sales`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Idempotency-Key": pendingSaleKey },
           body: JSON.stringify(payload)
@@ -686,40 +3558,34 @@
         if (res.status === 409 || res.status === 422) {
           pendingSaleKey = "";
           localStorage.removeItem(SALE_KEY_STORAGE);
-          return setStatus(saleStatus, `Conflict/Validation: ${data.message}`, true);
+          const fe = data.field_errors || {};
+          if (fe["lines[0].qty"]) setFieldError("saleQty", "saleQtyErr", fe["lines[0].qty"]);
+          if (fe["lines[0].total_price_idr"]) setFieldError("salePrice", "salePriceErr", fe["lines[0].total_price_idr"]);
+          if (data.code === "insufficient_stock") setFieldError("saleQty", "saleQtyErr", data.message);
+          return setStatus(saleStatus, data.message || "Data penjualan ditolak.", "err");
         }
-        if (!res.ok) return setStatus(saleStatus, `Error: ${data.message || "Gagal"}`, true);
+        if (!res.ok) return setStatus(saleStatus, data.message || "Gagal mencatat penjualan.", "err");
         pendingSaleKey = "";
         localStorage.removeItem(SALE_KEY_STORAGE);
-        setStatus(saleStatus, `Saved (${data.item.sale_id}).`);
-        await loadReport();
+        const hppInfo = data.item.total_cogs_idr !== null
+          ? `HPP ${fmtIdr(data.item.total_cogs_idr)}, Laba Kotor ${fmtIdr(data.item.gross_profit_idr)}`
+          : "HPP belum dinilai (jasa)";
+        setStatus(saleStatus, `Penjualan tersimpan (${data.item.sale_id}) — Omzet ${fmtIdr(data.item.total_revenue_idr)}, ${hppInfo}.`, "ok");
+        await Promise.all([loadOfferings(), loadReport()]);
       } catch {
-        setStatus(saleStatus, "Network error: key dipertahankan untuk retry aman.", true);
+        setStatus(saleStatus, "Gangguan jaringan: kunci idempoten dipertahankan agar aman dicoba ulang.", "err");
       } finally {
         btn.disabled = false;
       }
     });
 
-    let simReqSeq = 0;
-    const simStatus = document.getElementById("simStatus");
-    const simResultGrid = document.getElementById("simResultGrid");
-
-    function renderSimKpi(label, value) {
-      const box = document.createElement("div");
-      box.className = "kpi";
-      const lbl = document.createElement("div");
-      lbl.className = "label";
-      lbl.textContent = label;
-      const val = document.createElement("div");
-      val.className = "val";
-      val.textContent = value;
-      box.appendChild(lbl);
-      box.appendChild(val);
-      return box;
+    // Simulasi Harga & Diskon
+    function renderResultCard(label, value, badgeText, badgeCls) {
+      return makeKpiCard(label, value, badgeText, badgeCls);
     }
 
-    document.getElementById("simOffering").addEventListener("change", (e) => {
-      const sel = e.target;
+    simOffering.addEventListener("change", () => {
+      const sel = simOffering;
       if (sel.value !== "") {
         const opt = sel.options[sel.selectedIndex];
         document.getElementById("simCost").value = "";
@@ -728,96 +3594,109 @@
         document.getElementById("simPrice").value = "5000";
         document.getElementById("simCost").value = "3000";
       }
+      updateSimContextHints();
+    });
+
+    document.getElementById("simPresetManualBtn").addEventListener("click", () => {
+      simOffering.value = "";
+      document.getElementById("simPrice").value = "5000";
+      document.getElementById("simCost").value = "3000";
+      document.getElementById("simDiscount").value = "20";
+      clearFieldErrors(document.getElementById("simForm"));
+      updateSimContextHints();
+    });
+
+    document.getElementById("simPresetCatalogBtn").addEventListener("click", () => {
+      if (offeringsCache.length > 0) {
+        simOffering.value = offeringsCache[0].offering_id;
+        document.getElementById("simPrice").value = String(offeringsCache[0].unit_price_idr);
+        document.getElementById("simCost").value = "";
+        document.getElementById("simDiscount").value = "10";
+        clearFieldErrors(document.getElementById("simForm"));
+        updateSimContextHints();
+      }
     });
 
     document.getElementById("simForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!activeWorkspaceId) return setStatus(simStatus, "Pilih workspace dulu.", true);
+      clearFieldErrors(e.target);
+      if (!activeWorkspaceId) return setStatus(simStatus, "Pilih profil usaha terlebih dahulu.", "err");
       const reqWsId = activeWorkspaceId;
       const reqSeq = ++simReqSeq;
-      const offeringId = document.getElementById("simOffering").value;
+      const offeringId = simOffering.value;
       const rawPrice = document.getElementById("simPrice").value.trim();
       const rawCost = document.getElementById("simCost").value.trim();
       const rawDiscount = document.getElementById("simDiscount").value.trim();
+      let hasErr = false;
+
+      if (!offeringId && rawPrice === "") {
+        setFieldError("simPrice", "simPriceErr", "Harga jual simulasi wajib diisi jika tidak memilih produk katalog.");
+        hasErr = true;
+      } else if (rawPrice !== "" && (Number.isNaN(Number(rawPrice)) || Number(rawPrice) < 0 || !Number.isInteger(Number(rawPrice)))) {
+        setFieldError("simPrice", "simPriceErr", "Harga jual harus bilangan bulat >= 0.");
+        hasErr = true;
+      }
+      if (rawCost !== "" && (Number.isNaN(Number(rawCost)) || Number(rawCost) < 0 || !Number.isInteger(Number(rawCost)))) {
+        setFieldError("simCost", "simCostErr", "Biaya unit harus bilangan bulat >= 0.");
+        hasErr = true;
+      }
+      if (rawDiscount !== "" && (Number.isNaN(Number(rawDiscount)) || Number(rawDiscount) < 0 || Number(rawDiscount) > 100)) {
+        setFieldError("simDiscount", "simDiscountErr", "Diskon harus di antara 0 dan 100%.");
+        hasErr = true;
+      }
+      if (hasErr) {
+        return setStatus(simStatus, "Periksa angka simulasi sebelum menghitung.", "err");
+      }
 
       const payload = { discount_percent: rawDiscount || "0" };
       if (offeringId) payload.offering_id = offeringId;
       if (rawPrice !== "") payload.selling_price_idr = parseInt(rawPrice, 10);
       if (rawCost !== "") payload.unit_cost_idr = parseInt(rawCost, 10);
 
-      setStatus(simStatus, "Menghitung simulasi...");
+      setStatus(simStatus, "Menghitung simulasi read-only...", "info");
       try {
-        const res = await apiFetch(`/v1/workspaces/${reqWsId}/simulations`, {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/simulations`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (reqWsId !== activeWorkspaceId || reqSeq !== simReqSeq) return;
+        const simGrid = document.getElementById("simResultGrid");
         if (!res.ok) {
-          simResultGrid.textContent = "";
-          return setStatus(simStatus, data.message || "Simulasi gagal.", true);
+          simGrid.textContent = "";
+          const fe = data.field_errors || {};
+          if (fe.selling_price_idr || fe.simulated_price_idr) setFieldError("simPrice", "simPriceErr", fe.selling_price_idr || fe.simulated_price_idr);
+          if (fe.unit_cost_idr) setFieldError("simCost", "simCostErr", fe.unit_cost_idr);
+          if (fe.discount_percent) setFieldError("simDiscount", "simDiscountErr", fe.discount_percent);
+          return setStatus(simStatus, data.message || "Simulasi gagal.", "err");
         }
         const item = data.item;
-        simResultGrid.textContent = "";
-        simResultGrid.appendChild(renderSimKpi("Harga Nett", fmtIdr(item.net_price_idr)));
-        simResultGrid.appendChild(renderSimKpi("Selisih Kotor", item.gross_delta_idr === null ? "unavailable" : fmtIdr(item.gross_delta_idr)));
-        simResultGrid.appendChild(renderSimKpi("Margin", item.margin_percent === null ? "unavailable" : `${item.margin_percent}%`));
-        simResultGrid.appendChild(renderSimKpi("Status Biaya / Margin", `${item.cost_status} / ${item.margin_status}`));
-        setStatus(simStatus, item.simulation_note || "Simulasi selesai (read-only).");
+        simGrid.textContent = "";
+        simGrid.appendChild(renderResultCard("Harga Nett Simulasi", fmtIdr(item.net_price_idr), "Simulasi Read-Only", "pill-sim"));
+        simGrid.appendChild(renderResultCard("Selisih Kotor / Unit", item.gross_delta_idr === null ? "Belum tersedia" : fmtIdr(item.gross_delta_idr), "Simulasi Read-Only", "pill-sim"));
+        simGrid.appendChild(renderResultCard("Margin", item.margin_percent === null ? "Belum tersedia" : `${item.margin_percent}%`, "Simulasi Read-Only", "pill-sim"));
+        simGrid.appendChild(renderResultCard("Markup", item.markup_percent === null ? "Belum tersedia" : `${item.markup_percent}%`, "Simulasi Read-Only", "pill-sim"));
+        simGrid.appendChild(renderResultCard(
+          "Status Biaya / Margin",
+          `${item.cost_status === "assessed" ? "Biaya terukur" : "Biaya belum tersedia (open)"} / ${item.margin_status === "assessed" ? "Terhitung" : "Belum tersedia"}`,
+          "Simulasi Read-Only",
+          "pill-sim"
+        ));
+        const extraNote = item.cost_status === "open"
+          ? " Catatan: biaya unit belum tersedia — isi kolom Estimasi Biaya Unit manual jika ingin menguji margin."
+          : "";
+        setStatus(simStatus, (item.simulation_note || "Simulasi selesai (read-only).") + extraNote, "ok");
       } catch {
         if (reqWsId !== activeWorkspaceId || reqSeq !== simReqSeq) return;
-        setStatus(simStatus, "Network error saat simulasi.", true);
+        setStatus(simStatus, "Gangguan jaringan saat menghitung simulasi.", "err");
       }
     });
 
-    document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
-
-    const benchStatus = document.getElementById("benchStatus");
-    const benchResultGrid = document.getElementById("benchResultGrid");
+    // Benchmark Harga Pasar
     const benchSourceKind = document.getElementById("benchSourceKind");
     const benchSnapshotWrap = document.getElementById("benchSnapshotWrap");
     const benchManualWrap = document.getElementById("benchManualWrap");
-    let benchReqSeq = 0;
-    let benchmarkSnapshots = [
-      {
-        snapshot_id: "bapanas_beras_medium_maret_2026",
-        source_kind: "transcribed_official",
-        observation_period: "Maret 2026",
-        commodity_name: "Beras Medium",
-        observed_price_idr: 13378,
-        quantity: "1",
-        unit: "kg",
-        location_market: "Nasional (Tingkat Konsumen)",
-      },
-      {
-        snapshot_id: "demo_beras_medium_jkt",
-        source_kind: "synthetic_demo",
-        commodity_name: "Beras Medium (Demo Sintetis)",
-        observed_price_idr: 13500,
-        quantity: "1",
-        unit: "kg",
-        location_market: "Pasar Induk Kramat Jati, DKI Jakarta (Sintetis)",
-      },
-      {
-        snapshot_id: "demo_gula_pasir_500g_jkt",
-        source_kind: "synthetic_demo",
-        commodity_name: "Gula Konsumsi 500 g (Demo Sintetis)",
-        observed_price_idr: 9000,
-        quantity: "500",
-        unit: "g",
-        location_market: "Pasar Senen, DKI Jakarta (Sintetis)",
-      },
-      {
-        snapshot_id: "demo_minyak_goreng_jkt",
-        source_kind: "synthetic_demo",
-        commodity_name: "Minyak Goreng Kemasan Sederhana (Demo Sintetis)",
-        observed_price_idr: 17500,
-        quantity: "1",
-        unit: "liter",
-        location_market: "Pasar Minggu, DKI Jakarta (Sintetis)",
-      },
-    ];
 
     function renderBenchmarkSnapshotsForKind() {
       const kind = benchSourceKind.value;
@@ -834,13 +3713,49 @@
         sel.appendChild(opt);
       });
       if (sel.options.length > 0) sel.selectedIndex = 0;
+      updateBenchmarkCompatibility();
     }
 
     benchSourceKind.addEventListener("change", () => {
       const isManual = benchSourceKind.value === "manual_fallback";
-      benchSnapshotWrap.style.display = isManual ? "none" : "";
-      benchManualWrap.style.display = isManual ? "flex" : "none";
-      if (!isManual) renderBenchmarkSnapshotsForKind();
+      benchSnapshotWrap.classList.toggle("hidden", isManual);
+      benchManualWrap.classList.toggle("hidden", !isManual);
+      if (!isManual) {
+        renderBenchmarkSnapshotsForKind();
+      } else {
+        updateBenchmarkCompatibility();
+      }
+    });
+    benchOffering.addEventListener("change", updateBenchmarkCompatibility);
+    document.getElementById("benchSnapshotId").addEventListener("change", updateBenchmarkCompatibility);
+    document.getElementById("benchUnit").addEventListener("input", updateBenchmarkCompatibility);
+
+    document.getElementById("benchPresetOfficialBtn").addEventListener("click", () => {
+      const berasOff = offeringsCache.find((o) => String(o.unit).toLowerCase() === "kg") || offeringsCache[0];
+      if (berasOff) benchOffering.value = berasOff.offering_id;
+      benchSourceKind.value = "transcribed_official";
+      benchSnapshotWrap.classList.remove("hidden");
+      benchManualWrap.classList.add("hidden");
+      renderBenchmarkSnapshotsForKind();
+      clearFieldErrors(document.getElementById("benchForm"));
+    });
+
+    document.getElementById("benchPresetManualBtn").addEventListener("click", () => {
+      const berasOff = offeringsCache.find((o) => String(o.unit).toLowerCase() === "kg") || offeringsCache[0];
+      if (berasOff) benchOffering.value = berasOff.offering_id;
+      benchSourceKind.value = "manual_fallback";
+      benchSnapshotWrap.classList.add("hidden");
+      benchManualWrap.classList.remove("hidden");
+      document.getElementById("benchSourceLabel").value = "Survei Pasar Tradisional";
+      document.getElementById("benchEvidenceNote").value = "Foto papan harga kios #12";
+      document.getElementById("benchSourceUrl").value = "";
+      document.getElementById("benchObservedAt").value = todayJakartaIso();
+      document.getElementById("benchLocationMarket").value = "Pasar Baru, Bandung";
+      document.getElementById("benchUnit").value = berasOff ? berasOff.unit : "kg";
+      document.getElementById("benchQuantity").value = "1";
+      document.getElementById("benchObservedPrice").value = "14000";
+      clearFieldErrors(document.getElementById("benchForm"));
+      updateBenchmarkCompatibility();
     });
 
     async function loadBenchmarkSnapshots() {
@@ -851,9 +3766,7 @@
         if (!res.ok || reqWsId !== activeWorkspaceId) return;
         const data = await res.json();
         const items = data.items || [];
-        if (items.length > 0) {
-          benchmarkSnapshots = items;
-        }
+        if (items.length > 0) benchmarkSnapshots = items;
         renderBenchmarkSnapshotsForKind();
       } catch {
         renderBenchmarkSnapshotsForKind();
@@ -862,135 +3775,233 @@
 
     document.getElementById("benchForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!activeWorkspaceId) return setStatus(benchStatus, "Pilih workspace dulu.", true);
+      clearFieldErrors(e.target);
+      if (!activeWorkspaceId) return setStatus(benchStatus, "Pilih profil usaha terlebih dahulu.", "err");
       const reqWsId = activeWorkspaceId;
       const reqSeq = ++benchReqSeq;
       const kind = benchSourceKind.value;
+      const offeringId = benchOffering.value.trim();
+
+      if (!offeringId) {
+        setFieldError("benchOfferingId", "benchOfferingErr", "Pilih produk/jasa dari katalog.");
+        return setStatus(benchStatus, "Pilih produk terlebih dahulu.", "err");
+      }
+
       const payload = {
-        offering_id: document.getElementById("benchOfferingId").value.trim(),
-        source_kind: kind,
+        offering_id: offeringId,
+        source_kind: kind
       };
+
       if (kind !== "manual_fallback") {
         payload.snapshot_id = document.getElementById("benchSnapshotId").value;
       } else {
+        const sourceLabel = document.getElementById("benchSourceLabel").value.trim();
+        const evidenceNote = document.getElementById("benchEvidenceNote").value.trim();
+        const sourceUrl = document.getElementById("benchSourceUrl").value.trim();
+        const observedAt = document.getElementById("benchObservedAt").value.trim();
+        const locationMarket = document.getElementById("benchLocationMarket").value.trim();
+        const unit = document.getElementById("benchUnit").value.trim();
+        const qty = document.getElementById("benchQuantity").value.trim();
         const rawPrice = document.getElementById("benchObservedPrice").value.trim();
-        payload.source_label = document.getElementById("benchSourceLabel").value.trim();
-        payload.evidence_note = document.getElementById("benchEvidenceNote").value.trim();
-        payload.observed_at = document.getElementById("benchObservedAt").value.trim();
-        payload.location_market = document.getElementById("benchLocationMarket").value.trim();
-        payload.unit = document.getElementById("benchUnit").value.trim();
-        payload.quantity = document.getElementById("benchQuantity").value.trim();
+        let hasErr = false;
+
+        if (!sourceLabel) { setFieldError("benchSourceLabel", "benchSourceLabelErr", "Label sumber survei wajib diisi."); hasErr = true; }
+        if (!evidenceNote) { setFieldError("benchEvidenceNote", "benchEvidenceNoteErr", "Catatan bukti/evidence wajib diisi."); hasErr = true; }
+        if (!observedAt) { setFieldError("benchObservedAt", "benchObservedAtErr", "Tanggal observasi ISO wajib diisi."); hasErr = true; }
+        if (!locationMarket) { setFieldError("benchLocationMarket", "benchLocationMarketErr", "Lokasi/pasar wajib diisi."); hasErr = true; }
+        if (!unit) { setFieldError("benchUnit", "benchUnitErr", "Satuan wajib diisi."); hasErr = true; }
+        if (!qty || Number.isNaN(Number(qty)) || Number(qty) <= 0) { setFieldError("benchQuantity", "benchQuantityErr", "Kuantitas wajib > 0."); hasErr = true; }
+        if (rawPrice === "" || Number.isNaN(Number(rawPrice)) || Number(rawPrice) < 0 || !Number.isInteger(Number(rawPrice))) {
+          setFieldError("benchObservedPrice", "benchObservedPriceErr", "Harga observasi (IDR) wajib bilangan bulat >= 0.");
+          hasErr = true;
+        }
+        if (hasErr) {
+          return setStatus(benchStatus, "Lengkapi kolom survei manual yang bertanda merah.", "err");
+        }
+        payload.source_label = sourceLabel;
+        payload.evidence_note = evidenceNote;
+        if (sourceUrl) payload.source_url = sourceUrl;
+        payload.observed_at = observedAt;
+        payload.location_market = locationMarket;
+        payload.unit = unit;
+        payload.quantity = qty;
         payload.currency = "IDR";
-        payload.observed_price_idr = rawPrice === "" ? null : Number(rawPrice);
+        payload.observed_price_idr = parseInt(rawPrice, 10);
       }
 
-      setStatus(benchStatus, "Membandingkan harga pasar...");
+      setStatus(benchStatus, "Membandingkan harga pasar (read-only)...", "info");
       try {
         const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/price-benchmarks/compare`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (reqWsId !== activeWorkspaceId || reqSeq !== benchReqSeq) return;
+        const grid = document.getElementById("benchResultGrid");
         if (!res.ok) {
-          benchResultGrid.textContent = "";
-          return setStatus(benchStatus, data.message || "Benchmark gagal.", true);
+          grid.textContent = "";
+          const fe = data.field_errors || {};
+          if (fe.source_label) setFieldError("benchSourceLabel", "benchSourceLabelErr", fe.source_label);
+          if (fe.evidence_note) setFieldError("benchEvidenceNote", "benchEvidenceNoteErr", fe.evidence_note);
+          if (fe.source_url) setFieldError("benchSourceUrl", "benchSourceUrlErr", fe.source_url);
+          if (fe.observed_at) setFieldError("benchObservedAt", "benchObservedAtErr", fe.observed_at);
+          if (fe.location_market) setFieldError("benchLocationMarket", "benchLocationMarketErr", fe.location_market);
+          if (fe.unit) setFieldError("benchUnit", "benchUnitErr", fe.unit);
+          if (fe.quantity) setFieldError("benchQuantity", "benchQuantityErr", fe.quantity);
+          if (fe.observed_price_idr) setFieldError("benchObservedPrice", "benchObservedPriceErr", fe.observed_price_idr);
+          return setStatus(benchStatus, data.message || "Perbandingan benchmark gagal.", "err");
         }
+
         const item = data.item;
         const obs = item.observation;
-        benchResultGrid.textContent = "";
-        benchResultGrid.appendChild(renderSimKpi("Harga Offering", `${fmtIdr(item.offering_unit_price_idr)} / ${item.offering_unit}`));
-        benchResultGrid.appendChild(renderSimKpi("Benchmark Ternormalisasi", `${fmtIdr(item.normalized_benchmark_price_idr)} / ${item.offering_unit}`));
-        benchResultGrid.appendChild(renderSimKpi("Selisih Harga", `${fmtIdr(item.price_delta_idr)} (${item.price_delta_percent === null ? "N/A" : item.price_delta_percent + "%"})`));
-        benchResultGrid.appendChild(renderSimKpi("Observasi Asli", `${fmtIdr(obs.observed_price_idr)} (${obs.currency}) / ${obs.quantity} ${obs.unit} · ${obs.location_market} (${obs.observation_period || obs.observed_at})`));
-        benchResultGrid.appendChild(renderSimKpi("Status Periode", obs.is_historical ? `Historis (Periode ${obs.observation_period || obs.observed_at})` : `Observasi (${obs.observed_at})`));
-        benchResultGrid.appendChild(renderSimKpi("Sumber & Atribusi", `${obs.source_kind}: ${obs.source_name}${obs.source_url ? " | " + obs.source_url : ""}`));
-        benchResultGrid.appendChild(renderSimKpi("Catatan Bukti (Evidence)", obs.evidence_note || "-"));
-        setStatus(benchStatus, item.benchmark_note || "Benchmark selesai (read-only).");
+        let provBadge = "Survei Manual";
+        let provCls = "pill-actual";
+        if (obs.source_kind === "transcribed_official") {
+          provBadge = "Data Resmi · Historis";
+          provCls = "pill-hist";
+        } else if (obs.source_kind === "synthetic_demo") {
+          provBadge = "Demo Sintetis";
+          provCls = "pill-demo";
+        }
+
+        grid.textContent = "";
+        grid.appendChild(renderResultCard("Harga Katalog Anda", `${fmtIdr(item.offering_unit_price_idr)} / ${item.offering_unit}`, "Katalog Tetap", "pill-sim"));
+        grid.appendChild(renderResultCard("Benchmark Ternormalisasi", `${fmtIdr(item.normalized_benchmark_price_idr)} / ${item.offering_unit}`, provBadge, provCls));
+        grid.appendChild(renderResultCard("Selisih Harga", `${fmtIdr(item.price_delta_idr)} (${item.price_delta_percent === null ? "N/A" : item.price_delta_percent + "%"})`, "Read-Only", "pill-sim"));
+        grid.appendChild(renderResultCard("Observasi Asli", `${fmtIdr(obs.observed_price_idr)} / ${obs.quantity} ${obs.unit} · ${obs.location_market}`, provBadge, provCls));
+        grid.appendChild(renderResultCard("Status Periode", obs.is_historical ? `Historis (${obs.observation_period || obs.observed_at})` : `Observasi (${obs.observed_at})`, provBadge, provCls));
+        grid.appendChild(renderResultCard("Sumber & Atribusi", `${obs.source_name}${obs.source_url ? " | " + obs.source_url : ""}`, provBadge, provCls));
+        grid.appendChild(renderResultCard("Catatan Bukti (Evidence)", obs.evidence_note || "-", "Atribusi", "pill-roadmap"));
+        setStatus(benchStatus, item.benchmark_note || "Benchmark selesai (read-only).", "ok");
       } catch {
         if (reqWsId !== activeWorkspaceId || reqSeq !== benchReqSeq) return;
-        setStatus(benchStatus, "Network error saat benchmark.", true);
+        setStatus(benchStatus, "Gangguan jaringan saat membandingkan harga.", "err");
       }
     });
 
+    // AI Business Review (#14/#40/#41) under Intelligence Studio
     const aiReviewStatus = document.getElementById("aiReviewStatus");
     const aiReviewGrid = document.getElementById("aiReviewGrid");
     const aiStubModeEl = document.getElementById("aiStubMode");
+    const aiProviderBadge = document.getElementById("aiProviderBadge");
+    const aiConfigHint = document.getElementById("aiConfigHint");
     let aiReviewReqSeq = 0;
 
     function clearAiReviewResults() {
       aiReviewReqSeq++;
-      aiReviewStatus.textContent = "";
-      aiReviewGrid.textContent = "";
+      if (aiReviewStatus) {
+        aiReviewStatus.textContent = "";
+        aiReviewStatus.className = "status";
+        aiReviewStatus.removeAttribute("role");
+      }
+      if (aiReviewGrid) {
+        aiReviewGrid.textContent = "";
+      }
     }
 
-    wsSelect.addEventListener("change", () => {
-      clearAiReviewResults();
-    });
+    async function loadAiReviewConfig() {
+      if (!activeWorkspaceId) return;
+      const reqWsId = activeWorkspaceId;
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/ai-review/config`);
+        if (!res.ok || reqWsId !== activeWorkspaceId) return;
+        const data = await res.json();
+        const cfg = data.item || {};
+        if (cfg.configured) {
+          aiProviderBadge.textContent = `Provider: ${cfg.provider} (${cfg.model})`;
+          aiProviderBadge.className = "pill pill-active";
+          aiConfigHint.textContent = `Provider terkonfigurasi (${cfg.provider} · ${cfg.model}). Live integration verified: ${cfg.live_integration_verified ? "Ya" : "Belum (menggunakan fallback bila error)"}.`;
+        } else {
+          aiProviderBadge.textContent = "Fallback Deterministik";
+          aiProviderBadge.className = "pill pill-sim";
+          const missing = (cfg.missing_env_vars || []).join(", ");
+          aiConfigHint.textContent = `Provider AI live belum dikonfigurasi (${missing || "env belum diisi"}). ${cfg.setup_action || ""} Klik Jalankan untuk melihat ringkasan fallback deterministik.`;
+        }
+      } catch {
+        if (reqWsId !== activeWorkspaceId) return;
+        aiProviderBadge.textContent = "Status Tidak Diketahui";
+        aiProviderBadge.className = "pill pill-roadmap";
+      }
+    }
 
     document.getElementById("runAiReviewBtn").addEventListener("click", async () => {
-      if (!activeWorkspaceId) return setStatus(aiReviewStatus, "Pilih workspace dulu.", true);
+      if (!activeWorkspaceId) return setStatus(aiReviewStatus, "Pilih profil usaha terlebih dahulu.", "err");
       const reqWsId = activeWorkspaceId;
       const reqSeq = ++aiReviewReqSeq;
       const dateVal = document.getElementById("reportDate").value || null;
       const stubVal = aiStubModeEl.value || null;
-      setStatus(aiReviewStatus, "Menjalankan AI Business Review...");
+      setStatus(aiReviewStatus, "Menjalankan AI Business Review (read-only)...", "info");
       try {
         const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/reports/daily/ai-review`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: dateVal, stub_mode: stubVal }),
+          body: JSON.stringify({ date: dateVal, stub_mode: stubVal })
         });
         const data = await res.json();
         if (reqWsId !== activeWorkspaceId || reqSeq !== aiReviewReqSeq) return;
         if (!res.ok) {
           aiReviewGrid.textContent = "";
-          return setStatus(aiReviewStatus, data.message || "AI Review gagal.", true);
+          return setStatus(aiReviewStatus, data.message || "AI Business Review gagal.", "err");
         }
         const item = data.item;
         const rev = item.review;
         const snap = item.snapshot;
         const cfg = item.config_status;
+        const modeBadge = item.provider_mode === "stub_test"
+          ? "Stub Test Fixture"
+          : (item.provider_mode === "deterministic_fallback" ? "Fallback Deterministik" : "Live AI Provider");
+        const modeCls = item.provider_mode === "live_provider" ? "pill-active" : "pill-sim";
+
         aiReviewGrid.textContent = "";
-        aiReviewGrid.appendChild(renderSimKpi("Mode & Status", `${item.provider_mode} (${item.status})`));
+        aiReviewGrid.appendChild(renderResultCard("Mode & Status", `${item.provider_mode} (${item.status})`, modeBadge, modeCls));
         if (item.fallback_reason) {
           const missingVars = (cfg.missing_env_vars || []).join(", ");
-          aiReviewGrid.appendChild(
-            renderSimKpi(
-              "Alasan Fallback",
-              `${item.fallback_reason}${missingVars ? " | Missing env: " + missingVars : ""}`
-            )
-          );
+          aiReviewGrid.appendChild(renderResultCard(
+            "Alasan Fallback",
+            `${item.fallback_reason}${missingVars ? " | Missing env: " + missingVars : ""}`,
+            "Fallback",
+            "pill-sim"
+          ));
         }
-        aiReviewGrid.appendChild(renderSimKpi("Ringkasan", rev.summary));
-        aiReviewGrid.appendChild(
-          renderSimKpi(
-            "Snapshot & Sitasi",
-            `${snap.snapshot_id} | Periode ${snap.period.date} | Source IDs: ${(rev.citations?.source_ids || []).length}`
-          )
-        );
-        aiReviewGrid.appendChild(
-          renderSimKpi(
-            "Data Belum Lengkap (missing_data)",
-            (rev.missing_data || []).length ? rev.missing_data.join(" ; ") : "Tidak ada"
-          )
-        );
+        aiReviewGrid.appendChild(renderResultCard("Ringkasan", rev.summary, modeBadge, modeCls));
+        aiReviewGrid.appendChild(renderResultCard(
+          "Snapshot & Sitasi",
+          `${snap.snapshot_id} | Periode ${snap.period.date} | Source IDs: ${(rev.citations?.source_ids || []).length}`,
+          "Teranonimisasi",
+          "pill-actual"
+        ));
+        aiReviewGrid.appendChild(renderResultCard(
+          "Data Belum Lengkap (missing_data)",
+          (rev.missing_data || []).length ? rev.missing_data.join(" ; ") : "Tidak ada",
+          "Transparansi",
+          "pill-roadmap"
+        ));
         setStatus(
           aiReviewStatus,
           item.provider_mode === "stub_test"
             ? "Selesai (Simulasi Stub Test Fixture — bukan integrasi AI live)."
             : item.provider_mode === "deterministic_fallback"
               ? `Fallback deterministik aktif (${item.fallback_reason}). ${cfg.configured ? "" : cfg.setup_action}`
-              : "Selesai (Live AI Provider)."
+              : "Selesai (Live AI Provider).",
+          item.provider_mode === "live_provider" ? "ok" : "info"
         );
       } catch {
         if (reqWsId !== activeWorkspaceId || reqSeq !== aiReviewReqSeq) return;
-        setStatus(aiReviewStatus, "Network error saat AI Business Review.", true);
+        setStatus(aiReviewStatus, "Gangguan jaringan saat menjalankan AI Business Review.", "err");
       }
     });
 
-    loadWorkspaces().then(() => loadBenchmarkSnapshots());
+    // Initial boot: restore route from hash or localStorage, prefill date, load workspaces
+    (function initApp() {
+      document.getElementById("reportDate").value = todayJakartaIso();
+      const fromHash = normalizeRouteFromHash(window.location.hash);
+      const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY) || "ringkasan";
+      const initialRoute = fromHash || normalizeRouteFromHash("#" + savedRoute) || { route: "ringkasan", subtab: null };
+      applyRoute(initialRoute, Boolean(fromHash));
+      renderBenchmarkSnapshotsForKind();
+      loadWorkspaces();
+    })();
   </script>
 </body>
 </html>

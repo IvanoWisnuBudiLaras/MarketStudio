@@ -30,6 +30,7 @@ from app.domain import (
 )
 
 JAKARTA_TZ = ZoneInfo("Asia/Jakarta")
+DEMO_SCENARIO_SLUG = "warung_bakso_sembako_v1"
 
 # Local synthetic principals for baseline development/testing (never real credentials)
 SYNTHETIC_PRINCIPALS: dict[str, str] = {
@@ -91,6 +92,22 @@ def _record_audit(
 
 
 def _row_to_offering(row: Any) -> dict[str, Any]:
+    req_stock = bool(row["requires_stock_movement"])
+    keys = row.keys()
+    if req_stock:
+        raw_qty = row["pool_qty_on_hand"] if "pool_qty_on_hand" in keys else None
+        raw_val = row["pool_total_value_idr"] if "pool_total_value_idr" in keys else None
+        qty_dec = Decimal(raw_qty) if raw_qty is not None else Decimal("0")
+        val_idr = int(raw_val) if raw_val is not None else 0
+        qty_on_hand: str | None = format(qty_dec.normalize(), "f") if qty_dec != 0 else "0"
+        inventory_value_idr: int | None = val_idr
+        wa_unit_cost_idr: int | None = (
+            round_idr(Decimal(val_idr) / qty_dec) if qty_dec > 0 else None
+        )
+    else:
+        qty_on_hand = None
+        inventory_value_idr = None
+        wa_unit_cost_idr = None
     return {
         "offering_id": row["offering_id"],
         "workspace_id": row["workspace_id"],
@@ -99,8 +116,11 @@ def _row_to_offering(row: Any) -> dict[str, Any]:
         "unit_price_idr": row["unit_price_idr"],
         "currency": "IDR",
         "unit": row["unit"],
-        "requires_stock_movement": bool(row["requires_stock_movement"]),
+        "requires_stock_movement": req_stock,
         "valuation_method": row["valuation_method"],
+        "qty_on_hand": qty_on_hand,
+        "inventory_value_idr": inventory_value_idr,
+        "wa_unit_cost_idr": wa_unit_cost_idr,
         "tax_status": row["tax_status"],
         "tax_reason": row["tax_reason"],
         "created_at": row["created_at"],
@@ -108,12 +128,15 @@ def _row_to_offering(row: Any) -> dict[str, Any]:
 
 
 def _row_to_workspace(row: Any) -> dict[str, Any]:
+    keys = row.keys()
     return {
         "workspace_id": row["workspace_id"],
         "name": row["name"],
         "business_type": row["business_type"],
         "currency": row["currency"],
         "timezone": row["timezone"],
+        "is_demo": bool(row["is_demo"]) if "is_demo" in keys else False,
+        "demo_slug": row["demo_slug"] if "demo_slug" in keys else None,
         "created_at": row["created_at"],
     }
 
@@ -228,6 +251,8 @@ class BaselineService:
                 "business_type": validated.business_type,
                 "currency": "IDR",
                 "timezone": validated.timezone,
+                "is_demo": False,
+                "demo_slug": None,
                 "created_at": created_at,
             }
             _record_audit(conn, workspace_id, actor, "workspace.created", "workspace", workspace_id, result)
@@ -328,7 +353,14 @@ class BaselineService:
         with db_transaction(self.db_path) as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
             rows = conn.execute(
-                "SELECT * FROM offerings WHERE workspace_id = ? ORDER BY created_at ASC",
+                """
+                SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
+                FROM offerings o
+                LEFT JOIN inventory_pools p
+                    ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
+                WHERE o.workspace_id = ?
+                ORDER BY o.created_at ASC
+                """,
                 (workspace_id,),
             ).fetchall()
             return [_row_to_offering(r) for r in rows]
@@ -343,7 +375,13 @@ class BaselineService:
         with db_transaction(self.db_path) as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
             row = conn.execute(
-                "SELECT * FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                """
+                SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
+                FROM offerings o
+                LEFT JOIN inventory_pools p
+                    ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
+                WHERE o.workspace_id = ? AND o.offering_id = ?
+                """,
                 (workspace_id, offering_id),
             ).fetchone()
             if not row:
@@ -402,6 +440,9 @@ class BaselineService:
                 "unit": validated.unit,
                 "requires_stock_movement": bool(validated.requires_stock_movement),
                 "valuation_method": validated.valuation_method,
+                "qty_on_hand": "0" if validated.requires_stock_movement else None,
+                "inventory_value_idr": 0 if validated.requires_stock_movement else None,
+                "wa_unit_cost_idr": None,
                 "tax_status": validated.tax_status,
                 "tax_reason": validated.tax_reason,
                 "created_at": created_at,
@@ -885,17 +926,42 @@ class BaselineService:
 
             purchase_rows = conn.execute(
                 """
-                SELECT * FROM purchases
-                WHERE workspace_id = ? AND occurred_at >= ? AND occurred_at < ?
-                ORDER BY occurred_at ASC
+                SELECT p.*, o.name AS offering_name, o.unit AS unit
+                FROM purchases p
+                LEFT JOIN offerings o ON o.offering_id = p.offering_id
+                WHERE p.workspace_id = ? AND p.occurred_at >= ? AND p.occurred_at < ?
+                ORDER BY p.occurred_at ASC
                 """,
                 (workspace_id, start_utc, end_utc),
             ).fetchall()
+            sale_ids = [r["sale_id"] for r in sales_rows]
+            lines_by_sale: dict[str, list[dict[str, Any]]] = {}
+            if sale_ids:
+                placeholders = ",".join("?" for _ in sale_ids)
+                line_rows = conn.execute(
+                    f"""
+                    SELECT l.*, o.name AS offering_name, o.unit AS unit
+                    FROM sale_lines l
+                    LEFT JOIN offerings o ON o.offering_id = l.offering_id
+                    WHERE l.workspace_id = ? AND l.sale_id IN ({placeholders})
+                    ORDER BY l.line_id ASC
+                    """,
+                    (workspace_id, *sale_ids),
+                ).fetchall()
+                for lr in line_rows:
+                    lines_by_sale.setdefault(lr["sale_id"], []).append(dict(lr))
+            sales_drill: list[dict[str, Any]] = []
+            for r in sales_rows:
+                sale_item = dict(r)
+                sale_item["lines"] = lines_by_sale.get(r["sale_id"], [])
+                sales_drill.append(sale_item)
             movement_rows = conn.execute(
                 """
-                SELECT * FROM stock_movements
-                WHERE workspace_id = ? AND occurred_at >= ? AND occurred_at < ?
-                ORDER BY occurred_at ASC
+                SELECT m.*, o.name AS offering_name, o.unit AS unit
+                FROM stock_movements m
+                LEFT JOIN offerings o ON o.offering_id = m.offering_id
+                WHERE m.workspace_id = ? AND m.occurred_at >= ? AND m.occurred_at < ?
+                ORDER BY m.occurred_at ASC
                 """,
                 (workspace_id, start_utc, end_utc),
             ).fetchall()
@@ -935,11 +1001,293 @@ class BaselineService:
                 },
                 "drill_down": {
                     "purchases": [dict(r) for r in purchase_rows],
-                    "sales": [dict(r) for r in sales_rows],
+                    "sales": sales_drill,
                     "stock_movements": [dict(r) for r in movement_rows],
                     "cash_movements": [dict(r) for r in cash_rows],
                     "audit_events": [dict(r) for r in audit_rows],
                 },
+            }
+
+    def bootstrap_demo_workspace(
+        self,
+        actor_id: str,
+        scenario_slug: str = DEMO_SCENARIO_SLUG,
+    ) -> tuple[int, dict[str, Any]]:
+        """Idempotently provision an isolated synthetic demo workspace with exact oracle fixtures."""
+        if not actor_id:
+            raise DomainError(401, "unauthenticated", "Aktor tidak terautentikasi.")
+        if scenario_slug != DEMO_SCENARIO_SLUG:
+            raise DomainError(
+                422,
+                "invalid_demo_scenario",
+                "Skenario demo tidak dikenal.",
+                {"scenario_slug": f"Gunakan '{DEMO_SCENARIO_SLUG}'."},
+            )
+
+        now_jkt = datetime.now(JAKARTA_TZ)
+        demo_date = now_jkt.date().isoformat()
+        start_of_day = datetime(now_jkt.year, now_jkt.month, now_jkt.day, tzinfo=JAKARTA_TZ)
+        if (now_jkt - start_of_day).total_seconds() >= 180:
+            t1_dt = now_jkt - timedelta(seconds=120)
+            t2_dt = now_jkt - timedelta(seconds=60)
+            t3_dt = now_jkt - timedelta(seconds=10)
+        else:
+            t1_dt = start_of_day
+            t2_dt = start_of_day
+            t3_dt = start_of_day
+        t1 = t1_dt.astimezone(timezone.utc).isoformat()
+        t2 = t2_dt.astimezone(timezone.utc).isoformat()
+        t3 = t3_dt.astimezone(timezone.utc).isoformat()
+
+        with db_transaction(self.db_path, immediate=True) as conn:
+            existing = conn.execute(
+                """
+                SELECT w.* FROM workspaces w
+                JOIN workspace_memberships m ON m.workspace_id = w.workspace_id
+                WHERE m.actor_id = ? AND m.revoked_at IS NULL
+                    AND w.is_demo = 1 AND w.demo_slug = ?
+                ORDER BY w.created_at ASC LIMIT 1
+                """,
+                (actor_id, scenario_slug),
+            ).fetchone()
+            if existing:
+                return 200, {
+                    "workspace": _row_to_workspace(existing),
+                    "created": False,
+                    "idempotent_replay": True,
+                    "scenario_slug": scenario_slug,
+                    "demo_date": demo_date,
+                }
+
+            now_utc = _utc_now()
+            ws_id = f"ws_{uuid.uuid4().hex[:12]}"
+            ws_name = "Warung Bakso & Sembako (Demo Sintetis)"
+            conn.execute(
+                """
+                INSERT INTO workspaces (
+                    workspace_id, name, business_type, currency, timezone, is_demo, demo_slug, created_at
+                ) VALUES (?, ?, 'umkm_hybrid', 'IDR', 'Asia/Jakarta', 1, ?, ?)
+                """,
+                (ws_id, ws_name, scenario_slug, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO workspace_memberships (workspace_id, actor_id, role, created_at, revoked_at)
+                VALUES (?, ?, 'owner', ?, NULL)
+                """,
+                (ws_id, actor_id, now_utc),
+            )
+
+            off_bakso_id = f"off_{uuid.uuid4().hex[:12]}"
+            off_beras_id = f"off_{uuid.uuid4().hex[:12]}"
+            off_jasa_id = f"off_{uuid.uuid4().hex[:12]}"
+
+            demo_offerings = [
+                (off_bakso_id, "Bakso Urat", "goods", 15000, "pcs", 1, "WA"),
+                (off_beras_id, "Beras Medium", "goods", 14500, "kg", 1, "WA"),
+                (off_jasa_id, "Jasa Katering Acara", "service", 500000, "sesi", 0, None),
+            ]
+            for oid, oname, otype, oprice, ounit, req_stk, val_method in demo_offerings:
+                conn.execute(
+                    """
+                    INSERT INTO offerings (
+                        offering_id, workspace_id, name, offering_type, unit_price_idr,
+                        unit, requires_stock_movement, valuation_method,
+                        tax_status, tax_reason, tax_amount, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'not_assessed', ?, NULL, ?)
+                    """,
+                    (oid, ws_id, oname, otype, oprice, ounit, req_stk, val_method, DEFAULT_TAX_REASON, now_utc),
+                )
+                _record_audit(
+                    conn,
+                    ws_id,
+                    actor_id,
+                    "offering.created",
+                    "offering",
+                    oid,
+                    {"offering_id": oid, "name": oname, "offering_type": otype, "unit_price_idr": oprice, "unit": ounit},
+                )
+
+            # Purchase 1: Bakso Urat 10 pcs @ Rp9.000 = Rp90.000 (cash out Rp90.000)
+            pur1_id = f"pur_{uuid.uuid4().hex[:12]}"
+            bat1_id = f"bat_{uuid.uuid4().hex[:12]}"
+            conn.execute(
+                """
+                INSERT INTO purchases (
+                    purchase_id, workspace_id, offering_id, qty, total_cost_idr,
+                    payment_method, occurred_at, recorded_at
+                ) VALUES (?, ?, ?, '10', 90000, 'cash', ?, ?)
+                """,
+                (pur1_id, ws_id, off_bakso_id, t1, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO inventory_batches (
+                    batch_id, workspace_id, offering_id, purchase_id, qty_initial, qty_remaining,
+                    total_cost_idr, occurred_at, recorded_at
+                ) VALUES (?, ?, ?, ?, '10', '6', 90000, ?, ?)
+                """,
+                (bat1_id, ws_id, off_bakso_id, pur1_id, t1, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO stock_movements (
+                    movement_id, workspace_id, offering_id, movement_type, qty_delta,
+                    unit_cost_idr, total_cost_idr, reference_type, reference_id, occurred_at, recorded_at
+                ) VALUES (?, ?, ?, 'purchase_in', '10', '9000', 90000, 'purchase', ?, ?, ?)
+                """,
+                (f"mov_{uuid.uuid4().hex[:12]}", ws_id, off_bakso_id, pur1_id, t1, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO cash_movements (
+                    cash_id, workspace_id, direction, amount_idr, reference_type, reference_id, occurred_at, recorded_at
+                ) VALUES (?, ?, 'out', 90000, 'purchase', ?, ?, ?)
+                """,
+                (f"csh_{uuid.uuid4().hex[:12]}", ws_id, pur1_id, t1, now_utc),
+            )
+            _record_audit(
+                conn,
+                ws_id,
+                actor_id,
+                "purchase.created",
+                "purchase",
+                pur1_id,
+                {"purchase_id": pur1_id, "offering_id": off_bakso_id, "qty": "10", "total_cost_idr": 90000},
+            )
+
+            # Purchase 2: Beras Medium 10 kg @ Rp12.000 = Rp120.000 (cash out Rp120.000)
+            pur2_id = f"pur_{uuid.uuid4().hex[:12]}"
+            bat2_id = f"bat_{uuid.uuid4().hex[:12]}"
+            conn.execute(
+                """
+                INSERT INTO purchases (
+                    purchase_id, workspace_id, offering_id, qty, total_cost_idr,
+                    payment_method, occurred_at, recorded_at
+                ) VALUES (?, ?, ?, '10', 120000, 'cash', ?, ?)
+                """,
+                (pur2_id, ws_id, off_beras_id, t2, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO inventory_batches (
+                    batch_id, workspace_id, offering_id, purchase_id, qty_initial, qty_remaining,
+                    total_cost_idr, occurred_at, recorded_at
+                ) VALUES (?, ?, ?, ?, '10', '10', 120000, ?, ?)
+                """,
+                (bat2_id, ws_id, off_beras_id, pur2_id, t2, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO stock_movements (
+                    movement_id, workspace_id, offering_id, movement_type, qty_delta,
+                    unit_cost_idr, total_cost_idr, reference_type, reference_id, occurred_at, recorded_at
+                ) VALUES (?, ?, ?, 'purchase_in', '10', '12000', 120000, 'purchase', ?, ?, ?)
+                """,
+                (f"mov_{uuid.uuid4().hex[:12]}", ws_id, off_beras_id, pur2_id, t2, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO cash_movements (
+                    cash_id, workspace_id, direction, amount_idr, reference_type, reference_id, occurred_at, recorded_at
+                ) VALUES (?, ?, 'out', 120000, 'purchase', ?, ?, ?)
+                """,
+                (f"csh_{uuid.uuid4().hex[:12]}", ws_id, pur2_id, t2, now_utc),
+            )
+            _record_audit(
+                conn,
+                ws_id,
+                actor_id,
+                "purchase.created",
+                "purchase",
+                pur2_id,
+                {"purchase_id": pur2_id, "offering_id": off_beras_id, "qty": "10", "total_cost_idr": 120000},
+            )
+
+            # Sale 1: Bakso Urat 4 pcs = Rp60.000 (HPP Rp36.000, gross profit Rp24.000)
+            sale_id = f"sal_{uuid.uuid4().hex[:12]}"
+            line_id = f"lin_{uuid.uuid4().hex[:12]}"
+            conn.execute(
+                """
+                INSERT INTO sales (
+                    sale_id, workspace_id, total_revenue_idr, total_cogs_idr, cogs_status,
+                    policy_version, tax_status, tax_reason, occurred_at, recorded_at
+                ) VALUES (?, ?, 60000, 36000, 'assessed', ?, 'not_assessed', ?, ?, ?)
+                """,
+                (sale_id, ws_id, POLICY_VERSION, DEFAULT_TAX_REASON, t3, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO sale_lines (
+                    line_id, sale_id, workspace_id, offering_id, offering_type,
+                    qty, revenue_idr, cogs_idr, cost_status
+                ) VALUES (?, ?, ?, ?, 'goods', '4', 60000, 36000, 'assessed')
+                """,
+                (line_id, sale_id, ws_id, off_bakso_id),
+            )
+            conn.execute(
+                """
+                INSERT INTO stock_movements (
+                    movement_id, workspace_id, offering_id, movement_type, qty_delta,
+                    unit_cost_idr, total_cost_idr, reference_type, reference_id, occurred_at, recorded_at
+                ) VALUES (?, ?, ?, 'sale_out', '-4', '9000', 36000, 'sale', ?, ?, ?)
+                """,
+                (f"mov_{uuid.uuid4().hex[:12]}", ws_id, off_bakso_id, sale_id, t3, now_utc),
+            )
+            conn.execute(
+                """
+                INSERT INTO cash_movements (
+                    cash_id, workspace_id, direction, amount_idr, reference_type, reference_id, occurred_at, recorded_at
+                ) VALUES (?, ?, 'in', 60000, 'sale', ?, ?, ?)
+                """,
+                (f"csh_{uuid.uuid4().hex[:12]}", ws_id, sale_id, t3, now_utc),
+            )
+
+            # Ending pools: Bakso 6 pcs / Rp54.000; Beras 10 kg / Rp120.000 -> total Rp174.000
+            conn.execute(
+                "INSERT INTO inventory_pools (workspace_id, offering_id, qty_on_hand, total_value_idr) VALUES (?, ?, '6', 54000)",
+                (ws_id, off_bakso_id),
+            )
+            conn.execute(
+                "INSERT INTO inventory_pools (workspace_id, offering_id, qty_on_hand, total_value_idr) VALUES (?, ?, '10', 120000)",
+                (ws_id, off_beras_id),
+            )
+
+            _record_audit(
+                conn,
+                ws_id,
+                actor_id,
+                "sale.created",
+                "sale",
+                sale_id,
+                {"sale_id": sale_id, "total_revenue_idr": 60000, "total_cogs_idr": 36000, "gross_profit_idr": 24000},
+            )
+            ws_dict = {
+                "workspace_id": ws_id,
+                "name": ws_name,
+                "business_type": "umkm_hybrid",
+                "currency": "IDR",
+                "timezone": "Asia/Jakarta",
+                "is_demo": True,
+                "demo_slug": scenario_slug,
+                "created_at": now_utc,
+            }
+            _record_audit(
+                conn,
+                ws_id,
+                actor_id,
+                "demo.bootstrapped",
+                "workspace",
+                ws_id,
+                {"scenario_slug": scenario_slug, "demo_date": demo_date},
+            )
+
+            return 201, {
+                "workspace": ws_dict,
+                "created": True,
+                "idempotent_replay": False,
+                "scenario_slug": scenario_slug,
+                "demo_date": demo_date,
             }
 
     def simulate_price(

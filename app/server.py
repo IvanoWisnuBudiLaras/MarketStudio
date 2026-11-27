@@ -176,6 +176,24 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 self._send_json(status, {"item": item, "request_id": request_id})
                 return
 
+            if path == "/v1/workspaces/demo":
+                actor_id = self._require_actor()
+                body = self._read_json_body()
+                scenario_slug = body.get("scenario_slug", "warung_bakso_sembako_v1")
+                if not isinstance(scenario_slug, str):
+                    raise DomainError(
+                        422,
+                        "validation_error",
+                        "scenario_slug harus berupa string.",
+                        {"scenario_slug": "Harus berupa string."},
+                    )
+                status, item = self.service.bootstrap_demo_workspace(
+                    actor_id=actor_id,
+                    scenario_slug=scenario_slug.strip() or "warung_bakso_sembako_v1",
+                )
+                self._send_json(status, {"item": item, "request_id": request_id})
+                return
+
             m_list = _RE_OFFERINGS.match(path)
             if m_list:
                 actor_id = self._require_actor()
