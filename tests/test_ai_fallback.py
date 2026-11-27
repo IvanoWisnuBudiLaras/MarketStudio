@@ -21,7 +21,7 @@ class AIFallbackTest(unittest.TestCase):
         self.service = BaselineService(db_path=self.db_path)
         self.owner = "owner_41"
         _, self.ws = self.service.create_workspace(
-            {"name": "Warung #41", "timezone": "Asia/Jakarta"},
+            {"name": "Warung 41", "timezone": "Asia/Jakarta"},
             actor=self.owner,
         )
         self.ws_id = self.ws["workspace_id"]
@@ -50,6 +50,32 @@ class AIFallbackTest(unittest.TestCase):
             self.assertEqual(res["provider_mode"], "deterministic_fallback", msg=stub_mode)
             self.assertEqual(res["fallback_reason"], expected_reason, msg=stub_mode)
             self.assertIn("Ringkasan deterministik", res["review"]["summary"])
+            self.assertIn("Penjelasan AI belum tersedia", res["review"]["summary"])
+
+        def slow_provider(_payload: dict) -> dict:
+            raise TimeoutError("simulated slow provider")
+
+        res_timeout = execute_ai_review(report, provider_callable=slow_provider)
+        self.assertEqual(res_timeout["status"], "fallback")
+        self.assertEqual(res_timeout["fallback_reason"], "provider_timeout")
+        self.assertIn("Penjelasan AI belum tersedia", res_timeout["review"]["summary"])
+
+        def bad_num_provider(payload: dict) -> dict:
+            return {
+                "summary": "Angka salah.",
+                "highlights": ["x"],
+                "missing_data": [],
+                "numeric_claims": {"revenue_idr": 999999999},
+                "citations": {
+                    "snapshot_id": payload["snapshot_id"],
+                    "period_date": payload["period"]["date"],
+                    "source_ids": payload["source_ids"],
+                },
+            }
+
+        res_num = execute_ai_review(report, provider_callable=bad_num_provider)
+        self.assertEqual(res_num["status"], "fallback")
+        self.assertEqual(res_num["fallback_reason"], "numeric_mismatch")
 
 
 if __name__ == "__main__":
