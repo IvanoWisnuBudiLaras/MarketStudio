@@ -139,7 +139,10 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         try:
             if path == "/v1/sessions":
                 body = self._read_json_body()
-                session = self.service.create_session(body.get("actor_id", ""))
+                session = self.service.create_session(
+                    body.get("actor_id", ""),
+                    body.get("passcode", ""),
+                )
                 self._send_json(201, {"item": session, "request_id": request_id})
                 return
 

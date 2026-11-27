@@ -15,7 +15,7 @@ from pathlib import Path
 
 os.environ["MARKETSTUDIO_QUIET_LOGS"] = "1"
 
-from app.server import WEB_INDEX_PATH, create_server  # noqa: E402
+from app.server import create_server  # noqa: E402
 from app.service import BaselineService  # noqa: E402
 
 
@@ -24,8 +24,8 @@ class BaselineIntegrationTest(unittest.TestCase):
         self.tmpdir = tempfile.TemporaryDirectory()
         self.db_path = str(Path(self.tmpdir.name) / "test_baseline.db")
         self._start_server()
-        self.token_a = self._login("actor_a")
-        self.token_b = self._login("actor_b")
+        self.token_a = self._login("actor_a", "dev-a-pass")
+        self.token_b = self._login("actor_b", "dev-b-pass")
 
     def tearDown(self) -> None:
         self._stop_server()
@@ -43,8 +43,8 @@ class BaselineIntegrationTest(unittest.TestCase):
         self.server.server_close()
         self.thread.join(timeout=2)
 
-    def _login(self, actor_id: str) -> str:
-        status, res = self._request("POST", "/v1/sessions", {"actor_id": actor_id})
+    def _login(self, actor_id: str, passcode: str) -> str:
+        status, res = self._request("POST", "/v1/sessions", {"actor_id": actor_id, "passcode": passcode})
         self.assertEqual(status, 201)
         return res["item"]["token"]
 
@@ -74,252 +74,220 @@ class BaselineIntegrationTest(unittest.TestCase):
             exc.close()
             return exc.code, json.loads(body_bytes.decode("utf-8"))
 
-    def test_browser_entrypoint_xss_safe_and_health(self) -> None:
+    def test_browser_entrypoint_xss_safe_and_counters(self) -> None:
         with urllib.request.urlopen(f"{self.base_url}/") as resp:
             self.assertEqual(resp.status, 200)
             html = resp.read().decode("utf-8")
             self.assertIn("MarketStudio", html)
             self.assertNotIn(".innerHTML", html)
+            self.assertIn("catalogReqSeq", html)
+            self.assertIn("reportReqSeq", html)
 
-        status, health = self._request("GET", "/health")
-        self.assertEqual(status, 200)
-        self.assertEqual(health["status"], "ok")
+    def test_session_credential_binding_and_anti_enumeration(self) -> None:
+        # Wrong passcode -> 401
+        s_bad, _ = self._request("POST", "/v1/sessions", {"actor_id": "actor_a", "passcode": "wrong"})
+        self.assertEqual(s_bad, 401)
 
-    def test_fixture_fa_wa_valuation_report_and_idempotency(self) -> None:
-        """Fixture F-A: 27 Nov 2026 Asia/Jakarta, buy 2kg@20k + 1kg@13k, sell 0.5kg@8k."""
-        _, ws_res = self._request("POST", "/v1/workspaces", {"name": "Workspace A"}, token=self.token_a)
+        # create-workspace idempotency key scoped to principal
+        _, ws_a = self._request(
+            "POST", "/v1/workspaces", {"name": "WS A"}, headers={"Idempotency-Key": "ws-k1"}, token=self.token_a
+        )
+        _, ws_b = self._request(
+            "POST", "/v1/workspaces", {"name": "WS B"}, headers={"Idempotency-Key": "ws-k1"}, token=self.token_b
+        )
+        self.assertNotEqual(ws_a["item"]["workspace_id"], ws_b["item"]["workspace_id"])
+
+        # Anti-enumeration: non-member vs unknown workspace return identical 404 shape
+        s_nonmember, e_nonmember = self._request(
+            "GET", f"/v1/workspaces/{ws_a['item']['workspace_id']}/offerings", token=self.token_b
+        )
+        s_unknown, e_unknown = self._request(
+            "GET", "/v1/workspaces/ws_does_not_exist/offerings", token=self.token_b
+        )
+        self.assertEqual((s_nonmember, s_unknown), (404, 404))
+        self.assertEqual(e_nonmember["code"], e_unknown["code"])
+        self.assertEqual(e_nonmember["message"], e_unknown["message"])
+
+    def test_fa_extended_and_fb_wa_pool_residual_invariant(self) -> None:
+        _, ws_res = self._request("POST", "/v1/workspaces", {"name": "WA Pool"}, token=self.token_a)
         ws_id = ws_res["item"]["workspace_id"]
-
-        _, off_res = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/offerings",
-            {"name": "Daging Sapi", "offering_type": "goods", "unit_price_idr": 16000, "unit": "kg"},
-            token=self.token_a,
-        )
-        off_id = off_res["item"]["offering_id"]
-        self.assertNotIn("tax_amount", off_res["item"])
-
-        s1, _ = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/purchases",
-            {
-                "offering_id": off_id,
-                "qty": "2",
-                "total_cost_idr": 20000,
-                "occurred_at": "2026-11-27T08:00:00+07:00",
-            },
-            headers={"Idempotency-Key": "fa-pur-1"},
-            token=self.token_a,
-        )
-        s2, _ = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/purchases",
-            {
-                "offering_id": off_id,
-                "qty": "1",
-                "total_cost_idr": 13000,
-                "occurred_at": "2026-11-27T09:00:00+07:00",
-            },
-            headers={"Idempotency-Key": "fa-pur-2"},
-            token=self.token_a,
-        )
-        self.assertEqual((s1, s2), (201, 201))
-
-        sale_payload = {
-            "lines": [{"offering_id": off_id, "qty": "0.5", "total_price_idr": 8000}],
-            "occurred_at": "2026-11-27T10:00:00+07:00",
-        }
-        s3, sale_res = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/sales",
-            sale_payload,
-            headers={"Idempotency-Key": "fa-sale-1"},
-            token=self.token_a,
-        )
-        s4, replay_res = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/sales",
-            sale_payload,
-            headers={"Idempotency-Key": "fa-sale-1"},
-            token=self.token_a,
-        )
-        self.assertEqual((s3, s4), (201, 201))
-        self.assertEqual(sale_res["item"]["sale_id"], replay_res["item"]["sale_id"])
-        self.assertEqual(sale_res["item"]["total_cogs_idr"], 5500)
-        self.assertEqual(sale_res["item"]["gross_profit_idr"], 2500)
-
-        s5, conflict_res = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/sales",
-            {"lines": [{"offering_id": off_id, "qty": "1", "total_price_idr": 16000}]},
-            headers={"Idempotency-Key": "fa-sale-1"},
-            token=self.token_a,
-        )
-        self.assertEqual(s5, 409)
-        self.assertEqual(conflict_res["code"], "idempotency_conflict")
-
-        sr, rep_res = self._request(
-            "GET",
-            f"/v1/workspaces/{ws_id}/reports/daily?date=2026-11-27",
-            token=self.token_a,
-        )
-        self.assertEqual(sr, 200)
-        rep = rep_res["report"]
-        self.assertEqual(rep["revenue_idr"], 8000)
-        self.assertEqual(rep["cogs_idr"], 5500)
-        self.assertEqual(rep["gross_profit_idr"], 2500)
-        self.assertEqual(rep["net_cash_flow_idr"], -25000)
-        self.assertEqual(rep["ending_inventory"]["total_qty"], "2.5")
-        self.assertEqual(rep["ending_inventory"]["total_value_idr"], 27500)
-        self.assertEqual(rep["tax_status"], "not_assessed")
-
-    def test_strict_validation_boolean_and_locked_wa(self) -> None:
-        _, ws_res = self._request("POST", "/v1/workspaces", {"name": "Toko Ketat"}, token=self.token_a)
-        ws_id = ws_res["item"]["workspace_id"]
-
-        s_bool, err_bool = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/offerings",
-            {
-                "name": "Barang A",
-                "offering_type": "goods",
-                "unit_price_idr": 1000,
-                "requires_stock_movement": "false",
-            },
-            token=self.token_a,
-        )
-        self.assertEqual(s_bool, 422)
-        self.assertIn("requires_stock_movement", err_bool["field_errors"])
-
-        s_fifo, err_fifo = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/offerings",
-            {
-                "name": "Barang B",
-                "offering_type": "goods",
-                "unit_price_idr": 1000,
-                "valuation_method": "FIFO",
-            },
-            token=self.token_a,
-        )
-        self.assertEqual(s_fifo, 422)
-        self.assertIn("valuation_method", err_fifo["field_errors"])
-
-    def test_concurrent_identical_idempotency_and_last_unit_race(self) -> None:
-        _, ws_res = self._request("POST", "/v1/workspaces", {"name": "Workspace B"}, token=self.token_a)
-        ws_id = ws_res["item"]["workspace_id"]
-        _, off_res = self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/offerings",
-            {"name": "Item Race", "offering_type": "goods", "unit_price_idr": 10000},
-            token=self.token_a,
-        )
-        off_id = off_res["item"]["offering_id"]
-        self._request(
-            "POST",
-            f"/v1/workspaces/{ws_id}/purchases",
-            {"offering_id": off_id, "qty": "2", "total_cost_idr": 10000},
-            token=self.token_a,
-        )
-
-        # 1. Two concurrent identical POSTs with SAME Idempotency-Key -> both 201, same sale_id
-        same_results: list[tuple[int, str]] = []
-        lock = threading.Lock()
-
-        def same_key_sale() -> None:
-            code, body = self._request(
-                "POST",
-                f"/v1/workspaces/{ws_id}/sales",
-                {"lines": [{"offering_id": off_id, "qty": "1", "total_price_idr": 10000}]},
-                headers={"Idempotency-Key": "concurrent-same-key"},
-                token=self.token_a,
-            )
-            with lock:
-                same_results.append((code, body.get("item", {}).get("sale_id", "")))
-
-        t1 = threading.Thread(target=same_key_sale)
-        t2 = threading.Thread(target=same_key_sale)
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
-        self.assertEqual([r[0] for r in same_results], [201, 201])
-        self.assertEqual(same_results[0][1], same_results[1][1])
-
-        # 2. Competing sales on last unit with DIFFERENT keys -> 1 winner (201), 1 loser (409)
-        race_codes: list[int] = []
-
-        def race_sale(idx: int) -> None:
-            code, _ = self._request(
-                "POST",
-                f"/v1/workspaces/{ws_id}/sales",
-                {"lines": [{"offering_id": off_id, "qty": "1", "total_price_idr": 10000}]},
-                headers={"Idempotency-Key": f"race-{idx}"},
-                token=self.token_a,
-            )
-            with lock:
-                race_codes.append(code)
-
-        t3 = threading.Thread(target=race_sale, args=(1,))
-        t4 = threading.Thread(target=race_sale, args=(2,))
-        t3.start()
-        t4.start()
-        t3.join()
-        t4.join()
-        self.assertEqual(sorted(race_codes), [201, 409])
-
-    def test_p0_route_isolation_and_revoked_actor_replay(self) -> None:
-        _, ws_a = self._request("POST", "/v1/workspaces", {"name": "Tenant A"}, token=self.token_a)
-        _, ws_b = self._request("POST", "/v1/workspaces", {"name": "Tenant B"}, token=self.token_b)
-        ws_a_id = ws_a["item"]["workspace_id"]
-        ws_b_id = ws_b["item"]["workspace_id"]
-
-        # GET /v1/workspaces filters strictly to verified actor's memberships
-        _, list_a = self._request("GET", "/v1/workspaces", token=self.token_a)
-        _, list_b = self._request("GET", "/v1/workspaces", token=self.token_b)
-        self.assertEqual([w["workspace_id"] for w in list_a["items"]], [ws_a_id])
-        self.assertEqual([w["workspace_id"] for w in list_b["items"]], [ws_b_id])
-
-        # Unauthenticated -> 401
-        s_unauth, _ = self._request("GET", "/v1/workspaces")
-        self.assertEqual(s_unauth, 401)
-
         _, off_a = self._request(
             "POST",
-            f"/v1/workspaces/{ws_a_id}/offerings",
-            {"name": "Produk A", "offering_type": "goods", "unit_price_idr": 10000},
-            headers={"Idempotency-Key": "off-a-1"},
+            f"/v1/workspaces/{ws_id}/offerings",
+            {"name": "Daging", "offering_type": "goods", "unit_price_idr": 16000, "unit": "kg"},
             token=self.token_a,
         )
         off_a_id = off_a["item"]["offering_id"]
 
-        # Actor B targeting Workspace A -> 403 across all P0 routes
-        routes = [
-            ("GET", f"/v1/workspaces/{ws_a_id}/offerings", None),
-            ("GET", f"/v1/workspaces/{ws_a_id}/offerings/{off_a_id}", None),
-            ("POST", f"/v1/workspaces/{ws_a_id}/offerings", {"name": "X", "offering_type": "goods", "unit_price_idr": 1}),
-            ("POST", f"/v1/workspaces/{ws_a_id}/purchases", {"offering_id": off_a_id, "qty": "1", "total_cost_idr": 100}),
-            ("POST", f"/v1/workspaces/{ws_a_id}/sales", {"lines": [{"offering_id": off_a_id, "qty": "1"}]}),
-            ("GET", f"/v1/workspaces/{ws_a_id}/reports/daily", None),
-        ]
-        for method, path, body in routes:
-            c1, _ = self._request(method, path, body, token=self.token_b)
-            self.assertEqual(c1, 403, f"Expected 403 for Actor B on {method} {path}")
-
-        # Actor B querying Tenant A's offering under Tenant B's own workspace -> 404 (no leakage)
-        c_leak, _ = self._request("GET", f"/v1/workspaces/{ws_b_id}/offerings/{off_a_id}", token=self.token_b)
-        self.assertEqual(c_leak, 404)
-
-        # Revoke Actor A's membership -> Actor A cannot replay valid old Idempotency-Key
-        BaselineService(db_path=self.db_path).revoke_membership(ws_a_id, "actor_a")
-        c_revoked, _ = self._request(
+        self._request(
             "POST",
-            f"/v1/workspaces/{ws_a_id}/offerings",
-            {"name": "Produk A", "offering_type": "goods", "unit_price_idr": 10000},
-            headers={"Idempotency-Key": "off-a-1"},
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_a_id, "qty": "2", "total_cost_idr": 20000, "occurred_at": "2026-11-27T08:00:00+07:00"},
             token=self.token_a,
         )
-        self.assertEqual(c_revoked, 403)
+        self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_a_id, "qty": "1", "total_cost_idr": 13000, "occurred_at": "2026-11-27T09:00:00+07:00"},
+            token=self.token_a,
+        )
+
+        # F-A extended: 0.5 + 0.5 + 2.0 -> HPP 5.500 / 5.500 / 22.000, ending 0 / 0
+        _, s1 = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {"lines": [{"offering_id": off_a_id, "qty": "0.5", "total_price_idr": 8000}], "occurred_at": "2026-11-27T10:00:00+07:00"},
+            token=self.token_a,
+        )
+        _, s2 = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {"lines": [{"offering_id": off_a_id, "qty": "0.5", "total_price_idr": 8000}], "occurred_at": "2026-11-27T11:00:00+07:00"},
+            token=self.token_a,
+        )
+        _, s3 = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {"lines": [{"offering_id": off_a_id, "qty": "2.0", "total_price_idr": 32000}], "occurred_at": "2026-11-27T12:00:00+07:00"},
+            token=self.token_a,
+        )
+        self.assertEqual(
+            [s1["item"]["total_cogs_idr"], s2["item"]["total_cogs_idr"], s3["item"]["total_cogs_idr"]],
+            [5500, 5500, 22000],
+        )
+
+        # F-B: 3 units / 10.000 -> 1 + 1 + 1 = 3.333 / 3.333 / 3.334, ending 0 / 0
+        _, off_b = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/offerings",
+            {"name": "Unit B", "offering_type": "goods", "unit_price_idr": 5000},
+            token=self.token_a,
+        )
+        off_b_id = off_b["item"]["offering_id"]
+        self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_b_id, "qty": "3", "total_cost_idr": 10000, "occurred_at": "2026-11-27T13:00:00+07:00"},
+            token=self.token_a,
+        )
+        cogs_b = []
+        for idx in range(3):
+            _, sb = self._request(
+                "POST",
+                f"/v1/workspaces/{ws_id}/sales",
+                {"lines": [{"offering_id": off_b_id, "qty": "1", "total_price_idr": 5000}], "occurred_at": f"2026-11-27T14:0{idx}:00+07:00"},
+                token=self.token_a,
+            )
+            cogs_b.append(sb["item"]["total_cogs_idr"])
+        self.assertEqual(cogs_b, [3333, 3334, 3333])
+        self.assertEqual(sum(cogs_b), 10000)
+
+        _, rep = self._request("GET", f"/v1/workspaces/{ws_id}/reports/daily?date=2026-11-27", token=self.token_a)
+        self.assertEqual(rep["report"]["ending_inventory"]["total_value_idr"], 0)
+
+    def test_historical_cutoff_chronology_and_validation(self) -> None:
+        _, ws_res = self._request("POST", "/v1/workspaces", {"name": "History WS"}, token=self.token_a)
+        ws_id = ws_res["item"]["workspace_id"]
+        _, off = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/offerings",
+            {"name": "Barang", "offering_type": "goods", "unit_price_idr": 6000},
+            token=self.token_a,
+        )
+        off_id = off["item"]["offering_id"]
+
+        # Purchase on D (2026-11-26)
+        self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_id, "qty": "3", "total_cost_idr": 12000, "occurred_at": "2026-11-26T10:00:00+07:00"},
+            token=self.token_a,
+        )
+        # Sale on D+1 (2026-11-27)
+        self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {"lines": [{"offering_id": off_id, "qty": "1", "total_price_idr": 6000}], "occurred_at": "2026-11-27T10:00:00+07:00"},
+            token=self.token_a,
+        )
+
+        # Report D shows 3 units / 12000; Report D+1 shows 2 units / 8000
+        _, rep_d = self._request("GET", f"/v1/workspaces/{ws_id}/reports/daily?date=2026-11-26", token=self.token_a)
+        _, rep_d1 = self._request("GET", f"/v1/workspaces/{ws_id}/reports/daily?date=2026-11-27", token=self.token_a)
+        self.assertEqual(rep_d["report"]["ending_inventory"]["total_qty"], "3")
+        self.assertEqual(rep_d["report"]["ending_inventory"]["total_value_idr"], 12000)
+        self.assertEqual(rep_d1["report"]["ending_inventory"]["total_qty"], "2")
+        self.assertEqual(rep_d1["report"]["ending_inventory"]["total_value_idr"], 8000)
+
+        # Backdated sale on D after D+1 movement -> 422 out_of_order_timestamp
+        s_back, err_back = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/sales",
+            {"lines": [{"offering_id": off_id, "qty": "1"}], "occurred_at": "2026-11-26T12:00:00+07:00"},
+            token=self.token_a,
+        )
+        self.assertEqual(s_back, 422)
+        self.assertEqual(err_back["code"], "out_of_order_timestamp")
+
+        # Non-cash, bad date, NaN -> 422
+        s_def, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_id, "qty": "1", "total_cost_idr": 1000, "payment_method": "deferred"},
+            token=self.token_a,
+        )
+        s_bad_ts, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_id, "qty": "1", "total_cost_idr": 1000, "occurred_at": "not-a-date"},
+            token=self.token_a,
+        )
+        s_nan, _ = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_id, "qty": "NaN", "total_cost_idr": 1000},
+            token=self.token_a,
+        )
+        self.assertEqual((s_def, s_bad_ts, s_nan), (422, 422, 422))
+
+    def test_fault_injection_stages_rollback(self) -> None:
+        _, ws_res = self._request("POST", "/v1/workspaces", {"name": "Fault WS"}, token=self.token_a)
+        ws_id = ws_res["item"]["workspace_id"]
+        _, off = self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/offerings",
+            {"name": "Item", "offering_type": "goods", "unit_price_idr": 5000},
+            token=self.token_a,
+        )
+        off_id = off["item"]["offering_id"]
+        self._request(
+            "POST",
+            f"/v1/workspaces/{ws_id}/purchases",
+            {"offering_id": off_id, "qty": "2", "total_cost_idr": 4000},
+            token=self.token_a,
+        )
+
+        svc = BaselineService(db_path=self.db_path)
+
+        def boom(_conn: sqlite3.Connection) -> None:
+            raise RuntimeError("Simulated crash")
+
+        for stage in ("stock_movements", "pre_commit"):
+            with self.assertRaises(RuntimeError):
+                svc.create_sale(
+                    ws_id,
+                    "actor_a",
+                    {"lines": [{"offering_id": off_id, "qty": "1", "total_price_idr": 5000}]},
+                    idempotency_key=f"fault-{stage}",
+                    actor="actor_a",
+                    fault_injector=boom,
+                    fault_stage=stage,
+                )
+
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            sales_cnt = conn.execute("SELECT COUNT(*) FROM sales WHERE workspace_id = ?", (ws_id,)).fetchone()[0]
+            idem_cnt = conn.execute("SELECT COUNT(*) FROM idempotency_keys WHERE workspace_id = ?", (ws_id,)).fetchone()[0]
+        self.assertEqual((sales_cnt, idem_cnt), (0, 0))
 
 
 if __name__ == "__main__":

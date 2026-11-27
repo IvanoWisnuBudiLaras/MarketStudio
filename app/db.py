@@ -91,6 +91,16 @@ CREATE TABLE IF NOT EXISTS inventory_batches (
 CREATE INDEX IF NOT EXISTS idx_batches_ws_offering
     ON inventory_batches (workspace_id, offering_id);
 
+CREATE TABLE IF NOT EXISTS inventory_pools (
+    workspace_id TEXT NOT NULL,
+    offering_id TEXT NOT NULL,
+    qty_on_hand TEXT NOT NULL,
+    total_value_idr INTEGER NOT NULL CHECK (total_value_idr >= 0),
+    PRIMARY KEY (workspace_id, offering_id),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    FOREIGN KEY (offering_id) REFERENCES offerings(offering_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS stock_movements (
     movement_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,

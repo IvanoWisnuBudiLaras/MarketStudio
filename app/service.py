@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -24,6 +25,13 @@ from app.domain import (
 
 JAKARTA_TZ = ZoneInfo("Asia/Jakarta")
 
+# Local synthetic principals for baseline development/testing (never real credentials)
+SYNTHETIC_PRINCIPALS: dict[str, str] = {
+    "synthetic_owner": "dev-owner-pass",
+    "actor_a": "dev-a-pass",
+    "actor_b": "dev-b-pass",
+}
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -32,7 +40,12 @@ def _utc_now() -> str:
 def _normalize_occurred_at(raw: str | None) -> str:
     if not raw:
         return _utc_now()
-    dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    if not isinstance(raw, str):
+        raise DomainError(422, "invalid_timestamp", "Format occurred_at harus string ISO-8601.")
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise DomainError(422, "invalid_timestamp", f"Format occurred_at tidak valid: {exc}") from exc
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).isoformat()
@@ -105,10 +118,11 @@ class BaselineService:
     def __init__(self, db_path: str = DEFAULT_DB_PATH) -> None:
         self.db_path = db_path
 
-    def create_session(self, actor_id: str) -> dict[str, Any]:
+    def create_session(self, actor_id: str, passcode: str = "") -> dict[str, Any]:
         clean_actor = actor_id.strip() if isinstance(actor_id, str) else ""
-        if not clean_actor:
-            raise DomainError(422, "validation_error", "actor_id wajib diisi.", {"actor_id": "Wajib diisi."})
+        expected = SYNTHETIC_PRINCIPALS.get(clean_actor)
+        if not expected or not isinstance(passcode, str) or not hmac.compare_digest(passcode, expected):
+            raise DomainError(401, "unauthenticated", "Kredensial principal tidak valid.")
         token = f"sess_{uuid.uuid4().hex}"
         created_at = _utc_now()
         with db_transaction(self.db_path, immediate=True) as conn:
@@ -167,7 +181,7 @@ class BaselineService:
                     FROM idempotency_keys
                     WHERE workspace_id = ? AND operation = ? AND idempotency_key = ?
                     """,
-                    ("_global", "create_workspace", idempotency_key),
+                    (f"principal:{actor}", "create_workspace", idempotency_key),
                 ).fetchone()
                 if existing:
                     if existing["request_hash"] != req_hash:
@@ -211,7 +225,7 @@ class BaselineService:
                         workspace_id, operation, idempotency_key, request_hash, status_code, response_body, created_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-                    ("_global", "create_workspace", idempotency_key, req_hash, 201, json.dumps(result), created_at),
+                    (f"principal:{actor}", "create_workspace", idempotency_key, req_hash, 201, json.dumps(result), created_at),
                 )
             return 201, result
 
@@ -225,13 +239,11 @@ class BaselineService:
         if not actor_id:
             raise DomainError(401, "unauthenticated", "Aktor tidak terautentikasi.")
         if actor_status == "revoked":
-            raise DomainError(403, "actor_revoked", "Akses aktor telah dicabut.")
+            raise DomainError(404, "workspace_not_found", "Workspace tidak ditemukan atau akses ditolak.")
         ws = conn.execute(
             "SELECT workspace_id FROM workspaces WHERE workspace_id = ?",
             (workspace_id,),
         ).fetchone()
-        if not ws:
-            raise DomainError(404, "workspace_not_found", "Workspace tidak ditemukan.")
         membership = conn.execute(
             """
             SELECT role, revoked_at FROM workspace_memberships
@@ -239,11 +251,11 @@ class BaselineService:
             """,
             (workspace_id, actor_id),
         ).fetchone()
-        if not membership or membership["revoked_at"] is not None:
+        if not ws or not membership or membership["revoked_at"] is not None:
             raise DomainError(
-                403,
-                "forbidden_workspace",
-                "Akses lintas workspace ditolak (bukan anggota aktif workspace).",
+                404,
+                "workspace_not_found",
+                "Workspace tidak ditemukan atau akses ditolak.",
             )
 
     def _check_idempotency(
@@ -464,6 +476,22 @@ class BaselineService:
                 """,
                 (cash_id, workspace_id, validated.total_cost_idr, purchase_id, occurred_at, recorded_at),
             )
+            pool = conn.execute(
+                "SELECT qty_on_hand, total_value_idr FROM inventory_pools WHERE workspace_id = ? AND offering_id = ?",
+                (workspace_id, validated.offering_id),
+            ).fetchone()
+            if pool:
+                new_qty = Decimal(pool["qty_on_hand"]) + validated.qty
+                new_val = int(pool["total_value_idr"]) + validated.total_cost_idr
+                conn.execute(
+                    "UPDATE inventory_pools SET qty_on_hand = ?, total_value_idr = ? WHERE workspace_id = ? AND offering_id = ?",
+                    (str(new_qty), new_val, workspace_id, validated.offering_id),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO inventory_pools (workspace_id, offering_id, qty_on_hand, total_value_idr) VALUES (?, ?, ?, ?)",
+                    (workspace_id, validated.offering_id, qty_str, validated.total_cost_idr),
+                )
 
             result = {
                 "purchase_id": purchase_id,
@@ -491,6 +519,7 @@ class BaselineService:
         actor: str = "synthetic_owner",
         actor_status: str | None = None,
         fault_injector: Callable[[Any], None] | None = None,
+        fault_stage: str = "pre_commit",
     ) -> tuple[int, dict[str, Any]]:
         with db_transaction(self.db_path, immediate=True) as conn:
             self._assert_workspace_access(conn, workspace_id, caller_workspace_id, actor_status)
@@ -529,51 +558,53 @@ class BaselineService:
                 line_cost_status = "open"
 
                 if off["requires_stock_movement"]:
-                    batches = conn.execute(
-                        """
-                        SELECT batch_id, qty_initial, qty_remaining, total_cost_idr
-                        FROM inventory_batches
-                        WHERE workspace_id = ? AND offering_id = ? AND CAST(qty_remaining AS REAL) > 0
-                        ORDER BY occurred_at ASC, batch_id ASC
-                        """,
+                    max_mov = conn.execute(
+                        "SELECT MAX(occurred_at) AS max_ts FROM stock_movements WHERE workspace_id = ? AND offering_id = ?",
                         (workspace_id, line.offering_id),
-                    ).fetchall()
+                    ).fetchone()
+                    if max_mov and max_mov["max_ts"] and occurred_at < max_mov["max_ts"]:
+                        raise DomainError(
+                            422,
+                            "out_of_order_timestamp",
+                            "occurred_at tidak boleh lebih awal dari mutasi stok terakhir.",
+                        )
 
-                    total_qty_avail = sum((Decimal(b["qty_remaining"]) for b in batches), Decimal("0"))
-                    if total_qty_avail < line.qty:
+                    pool = conn.execute(
+                        "SELECT qty_on_hand, total_value_idr FROM inventory_pools WHERE workspace_id = ? AND offering_id = ?",
+                        (workspace_id, line.offering_id),
+                    ).fetchone()
+                    qty_on_hand = Decimal(pool["qty_on_hand"]) if pool else Decimal("0")
+                    total_val_idr = int(pool["total_value_idr"]) if pool else 0
+
+                    if qty_on_hand < line.qty:
                         raise DomainError(
                             409,
                             "insufficient_stock",
-                            f"Stok tidak mencukupi untuk {off['name']} (tersedia {total_qty_avail}, diminta {line.qty}).",
+                            f"Stok tidak mencukupi untuk {off['name']} (tersedia {qty_on_hand}, diminta {line.qty}).",
                         )
 
-                    # Weighted Average (WA) unit cost across remaining inventory batches
-                    total_val_avail = Decimal("0")
-                    for b in batches:
-                        b_init = Decimal(b["qty_initial"])
-                        b_rem = Decimal(b["qty_remaining"])
-                        b_val = (Decimal(b["total_cost_idr"]) * b_rem) / b_init
-                        total_val_avail += b_val
+                    if line.qty == qty_on_hand:
+                        line_cogs_idr = total_val_idr
+                        new_qty = Decimal("0")
+                        new_val_idr = 0
+                        wa_unit_cost = Decimal(total_val_idr) / qty_on_hand
+                    else:
+                        wa_unit_cost = Decimal(total_val_idr) / qty_on_hand
+                        line_cogs_idr = round_idr(line.qty * wa_unit_cost)
+                        new_qty = qty_on_hand - line.qty
+                        new_val_idr = total_val_idr - line_cogs_idr
 
-                    wa_unit_cost = total_val_avail / total_qty_avail
-                    line_cogs_idr = round_idr(line.qty * wa_unit_cost)
                     line_cost_status = "assessed"
                     if total_cogs_idr is not None:
                         total_cogs_idr += line_cogs_idr
 
-                    # Deduct qty_remaining across batches proportionally/FIFO-wise while keeping total WA value consistent
-                    remaining_to_deduct = line.qty
-                    for b in batches:
-                        if remaining_to_deduct <= 0:
-                            break
-                        b_rem = Decimal(b["qty_remaining"])
-                        take = min(b_rem, remaining_to_deduct)
-                        new_rem = b_rem - take
-                        conn.execute(
-                            "UPDATE inventory_batches SET qty_remaining = ? WHERE batch_id = ?",
-                            (str(new_rem), b["batch_id"]),
-                        )
-                        remaining_to_deduct -= take
+                    conn.execute(
+                        "UPDATE inventory_pools SET qty_on_hand = ?, total_value_idr = ? WHERE workspace_id = ? AND offering_id = ?",
+                        (str(new_qty), new_val_idr, workspace_id, line.offering_id),
+                    )
+
+                    if fault_injector is not None and fault_stage == "stock_movements":
+                        fault_injector(conn)
 
                     conn.execute(
                         """
@@ -684,7 +715,7 @@ class BaselineService:
                 conn, workspace_id, "create_sale", idempotency_key, req_hash, 201, result, recorded_at
             )
 
-            if fault_injector is not None:
+            if fault_injector is not None and fault_stage == "pre_commit":
                 fault_injector(conn)
 
             return 201, result
@@ -746,48 +777,40 @@ class BaselineService:
             cash_out_idr = sum(r["amount_idr"] for r in cash_rows if r["direction"] == "out")
             net_cash_flow_idr = cash_in_idr - cash_out_idr
 
-            # Ending inventory snapshot (WA value = total purchase cost - total assessed sale COGS)
-            batch_rows = conn.execute(
+            # Ending inventory snapshot reconstructed strictly from stock_movements < end_utc
+            mov_rows = conn.execute(
                 """
-                SELECT b.offering_id, o.name, o.unit, b.qty_remaining, b.total_cost_idr
-                FROM inventory_batches b
-                JOIN offerings o ON o.offering_id = b.offering_id
-                WHERE b.workspace_id = ? AND b.occurred_at < ?
+                SELECT m.offering_id, o.name, o.unit, m.movement_type, m.qty_delta, m.total_cost_idr
+                FROM stock_movements m
+                JOIN offerings o ON o.offering_id = m.offering_id
+                WHERE m.workspace_id = ? AND m.occurred_at < ?
                 """,
                 (workspace_id, end_utc),
             ).fetchall()
-
-            cogs_by_off_rows = conn.execute(
-                """
-                SELECT sl.offering_id, COALESCE(SUM(sl.cogs_idr), 0) AS total_cogs
-                FROM sale_lines sl
-                JOIN sales s ON s.sale_id = sl.sale_id
-                WHERE sl.workspace_id = ? AND s.occurred_at < ? AND sl.cost_status = 'assessed'
-                GROUP BY sl.offering_id
-                """,
-                (workspace_id, end_utc),
-            ).fetchall()
-            cogs_by_off = {r["offering_id"]: int(r["total_cogs"]) for r in cogs_by_off_rows}
 
             inv_by_off: dict[str, dict[str, Any]] = {}
-            for b in batch_rows:
-                oid = b["offering_id"]
+            for m in mov_rows:
+                oid = m["offering_id"]
                 if oid not in inv_by_off:
                     inv_by_off[oid] = {
                         "offering_id": oid,
-                        "name": b["name"],
-                        "unit": b["unit"],
+                        "name": m["name"],
+                        "unit": m["unit"],
                         "qty": Decimal("0"),
-                        "total_cost_in": 0,
+                        "value_idr": 0,
                     }
-                inv_by_off[oid]["qty"] += Decimal(b["qty_remaining"])
-                inv_by_off[oid]["total_cost_in"] += int(b["total_cost_idr"])
+                inv_by_off[oid]["qty"] += Decimal(m["qty_delta"])
+                cost = int(m["total_cost_idr"] or 0)
+                if m["movement_type"] == "purchase_in":
+                    inv_by_off[oid]["value_idr"] += cost
+                else:
+                    inv_by_off[oid]["value_idr"] -= cost
 
             inv_items = []
             total_inv_qty = Decimal("0")
             total_inv_value_idr = 0
             for oid, item in inv_by_off.items():
-                val_idr = item["total_cost_in"] - cogs_by_off.get(oid, 0)
+                val_idr = item["value_idr"]
                 total_inv_qty += item["qty"]
                 total_inv_value_idr += val_idr
                 inv_items.append(

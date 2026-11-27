@@ -41,8 +41,8 @@ def parse_positive_decimal(value: Any, field: str, errors: dict[str, str]) -> De
     except (InvalidOperation, ValueError):
         errors[field] = f"{field} harus berupa angka desimal yang valid."
         return None
-    if dec <= 0:
-        errors[field] = f"{field} harus lebih besar dari 0."
+    if not dec.is_finite() or dec <= 0:
+        errors[field] = f"{field} harus lebih besar dari 0 dan bukan NaN/Infinity."
         return None
     return dec
 
@@ -190,6 +190,10 @@ def validate_purchase_input(payload: dict[str, Any]) -> PurchaseInput:
     if isinstance(total_cost_idr, bool) or not isinstance(total_cost_idr, int) or total_cost_idr < 0:
         errors["total_cost_idr"] = "total_cost_idr harus bilangan bulat >= 0."
 
+    payment_method = payload.get("payment_method", "cash")
+    if payment_method != "cash":
+        errors["payment_method"] = "Hanya pembayaran tunai ('cash') yang didukung pada baseline ini."
+
     if errors or qty is None:
         raise DomainError(422, "validation_error", "Data pembelian tidak valid.", errors)
 
@@ -238,5 +242,14 @@ def validate_sale_input(payload: dict[str, Any]) -> SaleInput:
 
     if errors:
         raise DomainError(422, "validation_error", "Data penjualan tidak valid.", errors)
+
+    payment_method = payload.get("payment_method", "cash")
+    if payment_method != "cash":
+        raise DomainError(
+            422,
+            "validation_error",
+            "Data penjualan tidak valid.",
+            {"payment_method": "Hanya pembayaran tunai ('cash') yang didukung pada baseline ini."},
+        )
 
     return SaleInput(lines=lines, occurred_at=payload.get("occurred_at"))

@@ -230,11 +230,14 @@
   <script>
     const STORAGE_KEY = "marketstudio_active_workspace_id";
     const SESSION_KEY = "marketstudio_session_token";
+    const PUR_KEY_STORAGE = "marketstudio_pending_pur_key";
+    const SALE_KEY_STORAGE = "marketstudio_pending_sale_key";
     let activeWorkspaceId = localStorage.getItem(STORAGE_KEY) || "";
     let sessionToken = localStorage.getItem(SESSION_KEY) || "";
-    let fetchSeq = 0;
-    let pendingPurKey = "";
-    let pendingSaleKey = "";
+    let catalogReqSeq = 0;
+    let reportReqSeq = 0;
+    let pendingPurKey = localStorage.getItem(PUR_KEY_STORAGE) || "";
+    let pendingSaleKey = localStorage.getItem(SALE_KEY_STORAGE) || "";
 
     const wsSelect = document.getElementById("workspaceSelect");
     const wsStatus = document.getElementById("wsStatus");
@@ -260,8 +263,11 @@
       const res = await fetch("/v1/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actor_id: "synthetic_owner" })
+        body: JSON.stringify({ actor_id: "synthetic_owner", passcode: "dev-owner-pass" })
       });
+      if (!res.ok) {
+        throw new Error("Gagal autentikasi sesi lokal.");
+      }
       const data = await res.json();
       sessionToken = data.item.token;
       localStorage.setItem(SESSION_KEY, sessionToken);
@@ -273,13 +279,11 @@
       const headers = Object.assign({}, options.headers || {}, {
         "Authorization": "Bearer " + sessionToken
       });
-      let res = await fetch(url, Object.assign({}, options, { headers }));
+      const res = await fetch(url, Object.assign({}, options, { headers }));
       if (res.status === 401) {
         sessionToken = "";
         localStorage.removeItem(SESSION_KEY);
-        await ensureSession();
-        headers["Authorization"] = "Bearer " + sessionToken;
-        res = await fetch(url, Object.assign({}, options, { headers }));
+        setStatus(wsStatus, "Sesi tidak valid (401). Muat ulang halaman untuk login ulang.", true);
       }
       return res;
     }
@@ -314,10 +318,10 @@
     async function loadOfferings() {
       if (!activeWorkspaceId) return;
       const reqWsId = activeWorkspaceId;
-      const reqSeq = ++fetchSeq;
+      const reqSeq = ++catalogReqSeq;
       const res = await apiFetch(`/v1/workspaces/${reqWsId}/offerings`);
       const data = await res.json();
-      if (reqWsId !== activeWorkspaceId || reqSeq !== fetchSeq || !res.ok) return;
+      if (reqWsId !== activeWorkspaceId || reqSeq !== catalogReqSeq || !res.ok) return;
 
       offBody.textContent = "";
       purOffering.textContent = "";
@@ -369,12 +373,12 @@
     async function loadReport() {
       if (!activeWorkspaceId) return;
       const reqWsId = activeWorkspaceId;
-      const reqSeq = ++fetchSeq;
+      const reqSeq = ++reportReqSeq;
       const dateVal = document.getElementById("reportDate").value;
       const qs = dateVal ? `?date=${encodeURIComponent(dateVal)}` : "";
       const res = await apiFetch(`/v1/workspaces/${reqWsId}/reports/daily${qs}`);
       const data = await res.json();
-      if (reqWsId !== activeWorkspaceId || reqSeq !== fetchSeq || !res.ok) return;
+      if (reqWsId !== activeWorkspaceId || reqSeq !== reportReqSeq || !res.ok) return;
 
       const r = data.report;
       const grid = document.getElementById("kpiGrid");
@@ -411,8 +415,14 @@
       await Promise.all([loadOfferings(), loadReport()]);
     });
 
-    document.getElementById("purchaseForm").addEventListener("input", () => { pendingPurKey = ""; });
-    document.getElementById("saleForm").addEventListener("input", () => { pendingSaleKey = ""; });
+    document.getElementById("purchaseForm").addEventListener("input", () => {
+      pendingPurKey = "";
+      localStorage.removeItem(PUR_KEY_STORAGE);
+    });
+    document.getElementById("saleForm").addEventListener("input", () => {
+      pendingSaleKey = "";
+      localStorage.removeItem(SALE_KEY_STORAGE);
+    });
 
     document.getElementById("workspaceForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -456,49 +466,72 @@
     document.getElementById("purchaseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!activeWorkspaceId) return setStatus(purStatus, "Pilih workspace dulu.", true);
-      if (!pendingPurKey) pendingPurKey = "ui-pur-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+      const btn = e.target.querySelector("button[type='submit']");
+      if (btn.disabled) return;
+      btn.disabled = true;
+      if (!pendingPurKey) {
+        pendingPurKey = "ui-pur-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem(PUR_KEY_STORAGE, pendingPurKey);
+      }
       setStatus(purStatus, "Menyimpan pembelian...");
-      const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/purchases`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": pendingPurKey },
-        body: JSON.stringify({
-          offering_id: purOffering.value,
-          qty: document.getElementById("purQty").value,
-          total_cost_idr: parseInt(document.getElementById("purCost").value, 10)
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) return setStatus(purStatus, data.message || "Gagal", true);
-      pendingPurKey = "";
-      setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}).`);
-      await loadReport();
+      try {
+        const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/purchases`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Idempotency-Key": pendingPurKey },
+          body: JSON.stringify({
+            offering_id: purOffering.value,
+            qty: document.getElementById("purQty").value,
+            total_cost_idr: parseInt(document.getElementById("purCost").value, 10)
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) return setStatus(purStatus, data.message || "Gagal", true);
+        pendingPurKey = "";
+        localStorage.removeItem(PUR_KEY_STORAGE);
+        setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}).`);
+        await loadReport();
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     document.getElementById("saleForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!activeWorkspaceId) return setStatus(saleStatus, "Pilih workspace dulu.", true);
-      if (!pendingSaleKey) pendingSaleKey = "ui-sale-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-      setStatus(saleStatus, "Saving penjualan...");
-      const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/sales`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": pendingSaleKey },
-        body: JSON.stringify({
-          lines: [{
-            offering_id: saleOffering.value,
-            qty: document.getElementById("saleQty").value,
-            total_price_idr: parseInt(document.getElementById("salePrice").value, 10)
-          }]
-        })
-      });
-      const data = await res.json();
-      if (res.status === 409) {
-        pendingSaleKey = "";
-        return setStatus(saleStatus, `Conflict: ${data.message}`, true);
+      const btn = e.target.querySelector("button[type='submit']");
+      if (btn.disabled) return;
+      btn.disabled = true;
+      if (!pendingSaleKey) {
+        pendingSaleKey = "ui-sale-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem(SALE_KEY_STORAGE, pendingSaleKey);
       }
-      if (!res.ok) return setStatus(saleStatus, `Error: ${data.message || "Gagal"}`, true);
-      pendingSaleKey = "";
-      setStatus(saleStatus, `Saved (${data.item.sale_id}).`);
-      await loadReport();
+      setStatus(saleStatus, "Saving penjualan...");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${activeWorkspaceId}/sales`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Idempotency-Key": pendingSaleKey },
+          body: JSON.stringify({
+            lines: [{
+              offering_id: saleOffering.value,
+              qty: document.getElementById("saleQty").value,
+              total_price_idr: parseInt(document.getElementById("salePrice").value, 10)
+            }]
+          })
+        });
+        const data = await res.json();
+        if (res.status === 409) {
+          pendingSaleKey = "";
+          localStorage.removeItem(SALE_KEY_STORAGE);
+          return setStatus(saleStatus, `Conflict: ${data.message}`, true);
+        }
+        if (!res.ok) return setStatus(saleStatus, `Error: ${data.message || "Gagal"}`, true);
+        pendingSaleKey = "";
+        localStorage.removeItem(SALE_KEY_STORAGE);
+        setStatus(saleStatus, `Saved (${data.item.sale_id}).`);
+        await loadReport();
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
