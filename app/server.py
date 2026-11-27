@@ -26,6 +26,7 @@ _RE_BENCHMARK_SNAPSHOTS = re.compile(r"^/v1/workspaces/([^/]+)/price-benchmarks/
 _RE_BENCHMARK_COMPARE = re.compile(r"^/v1/workspaces/([^/]+)/price-benchmarks/compare$")
 _RE_REPORT_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily$")
 _RE_AI_REVIEW_CONFIG = re.compile(r"^/v1/workspaces/([^/]+)/ai-review/config$")
+_RE_AI_REVIEW_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily/ai-review$")
 
 
 class BaselineHTTPHandler(BaseHTTPRequestHandler):
@@ -235,6 +236,15 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 ws_id = m_bench_cmp.group(1)
                 body = self._read_json_body()
                 item = self.service.compare_price_benchmark(ws_id, actor_id=actor_id, payload=body)
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_ai_rev = _RE_AI_REVIEW_DAILY.match(path)
+            if m_ai_rev:
+                actor_id = self._require_actor()
+                ws_id = m_ai_rev.group(1)
+                body = self._read_json_body()
+                item = self.service.run_daily_ai_review(ws_id, actor_id=actor_id, payload=body)
                 self._send_json(200, {"item": item, "request_id": request_id})
                 return
 

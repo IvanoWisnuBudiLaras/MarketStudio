@@ -314,6 +314,29 @@
       <div id="benchStatus" class="status"></div>
       <div id="benchResultGrid" class="kpi-grid"></div>
     </section>
+
+    <section class="card" id="aiReviewCard">
+      <h2>8. AI Business Review (#14/#40/#41)</h2>
+      <p style="font-size:0.85rem; color:#475569; margin-top:0;">
+        Read-only AI review berdasarkan snapshot laporan harian (tanpa mutasi ledger).
+      </p>
+      <div class="row">
+        <label>
+          Mode Eksekusi
+          <select id="aiStubMode">
+            <option value="">Provider Terkonfigurasi / Fallback Deterministik</option>
+            <option value="stub_valid">Simulasi Stub (Test Fixture: Valid)</option>
+            <option value="stub_timeout">Simulasi Stub (Test Fixture: Timeout -> Fallback)</option>
+            <option value="stub_fake_citation">Simulasi Stub (Test Fixture: Fake Citation -> Fallback)</option>
+          </select>
+        </label>
+        <div style="display:flex; align-items:flex-end;">
+          <button id="runAiReviewBtn" type="button">Jalankan AI Business Review</button>
+        </div>
+      </div>
+      <div id="aiReviewStatus" class="status"></div>
+      <div id="aiReviewGrid" class="kpi-grid"></div>
+    </section>
   </main>
 
   <script>
@@ -887,6 +910,81 @@
       } catch {
         if (reqWsId !== activeWorkspaceId || reqSeq !== benchReqSeq) return;
         setStatus(benchStatus, "Network error saat benchmark.", true);
+      }
+    });
+
+    const aiReviewStatus = document.getElementById("aiReviewStatus");
+    const aiReviewGrid = document.getElementById("aiReviewGrid");
+    const aiStubModeEl = document.getElementById("aiStubMode");
+    let aiReviewReqSeq = 0;
+
+    function clearAiReviewResults() {
+      aiReviewStatus.textContent = "";
+      aiReviewGrid.textContent = "";
+    }
+
+    wsSelect.addEventListener("change", () => {
+      clearAiReviewResults();
+    });
+
+    document.getElementById("runAiReviewBtn").addEventListener("click", async () => {
+      if (!activeWorkspaceId) return setStatus(aiReviewStatus, "Pilih workspace dulu.", true);
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++aiReviewReqSeq;
+      const dateVal = document.getElementById("reportDate").value || null;
+      const stubVal = aiStubModeEl.value || null;
+      setStatus(aiReviewStatus, "Menjalankan AI Business Review...");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/reports/daily/ai-review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date: dateVal, stub_mode: stubVal }),
+        });
+        const data = await res.json();
+        if (reqWsId !== activeWorkspaceId || reqSeq !== aiReviewReqSeq) return;
+        if (!res.ok) {
+          aiReviewGrid.textContent = "";
+          return setStatus(aiReviewStatus, data.message || "AI Review gagal.", true);
+        }
+        const item = data.item;
+        const rev = item.review;
+        const snap = item.snapshot;
+        const cfg = item.config_status;
+        aiReviewGrid.textContent = "";
+        aiReviewGrid.appendChild(renderSimKpi("Mode & Status", `${item.provider_mode} (${item.status})`));
+        if (item.fallback_reason) {
+          const missingVars = (cfg.missing_env_vars || []).join(", ");
+          aiReviewGrid.appendChild(
+            renderSimKpi(
+              "Alasan Fallback",
+              `${item.fallback_reason}${missingVars ? " | Missing env: " + missingVars : ""}`
+            )
+          );
+        }
+        aiReviewGrid.appendChild(renderSimKpi("Ringkasan", rev.summary));
+        aiReviewGrid.appendChild(
+          renderSimKpi(
+            "Snapshot & Sitasi",
+            `${snap.snapshot_id} | Periode ${snap.period.date} | Source IDs: ${(rev.citations?.source_ids || []).length}`
+          )
+        );
+        aiReviewGrid.appendChild(
+          renderSimKpi(
+            "Data Belum Lengkap (missing_data)",
+            (rev.missing_data || []).length ? rev.missing_data.join(" ; ") : "Tidak ada"
+          )
+        );
+        setStatus(
+          aiReviewStatus,
+          item.provider_mode === "stub_test"
+            ? "Selesai (Simulasi Stub Test Fixture — bukan integrasi AI live)."
+            : item.provider_mode === "deterministic_fallback"
+              ? `Fallback deterministik aktif (${item.fallback_reason}). ${cfg.configured ? "" : cfg.setup_action}`
+              : "Selesai (Live AI Provider)."
+        );
+      } catch {
+        if (reqWsId !== activeWorkspaceId || reqSeq !== aiReviewReqSeq) return;
+        setStatus(aiReviewStatus, "Network error saat AI Business Review.", true);
       }
     });
 
