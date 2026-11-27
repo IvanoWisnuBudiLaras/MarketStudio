@@ -560,6 +560,12 @@
       activeWorkspaceId = data.item.workspace_id;
       localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
       document.getElementById("wsName").value = "";
+      simReqSeq++;
+      simResultGrid.textContent = "";
+      simStatus.textContent = "";
+      benchReqSeq++;
+      benchResultGrid.textContent = "";
+      benchStatus.textContent = "";
       setStatus(wsStatus, `Workspace '${data.item.name}' dibuat.`);
       await loadWorkspaces();
     });
@@ -771,9 +777,9 @@
 
       setStatus(benchStatus, "Membandingkan harga pasar...");
       try {
-        const res = await fetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/price-benchmarks/compare`, {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/price-benchmarks/compare`, {
           method: "POST",
-          headers: authHeaders({ "Content-Type": "application/json" }),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
