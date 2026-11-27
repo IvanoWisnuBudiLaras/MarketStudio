@@ -282,12 +282,48 @@ class DemoNavigationTest(unittest.TestCase):
         self.assertNotIn("Cari apa saja", html)
 
         # AI Business Review (#14/#40/#41) UI elements & stale-result clearing preserved
-        for ai_id in ("aiReviewCard", "aiStubMode", "runAiReviewBtn", "clearAiReviewResults", "aiReviewReqSeq"):
+        for ai_id in (
+            "aiReviewCard",
+            "aiStubMode",
+            "runAiReviewBtn",
+            "clearAiReviewResults",
+            "aiReviewReqSeq",
+            "resetWorkspaceScopedUiState",
+            "overscroll-behavior: contain",
+        ):
             self.assertIn(ai_id, html)
 
         # Exact Oracle verification in user scenario cards
         self.assertIn("-Rp 150.000", html)
         self.assertIn("Rp 174.000", html)
+
+    def test_demo_replay_demo_date_stays_deterministic_across_midnight(self) -> None:
+        s1, d1 = self._request("POST", "/v1/workspaces/demo", {}, token=self.token_a)
+        self.assertEqual(s1, 201)
+        ws_id = d1["item"]["workspace"]["workspace_id"]
+
+        # Simulate seed created on 2026-11-25 Asia/Jakarta (03:00 UTC = 10:00 WIB)
+        past_utc = "2026-11-25T03:00:00+00:00"
+        with db_transaction(self.db_path, immediate=True) as conn:
+            conn.execute("UPDATE workspaces SET created_at = ? WHERE workspace_id = ?", (past_utc, ws_id))
+            conn.execute("UPDATE purchases SET occurred_at = ? WHERE workspace_id = ?", (past_utc, ws_id))
+            conn.execute("UPDATE sales SET occurred_at = ? WHERE workspace_id = ?", (past_utc, ws_id))
+            conn.execute("UPDATE stock_movements SET occurred_at = ? WHERE workspace_id = ?", (past_utc, ws_id))
+            conn.execute("UPDATE cash_movements SET occurred_at = ? WHERE workspace_id = ?", (past_utc, ws_id))
+
+        s2, d2 = self._request("POST", "/v1/workspaces/demo", {}, token=self.token_a)
+        self.assertEqual(s2, 200)
+        self.assertTrue(d2["item"]["idempotent_replay"])
+        self.assertEqual(d2["item"]["demo_date"], "2026-11-25")
+
+        s_rep, d_rep = self._request(
+            "GET",
+            f"/v1/workspaces/{ws_id}/reports/daily?date=2026-11-25",
+            token=self.token_a,
+        )
+        self.assertEqual(s_rep, 200)
+        self.assertEqual(d_rep["report"]["net_cash_flow_idr"], -150000)
+        self.assertEqual(d_rep["report"]["ending_inventory"]["total_value_idr"], 174000)
 
 
 if __name__ == "__main__":

@@ -1051,12 +1051,25 @@ class BaselineService:
                 (actor_id, scenario_slug),
             ).fetchone()
             if existing:
+                seed_row = conn.execute(
+                    "SELECT MIN(occurred_at) AS first_ts FROM purchases WHERE workspace_id = ?",
+                    (existing["workspace_id"],),
+                ).fetchone()
+                seed_ts = (
+                    seed_row["first_ts"]
+                    if seed_row and seed_row["first_ts"]
+                    else existing["created_at"]
+                )
+                seed_dt = datetime.fromisoformat(str(seed_ts).replace("Z", "+00:00"))
+                if seed_dt.tzinfo is None:
+                    seed_dt = seed_dt.replace(tzinfo=timezone.utc)
+                existing_demo_date = seed_dt.astimezone(JAKARTA_TZ).date().isoformat()
                 return 200, {
                     "workspace": _row_to_workspace(existing),
                     "created": False,
                     "idempotent_replay": True,
                     "scenario_slug": scenario_slug,
-                    "demo_date": demo_date,
+                    "demo_date": existing_demo_date,
                 }
 
             now_utc = _utc_now()
