@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 from zoneinfo import available_timezones
@@ -423,4 +424,242 @@ def compute_price_simulation(
         "margin_percent": margin_percent,
         "markup_percent": markup_percent,
         "margin_status": margin_status,
+    }
+
+
+BENCHMARK_SNAPSHOTS: tuple[dict[str, Any], ...] = (
+    {
+        "snapshot_id": "bapanas_beras_medium_jkt",
+        "source_kind": "attributed_snapshot",
+        "source_name": "Panel Harga Pangan - Badan Pangan Nasional (Bapanas)",
+        "source_url": "https://panelharga.badanpangan.go.id",
+        "observed_at": "2026-11-26T00:00:00+07:00",
+        "location_market": "Pasar Induk Kramat Jati, DKI Jakarta",
+        "commodity_name": "Beras Medium",
+        "unit": "kg",
+        "quantity": "1",
+        "currency": "IDR",
+        "observed_price_idr": 13500,
+    },
+    {
+        "snapshot_id": "bapanas_gula_pasir_500g_jkt",
+        "source_kind": "attributed_snapshot",
+        "source_name": "Panel Harga Pangan - Badan Pangan Nasional (Bapanas)",
+        "source_url": "https://panelharga.badanpangan.go.id",
+        "observed_at": "2026-11-26T00:00:00+07:00",
+        "location_market": "Pasar Senen, DKI Jakarta",
+        "commodity_name": "Gula Konsumsi (kemasan 500 g)",
+        "unit": "g",
+        "quantity": "500",
+        "currency": "IDR",
+        "observed_price_idr": 9000,
+    },
+    {
+        "snapshot_id": "bapanas_minyak_goreng_jkt",
+        "source_kind": "attributed_snapshot",
+        "source_name": "Panel Harga Pangan - Badan Pangan Nasional (Bapanas)",
+        "source_url": "https://panelharga.badanpangan.go.id",
+        "observed_at": "2026-11-26T00:00:00+07:00",
+        "location_market": "Pasar Minggu, DKI Jakarta",
+        "commodity_name": "Minyak Goreng Kemasan Sederhana",
+        "unit": "liter",
+        "quantity": "1",
+        "currency": "IDR",
+        "observed_price_idr": 17500,
+    },
+)
+
+_BENCHMARK_SNAPSHOT_MAP: dict[str, dict[str, Any]] = {
+    item["snapshot_id"]: item for item in BENCHMARK_SNAPSHOTS
+}
+
+_UNIT_CONVERSIONS: dict[tuple[str, str], Decimal] = {
+    ("kg", "g"): Decimal("1000"),
+    ("g", "kg"): Decimal("0.001"),
+    ("liter", "ml"): Decimal("1000"),
+    ("ml", "liter"): Decimal("0.001"),
+}
+
+
+@dataclass(frozen=True)
+class BenchmarkObservation:
+    source_kind: str
+    source_name: str
+    source_url: str | None
+    observed_at: str
+    location_market: str
+    unit: str
+    quantity: Decimal
+    currency: str
+    observed_price_idr: int
+    snapshot_id: str | None = None
+    commodity_name: str | None = None
+    evidence_note: str | None = None
+
+
+def _validate_iso_observed_at(raw: Any, errors: dict[str, str]) -> str:
+    if not isinstance(raw, str) or not raw.strip():
+        errors["observed_at"] = "observed_at wajib diisi (ISO date/timestamp)."
+        return ""
+    val = raw.strip()
+    try:
+        if len(val) == 10:
+            datetime.strptime(val, "%Y-%m-%d")
+        else:
+            datetime.fromisoformat(val.replace("Z", "+00:00"))
+    except ValueError:
+        errors["observed_at"] = "observed_at harus berupa tanggal/timestamp ISO yang valid."
+        return ""
+    return val
+
+
+def validate_benchmark_input(payload: dict[str, Any]) -> tuple[str, BenchmarkObservation]:
+    """Validate price benchmark comparison payload (attributed_snapshot or manual_fallback)."""
+    errors: dict[str, str] = {}
+    raw_offering_id = payload.get("offering_id")
+    if not isinstance(raw_offering_id, str) or not raw_offering_id.strip():
+        errors["offering_id"] = "offering_id wajib diisi."
+        offering_id = ""
+    else:
+        offering_id = raw_offering_id.strip()
+
+    raw_kind = payload.get("source_kind")
+    if raw_kind not in ("attributed_snapshot", "manual_fallback"):
+        errors["source_kind"] = "source_kind harus 'attributed_snapshot' atau 'manual_fallback'."
+        raise DomainError(422, "validation_error", "Data benchmark tidak valid.", errors)
+
+    if raw_kind == "attributed_snapshot":
+        snap_id = payload.get("snapshot_id")
+        if not isinstance(snap_id, str) or not snap_id.strip():
+            errors["snapshot_id"] = "snapshot_id wajib diisi untuk attributed_snapshot."
+        elif snap_id.strip() not in _BENCHMARK_SNAPSHOT_MAP:
+            errors["snapshot_id"] = f"Snapshot '{snap_id}' tidak ditemukan."
+        if errors:
+            raise DomainError(422, "validation_error", "Data benchmark tidak valid.", errors)
+        snap = _BENCHMARK_SNAPSHOT_MAP[snap_id.strip()]
+        return offering_id, BenchmarkObservation(
+            source_kind="attributed_snapshot",
+            source_name=snap["source_name"],
+            source_url=snap["source_url"],
+            observed_at=snap["observed_at"],
+            location_market=snap["location_market"],
+            unit=snap["unit"],
+            quantity=Decimal(snap["quantity"]),
+            currency=snap["currency"],
+            observed_price_idr=int(snap["observed_price_idr"]),
+            snapshot_id=snap["snapshot_id"],
+            commodity_name=snap["commodity_name"],
+            evidence_note=None,
+        )
+
+    # manual_fallback
+    source_label = payload.get("source_label")
+    if not isinstance(source_label, str) or not source_label.strip():
+        errors["source_label"] = "source_label wajib diisi untuk manual_fallback."
+    evidence_note = payload.get("evidence_note")
+    if not isinstance(evidence_note, str) or not evidence_note.strip():
+        errors["evidence_note"] = "evidence_note wajib diisi untuk manual_fallback."
+    location_market = payload.get("location_market")
+    if not isinstance(location_market, str) or not location_market.strip():
+        errors["location_market"] = "location_market wajib diisi."
+    unit = payload.get("unit")
+    if not isinstance(unit, str) or not unit.strip():
+        errors["unit"] = "unit wajib diisi."
+
+    observed_at = _validate_iso_observed_at(payload.get("observed_at"), errors)
+    quantity = parse_positive_decimal(payload.get("quantity"), "quantity", errors)
+    observed_price_idr = _parse_non_negative_idr(payload.get("observed_price_idr"), "observed_price_idr", errors)
+
+    currency = payload.get("currency")
+    if not isinstance(currency, str) or currency.strip().upper() != "IDR":
+        errors["currency"] = "currency wajib 'IDR'."
+
+    source_url_raw = payload.get("source_url")
+    source_url: str | None = None
+    if source_url_raw is not None:
+        if not isinstance(source_url_raw, str):
+            errors["source_url"] = "source_url harus berupa string."
+        elif source_url_raw.strip():
+            source_url = source_url_raw.strip()
+
+    if errors:
+        raise DomainError(422, "validation_error", "Data benchmark manual tidak valid.", errors)
+
+    assert quantity is not None and observed_price_idr is not None
+    return offering_id, BenchmarkObservation(
+        source_kind="manual_fallback",
+        source_name=source_label.strip(),
+        source_url=source_url,
+        observed_at=observed_at,
+        location_market=location_market.strip(),
+        unit=unit.strip().lower(),
+        quantity=quantity,
+        currency="IDR",
+        observed_price_idr=observed_price_idr,
+        snapshot_id=None,
+        commodity_name=None,
+        evidence_note=evidence_note.strip(),
+    )
+
+
+def compute_price_benchmark(
+    *,
+    offering_unit: str,
+    offering_unit_price_idr: int,
+    observation: BenchmarkObservation,
+) -> dict[str, Any]:
+    """Deterministically compare offering unit price against a benchmark observation."""
+    off_unit = offering_unit.strip().lower()
+    obs_unit = observation.unit.strip().lower()
+
+    if off_unit == obs_unit:
+        factor = Decimal("1")
+    elif (off_unit, obs_unit) in _UNIT_CONVERSIONS:
+        factor = _UNIT_CONVERSIONS[(off_unit, obs_unit)]
+    else:
+        raise DomainError(
+            422,
+            "incomparable_units",
+            f"Satuan offering '{off_unit}' tidak dapat dibandingkan dengan satuan benchmark '{obs_unit}'.",
+            {"offering_unit": off_unit, "observation_unit": obs_unit},
+        )
+
+    ensure_idr_bound(offering_unit_price_idr, "offering_unit_price_idr")
+    ensure_idr_bound(observation.observed_price_idr, "observed_price_idr")
+
+    normalized_benchmark_price_idr = round_idr(
+        (Decimal(observation.observed_price_idr) / observation.quantity) * factor
+    )
+    ensure_idr_bound(normalized_benchmark_price_idr, "normalized_benchmark_price_idr")
+
+    price_delta_idr = offering_unit_price_idr - normalized_benchmark_price_idr
+    ensure_idr_bound(price_delta_idr, "price_delta_idr")
+
+    price_delta_percent: str | None = None
+    if normalized_benchmark_price_idr > 0:
+        price_delta_percent = _format_pct(
+            Decimal(price_delta_idr) * Decimal("100") / Decimal(normalized_benchmark_price_idr)
+        )
+
+    return {
+        "comparable": True,
+        "offering_unit": off_unit,
+        "offering_unit_price_idr": offering_unit_price_idr,
+        "normalized_benchmark_price_idr": normalized_benchmark_price_idr,
+        "price_delta_idr": price_delta_idr,
+        "price_delta_percent": price_delta_percent,
+        "observation": {
+            "snapshot_id": observation.snapshot_id,
+            "commodity_name": observation.commodity_name,
+            "source_kind": observation.source_kind,
+            "source_name": observation.source_name,
+            "source_url": observation.source_url,
+            "observed_at": observation.observed_at,
+            "location_market": observation.location_market,
+            "unit": obs_unit,
+            "quantity": format(observation.quantity.normalize(), "f"),
+            "currency": observation.currency,
+            "observed_price_idr": observation.observed_price_idr,
+            "evidence_note": observation.evidence_note,
+        },
     }

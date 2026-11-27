@@ -253,6 +253,65 @@
       <div id="simStatus" class="status"></div>
       <div id="simResultGrid" class="kpi-grid"></div>
     </section>
+
+    <section class="card" id="benchmarkCard">
+      <h2>7. Benchmark Harga Pasar (#46)</h2>
+      <p class="muted">Bandingkan harga offering terhadap snapshot publik ter-atribusi atau input manual fallback (read-only, harga katalog tidak berubah).</p>
+      <form id="benchForm" class="grid">
+        <label>
+          Offering ID
+          <input id="benchOfferingId" type="text" placeholder="off_..." required />
+        </label>
+        <label>
+          Sumber Benchmark
+          <select id="benchSourceKind">
+            <option value="attributed_snapshot">Snapshot Publik Ter-atribusi (Bapanas)</option>
+            <option value="manual_fallback">Manual Fallback (dengan bukti)</option>
+          </select>
+        </label>
+        <label id="benchSnapshotWrap">
+          Snapshot Komoditas
+          <select id="benchSnapshotId">
+            <option value="bapanas_beras_medium_jkt">Beras Medium — Rp13.500 / 1 kg (Pasar Induk Kramat Jati)</option>
+            <option value="bapanas_gula_pasir_500g_jkt">Gula Konsumsi — Rp9.000 / 500 g (Pasar Senen)</option>
+            <option value="bapanas_minyak_goreng_jkt">Minyak Goreng — Rp17.500 / 1 liter (Pasar Minggu)</option>
+          </select>
+        </label>
+        <div id="benchManualWrap" class="grid" style="display:none; grid-column: 1 / -1;">
+          <label>
+            Label Sumber (wajib)
+            <input id="benchSourceLabel" type="text" placeholder="Survei Pasar Tradisional" />
+          </label>
+          <label>
+            Catatan Bukti / Evidence (wajib)
+            <input id="benchEvidenceNote" type="text" placeholder="Foto papan harga kios #12" />
+          </label>
+          <label>
+            Tanggal Observasi (ISO)
+            <input id="benchObservedAt" type="text" value="2026-11-27" />
+          </label>
+          <label>
+            Lokasi / Pasar
+            <input id="benchLocationMarket" type="text" placeholder="Pasar Baru, Bandung" />
+          </label>
+          <label>
+            Satuan
+            <input id="benchUnit" type="text" value="kg" />
+          </label>
+          <label>
+            Kuantitas
+            <input id="benchQuantity" type="text" value="1" />
+          </label>
+          <label>
+            Harga Observasi (IDR)
+            <input id="benchObservedPrice" type="number" min="0" step="1" value="14000" />
+          </label>
+        </div>
+        <button type="submit">Bandingkan Harga</button>
+      </form>
+      <div id="benchStatus" class="status"></div>
+      <div id="benchResultGrid" class="kpi-grid"></div>
+    </section>
   </main>
 
   <script>
@@ -471,6 +530,9 @@
       simReqSeq++;
       simResultGrid.textContent = "";
       simStatus.textContent = "";
+      benchReqSeq++;
+      benchResultGrid.textContent = "";
+      benchStatus.textContent = "";
       await Promise.all([loadOfferings(), loadReport()]);
     });
 
@@ -670,6 +732,70 @@
     });
 
     document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
+
+    const benchStatus = document.getElementById("benchStatus");
+    const benchResultGrid = document.getElementById("benchResultGrid");
+    const benchSourceKind = document.getElementById("benchSourceKind");
+    const benchSnapshotWrap = document.getElementById("benchSnapshotWrap");
+    const benchManualWrap = document.getElementById("benchManualWrap");
+    let benchReqSeq = 0;
+
+    benchSourceKind.addEventListener("change", () => {
+      const isManual = benchSourceKind.value === "manual_fallback";
+      benchSnapshotWrap.style.display = isManual ? "none" : "";
+      benchManualWrap.style.display = isManual ? "grid" : "none";
+    });
+
+    document.getElementById("benchForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeWorkspaceId) return setStatus(benchStatus, "Pilih workspace dulu.", true);
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++benchReqSeq;
+      const kind = benchSourceKind.value;
+      const payload = {
+        offering_id: document.getElementById("benchOfferingId").value.trim(),
+        source_kind: kind,
+      };
+      if (kind === "attributed_snapshot") {
+        payload.snapshot_id = document.getElementById("benchSnapshotId").value;
+      } else {
+        payload.source_label = document.getElementById("benchSourceLabel").value.trim();
+        payload.evidence_note = document.getElementById("benchEvidenceNote").value.trim();
+        payload.observed_at = document.getElementById("benchObservedAt").value.trim();
+        payload.location_market = document.getElementById("benchLocationMarket").value.trim();
+        payload.unit = document.getElementById("benchUnit").value.trim();
+        payload.quantity = document.getElementById("benchQuantity").value.trim();
+        payload.currency = "IDR";
+        payload.observed_price_idr = Number(document.getElementById("benchObservedPrice").value);
+      }
+
+      setStatus(benchStatus, "Membandingkan harga pasar...");
+      try {
+        const res = await fetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/price-benchmarks/compare`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (reqWsId !== activeWorkspaceId || reqSeq !== benchReqSeq) return;
+        if (!res.ok) {
+          benchResultGrid.textContent = "";
+          return setStatus(benchStatus, data.message || "Benchmark gagal.", true);
+        }
+        const item = data.item;
+        const obs = item.observation;
+        benchResultGrid.textContent = "";
+        benchResultGrid.appendChild(renderSimKpi("Harga Offering", `${fmtIdr(item.offering_unit_price_idr)} / ${item.offering_unit}`));
+        benchResultGrid.appendChild(renderSimKpi("Benchmark Ternormalisasi", `${fmtIdr(item.normalized_benchmark_price_idr)} / ${item.offering_unit}`));
+        benchResultGrid.appendChild(renderSimKpi("Selisih Harga", `${fmtIdr(item.price_delta_idr)} (${item.price_delta_percent === null ? "N/A" : item.price_delta_percent + "%"})`));
+        benchResultGrid.appendChild(renderSimKpi("Sumber & Atribusi", `${obs.source_kind}: ${obs.source_name} | ${obs.location_market} (${obs.observed_at})`));
+        setStatus(benchStatus, item.benchmark_note || "Benchmark selesai (read-only).");
+      } catch {
+        if (reqWsId !== activeWorkspaceId || reqSeq !== benchReqSeq) return;
+        setStatus(benchStatus, "Network error saat benchmark.", true);
+      }
+    });
+
     loadWorkspaces();
   </script>
 </body>

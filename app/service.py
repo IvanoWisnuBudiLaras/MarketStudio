@@ -15,10 +15,13 @@ from app.db import DEFAULT_DB_PATH, db_transaction
 from app.domain import (
     DEFAULT_TAX_REASON,
     POLICY_VERSION,
+    BENCHMARK_SNAPSHOTS,
     DomainError,
+    compute_price_benchmark,
     compute_price_simulation,
     ensure_idr_bound,
     round_idr,
+    validate_benchmark_input,
     validate_offering_input,
     validate_purchase_input,
     validate_sale_input,
@@ -993,4 +996,50 @@ class BaselineService:
                 **result,
                 "read_only": True,
                 "simulation_note": "Simulasi bersifat read-only dan tidak mengubah offering, stok, atau ledger.",
+            }
+
+    def list_benchmark_snapshots(
+        self,
+        workspace_id: str,
+        actor_id: str,
+    ) -> list[dict[str, Any]]:
+        """List attributed market price benchmark snapshots for a workspace."""
+        with db_transaction(self.db_path) as conn:
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+            return [dict(item) for item in BENCHMARK_SNAPSHOTS]
+
+    def compare_price_benchmark(
+        self,
+        workspace_id: str,
+        actor_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Read-only price benchmark comparison; never mutates offerings, stock, or ledger."""
+        with db_transaction(self.db_path) as conn:
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+            offering_id, observation = validate_benchmark_input(payload)
+            off = conn.execute(
+                "SELECT * FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                (workspace_id, offering_id),
+            ).fetchone()
+            if not off:
+                raise DomainError(
+                    404,
+                    "offering_not_found",
+                    f"Offering {offering_id} tidak ditemukan.",
+                )
+            result = compute_price_benchmark(
+                offering_unit=off["unit"],
+                offering_unit_price_idr=int(off["unit_price_idr"]),
+                observation=observation,
+            )
+            return {
+                "workspace_id": workspace_id,
+                "offering_id": offering_id,
+                "offering_name": off["name"],
+                "offering_type": off["offering_type"],
+                **result,
+                "read_only": True,
+                "catalog_unchanged": True,
+                "benchmark_note": "Benchmark bersifat read-only dan tidak mengubah harga katalog (unit_price_idr), stok, atau ledger.",
             }
