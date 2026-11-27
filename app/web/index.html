@@ -225,6 +225,34 @@
         <pre id="drillDownPre">{}</pre>
       </details>
     </section>
+
+    <section class="card">
+      <h2>6. Simulasi Harga &amp; Diskon (Read-Only)</h2>
+      <p class="muted" style="margin-top:0; font-size:0.85rem;">Simulasi bersifat read-only dan tidak mengubah offering, stok, atau ledger.</p>
+      <form id="simForm" class="row">
+        <label>
+          Offering (opsional)
+          <select id="simOffering">
+            <option value="">-- Input Manual --</option>
+          </select>
+        </label>
+        <label>
+          Harga Jual (IDR)
+          <input id="simPrice" type="number" min="0" step="1" value="5000" />
+        </label>
+        <label>
+          Biaya Unit (IDR, opsional)
+          <input id="simCost" type="number" min="0" step="1" value="3000" />
+        </label>
+        <label>
+          Diskon (%)
+          <input id="simDiscount" type="text" value="20" />
+        </label>
+        <button type="submit">Hitung Simulasi</button>
+      </form>
+      <div id="simStatus" class="status"></div>
+      <div id="simResultGrid" class="kpi-grid"></div>
+    </section>
   </main>
 
   <script>
@@ -340,6 +368,12 @@
       offBody.textContent = "";
       purOffering.textContent = "";
       saleOffering.textContent = "";
+      const simOffering = document.getElementById("simOffering");
+      simOffering.textContent = "";
+      const simManualOpt = document.createElement("option");
+      simManualOpt.value = "";
+      simManualOpt.textContent = "-- Input Manual --";
+      simOffering.appendChild(simManualOpt);
       (data.items || []).forEach((item) => {
         const tr = document.createElement("tr");
 
@@ -374,6 +408,11 @@
         optSale.value = item.offering_id;
         optSale.textContent = `${item.name} (${item.offering_type})`;
         saleOffering.appendChild(optSale);
+
+        const optSim = document.createElement("option");
+        optSim.value = item.offering_id;
+        optSim.textContent = `${item.name} (${item.offering_type})`;
+        simOffering.appendChild(optSim);
 
         if (item.requires_stock_movement) {
           const optPur = document.createElement("option");
@@ -552,6 +591,65 @@
         setStatus(saleStatus, "Network error: key dipertahankan untuk retry aman.", true);
       } finally {
         btn.disabled = false;
+      }
+    });
+
+    let simReqSeq = 0;
+    const simStatus = document.getElementById("simStatus");
+    const simResultGrid = document.getElementById("simResultGrid");
+
+    function renderSimKpi(label, value) {
+      const box = document.createElement("div");
+      box.className = "kpi";
+      const lbl = document.createElement("div");
+      lbl.className = "label";
+      lbl.textContent = label;
+      const val = document.createElement("div");
+      val.className = "value";
+      val.textContent = value;
+      box.appendChild(lbl);
+      box.appendChild(val);
+      return box;
+    }
+
+    document.getElementById("simForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeWorkspaceId) return setStatus(simStatus, "Pilih workspace dulu.", true);
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++simReqSeq;
+      const offeringId = document.getElementById("simOffering").value;
+      const rawPrice = document.getElementById("simPrice").value.trim();
+      const rawCost = document.getElementById("simCost").value.trim();
+      const rawDiscount = document.getElementById("simDiscount").value.trim();
+
+      const payload = { discount_percent: rawDiscount || "0" };
+      if (offeringId) payload.offering_id = offeringId;
+      if (rawPrice !== "") payload.selling_price_idr = parseInt(rawPrice, 10);
+      if (rawCost !== "") payload.unit_cost_idr = parseInt(rawCost, 10);
+
+      setStatus(simStatus, "Menghitung simulasi...");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${reqWsId}/simulations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (reqWsId !== activeWorkspaceId || reqSeq !== simReqSeq) return;
+        if (!res.ok) {
+          simResultGrid.textContent = "";
+          return setStatus(simStatus, data.message || "Simulasi gagal.", true);
+        }
+        const item = data.item;
+        simResultGrid.textContent = "";
+        simResultGrid.appendChild(renderSimKpi("Harga Nett", fmtIdr(item.net_price_idr)));
+        simResultGrid.appendChild(renderSimKpi("Selisih Kotor", item.gross_delta_idr === null ? "unavailable" : fmtIdr(item.gross_delta_idr)));
+        simResultGrid.appendChild(renderSimKpi("Margin", item.margin_percent === null ? "unavailable" : `${item.margin_percent}%`));
+        simResultGrid.appendChild(renderSimKpi("Status Biaya / Margin", `${item.cost_status} / ${item.margin_status}`));
+        setStatus(simStatus, item.simulation_note || "Simulasi selesai (read-only).");
+      } catch {
+        if (reqWsId !== activeWorkspaceId || reqSeq !== simReqSeq) return;
+        setStatus(simStatus, "Network error saat simulasi.", true);
       }
     });
 

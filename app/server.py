@@ -21,6 +21,7 @@ _RE_OFFERINGS = re.compile(r"^/v1/workspaces/([^/]+)/offerings$")
 _RE_OFFERING_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)$")
 _RE_PURCHASES = re.compile(r"^/v1/workspaces/([^/]+)/purchases$")
 _RE_SALES = re.compile(r"^/v1/workspaces/([^/]+)/sales$")
+_RE_SIMULATIONS = re.compile(r"^/v1/workspaces/([^/]+)/simulations$")
 _RE_REPORT_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily$")
 
 
@@ -198,6 +199,15 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                     actor=actor_id,
                 )
                 self._send_json(status, {"item": item, "request_id": request_id})
+                return
+
+            m_sim = _RE_SIMULATIONS.match(path)
+            if m_sim:
+                actor_id = self._require_actor()
+                ws_id = m_sim.group(1)
+                body = self._read_json_body()
+                item = self.service.simulate_price(ws_id, actor_id=actor_id, payload=body)
+                self._send_json(200, {"item": item, "request_id": request_id})
                 return
 
             self._send_error_envelope(DomainError(404, "not_found", "Endpoint tidak ditemukan."), request_id)
