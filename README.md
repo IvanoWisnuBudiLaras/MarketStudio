@@ -22,7 +22,7 @@ Jangan menjalankan semua roadmap sekaligus. Baca ticket yang disetujui dan depen
 
 - **Stack:** Python 3 standard library (`http.server`, `sqlite3`, `unittest`) modular monolith (`app/`), single browser entry point (`GET /` -> `app/web/index.html`), dan local SQLite storage (`data/marketstudio.db`). Tanpa dependency eksternal sehingga langsung berjalan dari clean clone.
 - **Auth & Tenant Isolation:** Server-verified session tokens (`POST /v1/sessions` memverifikasi `actor_id` + `passcode` terhadap principal sintetis lokal) + `workspace_memberships` dengan anti-enumeration (`404` untuk workspace tidak dikenal maupun non-member).
-- **Compatibility limits:** Single-node local SQLite untuk data sintetis; menggunakan principal sintetis lokal (belum memakai OAuth/Supabase Auth); siap dimigrasi ke FastAPI + PostgreSQL pada milestone berikutnya.
+- **Compatibility limits:** Default profile memakai local SQLite (`data/marketstudio.db`) untuk data sintetis; menggunakan principal sintetis lokal (belum memakai OAuth/Supabase Auth). Jalur opsional PostgreSQL/Supabase (`MARKETSTUDIO_DB_BACKEND=postgres`, `DATABASE_URL`) dan migrasi versioned tersedia tanpa mengubah default SQLite; lihat [docs/engineering/POSTGRES_SUPABASE.md](docs/engineering/POSTGRES_SUPABASE.md) dan [.env.example](.env.example).
 - **Install / Build:** Tidak ada langkah install/build eksternal (cukup Python 3).
 - **Run:**
   ```sh

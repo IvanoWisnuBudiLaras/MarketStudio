@@ -11,7 +11,13 @@ from decimal import Decimal
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
-from app.db import DEFAULT_DB_PATH, db_transaction
+from app.db import (
+    DEFAULT_DB_PATH,
+    DatabaseConfig,
+    PostgresPoolManager,
+    db_transaction,
+    resolve_db_config,
+)
 from app.domain import (
     DEFAULT_TAX_REASON,
     POLICY_VERSION,
@@ -144,8 +150,28 @@ def _row_to_workspace(row: Any) -> dict[str, Any]:
 class BaselineService:
     """Modular monolith service for Workspaces, Offerings, Purchases, Sales, and Reports."""
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH) -> None:
-        self.db_path = db_path
+    def __init__(
+        self,
+        db_path: str | DatabaseConfig | None = None,
+        *,
+        database_url: str | None = None,
+        backend: str | None = None,
+        pool: PostgresPoolManager | None = None,
+    ) -> None:
+        self.db_config = resolve_db_config(db_path=db_path, database_url=database_url, backend=backend)
+        self.backend = self.db_config.backend
+        self.db_path = self.db_config.target if self.backend == "sqlite" else self.db_config.display_target
+        self._pool = pool
+        self._owns_pool = False
+
+    def close(self) -> None:
+        """Close owned database pool resources cleanly."""
+        if self._owns_pool and self._pool is not None:
+            self._pool.close()
+            self._owns_pool = False
+
+    def _tx(self, immediate: bool = False):
+        return db_transaction(self.db_config, immediate=immediate, pool=self._pool)
 
     def create_session(self, actor_id: str, passcode: str = "") -> dict[str, Any]:
         clean_actor = actor_id.strip() if isinstance(actor_id, str) else ""
@@ -154,7 +180,7 @@ class BaselineService:
             raise DomainError(401, "unauthenticated", "Kredensial principal tidak valid.")
         token = f"sess_{uuid.uuid4().hex}"
         created_at = _utc_now()
-        with db_transaction(self.db_path, immediate=True) as conn:
+        with self._tx(immediate=True) as conn:
             conn.execute(
                 "INSERT INTO sessions (token, actor_id, created_at, revoked_at) VALUES (?, ?, ?, NULL)",
                 (token, clean_actor, created_at),
@@ -164,7 +190,7 @@ class BaselineService:
     def resolve_session(self, token: str | None) -> str:
         if not token:
             raise DomainError(401, "unauthenticated", "Session token wajib disertakan.")
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             row = conn.execute(
                 "SELECT actor_id, revoked_at FROM sessions WHERE token = ?",
                 (token,),
@@ -174,14 +200,15 @@ class BaselineService:
             return str(row["actor_id"])
 
     def revoke_membership(self, workspace_id: str, actor_id: str) -> None:
-        with db_transaction(self.db_path, immediate=True) as conn:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
             conn.execute(
                 "UPDATE workspace_memberships SET revoked_at = ? WHERE workspace_id = ? AND actor_id = ?",
                 (_utc_now(), workspace_id, actor_id),
             )
 
     def list_workspaces(self, actor_id: str) -> list[dict[str, Any]]:
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             rows = conn.execute(
                 """
                 SELECT w.* FROM workspaces w
@@ -202,7 +229,8 @@ class BaselineService:
         validated = validate_workspace_input(payload)
         req_hash = _hash_payload(payload)
 
-        with db_transaction(self.db_path, immediate=True) as conn:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"principal:{actor}")
             if idempotency_key:
                 existing = conn.execute(
                     """
@@ -350,7 +378,7 @@ class BaselineService:
         actor_id: str | None,
         actor_status: str | None = None,
     ) -> list[dict[str, Any]]:
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
             rows = conn.execute(
                 """
@@ -372,7 +400,7 @@ class BaselineService:
         actor_id: str | None,
         actor_status: str | None = None,
     ) -> dict[str, Any]:
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
             row = conn.execute(
                 """
@@ -397,7 +425,8 @@ class BaselineService:
         actor: str = "synthetic_owner",
         actor_status: str | None = None,
     ) -> tuple[int, dict[str, Any]]:
-        with db_transaction(self.db_path, immediate=True) as conn:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
             self._assert_workspace_access(conn, workspace_id, actor_id)
             validated = validate_offering_input(payload)
             req_hash = _hash_payload(payload)
@@ -423,7 +452,7 @@ class BaselineService:
                     validated.offering_type,
                     validated.unit_price_idr,
                     validated.unit,
-                    1 if validated.requires_stock_movement else 0,
+                    bool(validated.requires_stock_movement),
                     validated.valuation_method,
                     validated.tax_status,
                     validated.tax_reason,
@@ -462,7 +491,8 @@ class BaselineService:
         actor: str = "synthetic_owner",
         actor_status: str | None = None,
     ) -> tuple[int, dict[str, Any]]:
-        with db_transaction(self.db_path, immediate=True) as conn:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
             self._assert_workspace_access(conn, workspace_id, actor_id)
             validated = validate_purchase_input(payload)
             req_hash = _hash_payload(payload)
@@ -491,7 +521,11 @@ class BaselineService:
                 "SELECT MAX(occurred_at) AS max_ts FROM stock_movements WHERE workspace_id = ? AND offering_id = ?",
                 (workspace_id, validated.offering_id),
             ).fetchone()
-            if max_mov and max_mov["max_ts"] and occurred_at < max_mov["max_ts"]:
+            if (
+                max_mov
+                and max_mov["max_ts"]
+                and datetime.fromisoformat(occurred_at) < datetime.fromisoformat(max_mov["max_ts"])
+            ):
                 raise DomainError(
                     422,
                     "out_of_order_timestamp",
@@ -586,7 +620,8 @@ class BaselineService:
         fault_injector: Callable[[Any], None] | None = None,
         fault_stage: str = "pre_commit",
     ) -> tuple[int, dict[str, Any]]:
-        with db_transaction(self.db_path, immediate=True) as conn:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
             self._assert_workspace_access(conn, workspace_id, actor_id)
             validated = validate_sale_input(payload)
             req_hash = _hash_payload(payload)
@@ -631,7 +666,11 @@ class BaselineService:
                         "SELECT MAX(occurred_at) AS max_ts FROM stock_movements WHERE workspace_id = ? AND offering_id = ?",
                         (workspace_id, line.offering_id),
                     ).fetchone()
-                    if max_mov and max_mov["max_ts"] and occurred_at < max_mov["max_ts"]:
+                    if (
+                        max_mov
+                        and max_mov["max_ts"]
+                        and datetime.fromisoformat(occurred_at) < datetime.fromisoformat(max_mov["max_ts"])
+                    ):
                         raise DomainError(
                             422,
                             "out_of_order_timestamp",
@@ -677,7 +716,7 @@ class BaselineService:
                         """
                         SELECT batch_id, qty_remaining
                         FROM inventory_batches
-                        WHERE workspace_id = ? AND offering_id = ? AND CAST(qty_remaining AS REAL) > 0
+                        WHERE workspace_id = ? AND offering_id = ? AND CAST(qty_remaining AS NUMERIC) > 0
                         ORDER BY occurred_at ASC, batch_id ASC
                         """,
                         (workspace_id, line.offering_id),
@@ -821,7 +860,7 @@ class BaselineService:
         date_str: str | None = None,
         actor_status: str | None = None,
     ) -> dict[str, Any]:
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
 
             ws_row = conn.execute(
@@ -1039,16 +1078,17 @@ class BaselineService:
         t2 = t2_dt.astimezone(timezone.utc).isoformat()
         t3 = t3_dt.astimezone(timezone.utc).isoformat()
 
-        with db_transaction(self.db_path, immediate=True) as conn:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"principal:{actor_id}")
             existing = conn.execute(
                 """
                 SELECT w.* FROM workspaces w
                 JOIN workspace_memberships m ON m.workspace_id = w.workspace_id
                 WHERE m.actor_id = ? AND m.revoked_at IS NULL
-                    AND w.is_demo = 1 AND w.demo_slug = ?
+                    AND w.is_demo = ? AND w.demo_slug = ?
                 ORDER BY w.created_at ASC LIMIT 1
                 """,
-                (actor_id, scenario_slug),
+                (actor_id, True, scenario_slug),
             ).fetchone()
             if existing:
                 seed_row = conn.execute(
@@ -1079,9 +1119,9 @@ class BaselineService:
                 """
                 INSERT INTO workspaces (
                     workspace_id, name, business_type, currency, timezone, is_demo, demo_slug, created_at
-                ) VALUES (?, ?, 'umkm_hybrid', 'IDR', 'Asia/Jakarta', 1, ?, ?)
+                ) VALUES (?, ?, 'umkm_hybrid', 'IDR', 'Asia/Jakarta', ?, ?, ?)
                 """,
-                (ws_id, ws_name, scenario_slug, now_utc),
+                (ws_id, ws_name, True, scenario_slug, now_utc),
             )
             conn.execute(
                 """
@@ -1096,9 +1136,9 @@ class BaselineService:
             off_jasa_id = f"off_{uuid.uuid4().hex[:12]}"
 
             demo_offerings = [
-                (off_bakso_id, "Bakso Urat", "goods", 15000, "pcs", 1, "WA"),
-                (off_beras_id, "Beras Medium", "goods", 14500, "kg", 1, "WA"),
-                (off_jasa_id, "Jasa Katering Acara", "service", 500000, "sesi", 0, None),
+                (off_bakso_id, "Bakso Urat", "goods", 15000, "pcs", True, "WA"),
+                (off_beras_id, "Beras Medium", "goods", 14500, "kg", True, "WA"),
+                (off_jasa_id, "Jasa Katering Acara", "service", 500000, "sesi", False, None),
             ]
             for oid, oname, otype, oprice, ounit, req_stk, val_method in demo_offerings:
                 conn.execute(
@@ -1310,7 +1350,7 @@ class BaselineService:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         """Read-only price & discount simulation; never mutates offerings, stock, or ledger."""
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
             validated = validate_simulation_input(payload)
             offering_name: str | None = None
@@ -1365,7 +1405,7 @@ class BaselineService:
         actor_id: str,
     ) -> list[dict[str, Any]]:
         """List attributed market price benchmark snapshots for a workspace."""
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
             return [dict(item) for item in BENCHMARK_SNAPSHOTS]
 
@@ -1376,7 +1416,7 @@ class BaselineService:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         """Read-only price benchmark comparison; never mutates offerings, stock, or ledger."""
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
             offering_id, observation = validate_benchmark_input(payload)
             off = conn.execute(
@@ -1412,7 +1452,7 @@ class BaselineService:
     ) -> dict[str, Any]:
         from app.ai_review import get_ai_provider_config_status
 
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
         return {
             "workspace_id": workspace_id,
@@ -1428,7 +1468,7 @@ class BaselineService:
     ) -> dict[str, Any]:
         from app.ai_review import STUB_MODES, execute_ai_review
 
-        with db_transaction(self.db_path) as conn:
+        with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
 
         body = payload if isinstance(payload, dict) else {}

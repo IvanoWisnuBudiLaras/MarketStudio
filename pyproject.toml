@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marketstudio-baseline"
+version = "0.1.0"
+description = "MarketStudio modular monolith baseline (SQLite default + optional PostgreSQL/Supabase backend)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+postgres = [
+    "psycopg[pool]>=3.2,<4",
+]
+postgres-binary = [
+    "psycopg[binary,pool]>=3.2,<4",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
