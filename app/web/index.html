@@ -253,6 +253,67 @@
       <div id="simStatus" class="status"></div>
       <div id="simResultGrid" class="kpi-grid"></div>
     </section>
+
+    <section class="card" id="benchmarkCard">
+      <h2>7. Benchmark Harga Pasar (#46)</h2>
+      <p class="muted">Bandingkan harga offering terhadap snapshot resmi ter-atribusi, demo sintetis, atau manual fallback dengan bukti (read-only, harga katalog tidak berubah).</p>
+      <form id="benchForm" class="row">
+        <label>
+          Offering
+          <select id="benchOfferingId" required></select>
+        </label>
+        <label>
+          Sumber Benchmark
+          <select id="benchSourceKind">
+            <option value="transcribed_official">Transkripsi Resmi Bapanas (Historis Maret 2026)</option>
+            <option value="synthetic_demo">Demo Sintetis (Bukan Observasi Nyata)</option>
+            <option value="manual_fallback">Manual Fallback (Input Operator dengan Bukti)</option>
+          </select>
+        </label>
+        <label id="benchSnapshotWrap">
+          Snapshot Komoditas
+          <select id="benchSnapshotId">
+            <option value="bapanas_beras_medium_maret_2026">[Resmi · Historis Maret 2026] Beras Medium — Rp 13.378 / 1 kg · Nasional</option>
+            <option value="demo_beras_medium_jkt">[Demo Sintetis] Beras Medium — Rp13.500 / 1 kg</option>
+            <option value="demo_gula_pasir_500g_jkt">[Demo Sintetis] Gula Konsumsi 500 g — Rp9.000 / 500 g</option>
+            <option value="demo_minyak_goreng_jkt">[Demo Sintetis] Minyak Goreng — Rp17.500 / 1 liter</option>
+          </select>
+        </label>
+        <div id="benchManualWrap" class="row" style="display:none; flex-basis: 100%;">
+          <label>
+            Label Sumber (wajib)
+            <input id="benchSourceLabel" type="text" placeholder="Survei Pasar Tradisional" />
+          </label>
+          <label>
+            Catatan Bukti / Evidence (wajib)
+            <input id="benchEvidenceNote" type="text" placeholder="Foto papan harga kios #12" />
+          </label>
+          <label>
+            Tanggal Observasi (ISO)
+            <input id="benchObservedAt" type="text" value="2026-11-27" />
+          </label>
+          <label>
+            Lokasi / Pasar
+            <input id="benchLocationMarket" type="text" placeholder="Pasar Baru, Bandung" />
+          </label>
+          <label>
+            Satuan
+            <input id="benchUnit" type="text" value="kg" />
+          </label>
+          <label>
+            Kuantitas
+            <input id="benchQuantity" type="text" value="1" />
+          </label>
+          <label>
+            Harga Observasi (IDR)
+            <input id="benchObservedPrice" type="number" min="0" step="1" value="14000" />
+          </label>
+        </div>
+        <button type="submit">Bandingkan Harga</button>
+      </form>
+      <div id="benchStatus" class="status"></div>
+      <div id="benchResultGrid" class="kpi-grid"></div>
+    </section>
   </main>
 
   <script>
@@ -374,6 +435,8 @@
       simManualOpt.value = "";
       simManualOpt.textContent = "-- Input Manual --";
       simOffering.appendChild(simManualOpt);
+      const benchOffering = document.getElementById("benchOfferingId");
+      benchOffering.textContent = "";
       (data.items || []).forEach((item) => {
         const tr = document.createElement("tr");
 
@@ -414,6 +477,11 @@
         optSim.textContent = `${item.name} (${item.offering_type})`;
         optSim.dataset.price = String(item.unit_price_idr);
         simOffering.appendChild(optSim);
+
+        const optBench = document.createElement("option");
+        optBench.value = item.offering_id;
+        optBench.textContent = `${item.name} (${item.offering_type} · ${item.unit} · ${fmtIdr(item.unit_price_idr)})`;
+        benchOffering.appendChild(optBench);
 
         if (item.requires_stock_movement) {
           const optPur = document.createElement("option");
@@ -471,7 +539,10 @@
       simReqSeq++;
       simResultGrid.textContent = "";
       simStatus.textContent = "";
-      await Promise.all([loadOfferings(), loadReport()]);
+      benchReqSeq++;
+      benchResultGrid.textContent = "";
+      benchStatus.textContent = "";
+      await Promise.all([loadOfferings(), loadReport(), loadBenchmarkSnapshots()]);
     });
 
     document.getElementById("purchaseForm").addEventListener("input", () => {
@@ -498,8 +569,15 @@
       activeWorkspaceId = data.item.workspace_id;
       localStorage.setItem(STORAGE_KEY, activeWorkspaceId);
       document.getElementById("wsName").value = "";
+      simReqSeq++;
+      simResultGrid.textContent = "";
+      simStatus.textContent = "";
+      benchReqSeq++;
+      benchResultGrid.textContent = "";
+      benchStatus.textContent = "";
       setStatus(wsStatus, `Workspace '${data.item.name}' dibuat.`);
       await loadWorkspaces();
+      await loadBenchmarkSnapshots();
     });
 
     document.getElementById("offeringForm").addEventListener("submit", async (e) => {
@@ -670,7 +748,149 @@
     });
 
     document.getElementById("refreshReportBtn").addEventListener("click", loadReport);
-    loadWorkspaces();
+
+    const benchStatus = document.getElementById("benchStatus");
+    const benchResultGrid = document.getElementById("benchResultGrid");
+    const benchSourceKind = document.getElementById("benchSourceKind");
+    const benchSnapshotWrap = document.getElementById("benchSnapshotWrap");
+    const benchManualWrap = document.getElementById("benchManualWrap");
+    let benchReqSeq = 0;
+    let benchmarkSnapshots = [
+      {
+        snapshot_id: "bapanas_beras_medium_maret_2026",
+        source_kind: "transcribed_official",
+        observation_period: "Maret 2026",
+        commodity_name: "Beras Medium",
+        observed_price_idr: 13378,
+        quantity: "1",
+        unit: "kg",
+        location_market: "Nasional (Tingkat Konsumen)",
+      },
+      {
+        snapshot_id: "demo_beras_medium_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Beras Medium (Demo Sintetis)",
+        observed_price_idr: 13500,
+        quantity: "1",
+        unit: "kg",
+        location_market: "Pasar Induk Kramat Jati, DKI Jakarta (Sintetis)",
+      },
+      {
+        snapshot_id: "demo_gula_pasir_500g_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Gula Konsumsi 500 g (Demo Sintetis)",
+        observed_price_idr: 9000,
+        quantity: "500",
+        unit: "g",
+        location_market: "Pasar Senen, DKI Jakarta (Sintetis)",
+      },
+      {
+        snapshot_id: "demo_minyak_goreng_jkt",
+        source_kind: "synthetic_demo",
+        commodity_name: "Minyak Goreng Kemasan Sederhana (Demo Sintetis)",
+        observed_price_idr: 17500,
+        quantity: "1",
+        unit: "liter",
+        location_market: "Pasar Minggu, DKI Jakarta (Sintetis)",
+      },
+    ];
+
+    function renderBenchmarkSnapshotsForKind() {
+      const kind = benchSourceKind.value;
+      const sel = document.getElementById("benchSnapshotId");
+      sel.textContent = "";
+      const filtered = benchmarkSnapshots.filter((s) => s.source_kind === kind);
+      filtered.forEach((snap) => {
+        const opt = document.createElement("option");
+        opt.value = snap.snapshot_id;
+        const prefix = snap.source_kind === "transcribed_official"
+          ? `[Resmi · Historis ${snap.observation_period || snap.observed_at}]`
+          : "[Demo Sintetis]";
+        opt.textContent = `${prefix} ${snap.commodity_name} — ${fmtIdr(snap.observed_price_idr)} / ${snap.quantity} ${snap.unit} · ${snap.location_market}`;
+        sel.appendChild(opt);
+      });
+      if (sel.options.length > 0) sel.selectedIndex = 0;
+    }
+
+    benchSourceKind.addEventListener("change", () => {
+      const isManual = benchSourceKind.value === "manual_fallback";
+      benchSnapshotWrap.style.display = isManual ? "none" : "";
+      benchManualWrap.style.display = isManual ? "flex" : "none";
+      if (!isManual) renderBenchmarkSnapshotsForKind();
+    });
+
+    async function loadBenchmarkSnapshots() {
+      if (!activeWorkspaceId) return;
+      const reqWsId = activeWorkspaceId;
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/price-benchmarks/snapshots`);
+        if (!res.ok || reqWsId !== activeWorkspaceId) return;
+        const data = await res.json();
+        const items = data.items || [];
+        if (items.length > 0) {
+          benchmarkSnapshots = items;
+        }
+        renderBenchmarkSnapshotsForKind();
+      } catch {
+        renderBenchmarkSnapshotsForKind();
+      }
+    }
+
+    document.getElementById("benchForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeWorkspaceId) return setStatus(benchStatus, "Pilih workspace dulu.", true);
+      const reqWsId = activeWorkspaceId;
+      const reqSeq = ++benchReqSeq;
+      const kind = benchSourceKind.value;
+      const payload = {
+        offering_id: document.getElementById("benchOfferingId").value.trim(),
+        source_kind: kind,
+      };
+      if (kind !== "manual_fallback") {
+        payload.snapshot_id = document.getElementById("benchSnapshotId").value;
+      } else {
+        const rawPrice = document.getElementById("benchObservedPrice").value.trim();
+        payload.source_label = document.getElementById("benchSourceLabel").value.trim();
+        payload.evidence_note = document.getElementById("benchEvidenceNote").value.trim();
+        payload.observed_at = document.getElementById("benchObservedAt").value.trim();
+        payload.location_market = document.getElementById("benchLocationMarket").value.trim();
+        payload.unit = document.getElementById("benchUnit").value.trim();
+        payload.quantity = document.getElementById("benchQuantity").value.trim();
+        payload.currency = "IDR";
+        payload.observed_price_idr = rawPrice === "" ? null : Number(rawPrice);
+      }
+
+      setStatus(benchStatus, "Membandingkan harga pasar...");
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(reqWsId)}/price-benchmarks/compare`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (reqWsId !== activeWorkspaceId || reqSeq !== benchReqSeq) return;
+        if (!res.ok) {
+          benchResultGrid.textContent = "";
+          return setStatus(benchStatus, data.message || "Benchmark gagal.", true);
+        }
+        const item = data.item;
+        const obs = item.observation;
+        benchResultGrid.textContent = "";
+        benchResultGrid.appendChild(renderSimKpi("Harga Offering", `${fmtIdr(item.offering_unit_price_idr)} / ${item.offering_unit}`));
+        benchResultGrid.appendChild(renderSimKpi("Benchmark Ternormalisasi", `${fmtIdr(item.normalized_benchmark_price_idr)} / ${item.offering_unit}`));
+        benchResultGrid.appendChild(renderSimKpi("Selisih Harga", `${fmtIdr(item.price_delta_idr)} (${item.price_delta_percent === null ? "N/A" : item.price_delta_percent + "%"})`));
+        benchResultGrid.appendChild(renderSimKpi("Observasi Asli", `${fmtIdr(obs.observed_price_idr)} (${obs.currency}) / ${obs.quantity} ${obs.unit} · ${obs.location_market} (${obs.observation_period || obs.observed_at})`));
+        benchResultGrid.appendChild(renderSimKpi("Status Periode", obs.is_historical ? `Historis (Periode ${obs.observation_period || obs.observed_at})` : `Observasi (${obs.observed_at})`));
+        benchResultGrid.appendChild(renderSimKpi("Sumber & Atribusi", `${obs.source_kind}: ${obs.source_name}${obs.source_url ? " | " + obs.source_url : ""}`));
+        benchResultGrid.appendChild(renderSimKpi("Catatan Bukti (Evidence)", obs.evidence_note || "-"));
+        setStatus(benchStatus, item.benchmark_note || "Benchmark selesai (read-only).");
+      } catch {
+        if (reqWsId !== activeWorkspaceId || reqSeq !== benchReqSeq) return;
+        setStatus(benchStatus, "Network error saat benchmark.", true);
+      }
+    });
+
+    loadWorkspaces().then(() => loadBenchmarkSnapshots());
   </script>
 </body>
 </html>

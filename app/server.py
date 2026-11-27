@@ -22,6 +22,8 @@ _RE_OFFERING_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)$")
 _RE_PURCHASES = re.compile(r"^/v1/workspaces/([^/]+)/purchases$")
 _RE_SALES = re.compile(r"^/v1/workspaces/([^/]+)/sales$")
 _RE_SIMULATIONS = re.compile(r"^/v1/workspaces/([^/]+)/simulations$")
+_RE_BENCHMARK_SNAPSHOTS = re.compile(r"^/v1/workspaces/([^/]+)/price-benchmarks/snapshots$")
+_RE_BENCHMARK_COMPARE = re.compile(r"^/v1/workspaces/([^/]+)/price-benchmarks/compare$")
 _RE_REPORT_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily$")
 
 
@@ -130,6 +132,14 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 self._send_json(200, {"report": report, "request_id": request_id})
                 return
 
+            m_bench_snaps = _RE_BENCHMARK_SNAPSHOTS.match(path)
+            if m_bench_snaps:
+                actor_id = self._require_actor()
+                ws_id = m_bench_snaps.group(1)
+                items = self.service.list_benchmark_snapshots(ws_id, actor_id=actor_id)
+                self._send_json(200, {"items": items, "request_id": request_id})
+                return
+
             self._send_error_envelope(DomainError(404, "not_found", "Endpoint tidak ditemukan."), request_id)
         except DomainError as err:
             self._send_error_envelope(err, request_id)
@@ -207,6 +217,15 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 ws_id = m_sim.group(1)
                 body = self._read_json_body()
                 item = self.service.simulate_price(ws_id, actor_id=actor_id, payload=body)
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_bench_cmp = _RE_BENCHMARK_COMPARE.match(path)
+            if m_bench_cmp:
+                actor_id = self._require_actor()
+                ws_id = m_bench_cmp.group(1)
+                body = self._read_json_body()
+                item = self.service.compare_price_benchmark(ws_id, actor_id=actor_id, payload=body)
                 self._send_json(200, {"item": item, "request_id": request_id})
                 return
 
