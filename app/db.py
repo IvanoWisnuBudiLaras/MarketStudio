@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
     business_type TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'IDR',
     timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta',
+    is_demo INTEGER NOT NULL DEFAULT 0,
+    demo_slug TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -187,6 +189,11 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> str:
     with closing(sqlite3.connect(db_path, timeout=10.0)) as conn:
         conn.row_factory = sqlite3.Row
         conn.executescript(SCHEMA_SQL)
+        ws_cols = {r["name"] for r in conn.execute("PRAGMA table_info(workspaces)").fetchall()}
+        if "is_demo" not in ws_cols:
+            conn.execute("ALTER TABLE workspaces ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")
+        if "demo_slug" not in ws_cols:
+            conn.execute("ALTER TABLE workspaces ADD COLUMN demo_slug TEXT")
         rows = conn.execute(
             "SELECT workspace_id, offering_id, movement_type, qty_delta, total_cost_idr FROM stock_movements"
         ).fetchall()
