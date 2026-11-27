@@ -48,9 +48,39 @@ def parse_positive_decimal(value: Any, field: str, errors: dict[str, str]) -> De
     return dec
 
 
+MAX_DERIVED_IDR = 10**15
+
+
 def round_idr(value: Decimal) -> int:
     """Round a Decimal Rupiah value half-up to integer."""
-    return int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    if not value.is_finite() or abs(value) > Decimal(MAX_DERIVED_IDR):
+        raise DomainError(
+            422,
+            "value_overflow",
+            f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR.",
+            {"total_idr": f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR."},
+        )
+    try:
+        return int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    except (InvalidOperation, OverflowError) as exc:
+        raise DomainError(
+            422,
+            "value_overflow",
+            f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR.",
+            {"total_idr": f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR."},
+        ) from exc
+
+
+def ensure_idr_bound(value: int, field: str = "total_idr") -> int:
+    """Guard against 64-bit SQLite integer overflow on derived IDR totals."""
+    if abs(value) > MAX_DERIVED_IDR:
+        raise DomainError(
+            422,
+            "value_overflow",
+            f"{field} melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR.",
+            {field: f"Nilai turunan melebihi batas maksimum {MAX_DERIVED_IDR:,} IDR."},
+        )
+    return value
 
 
 @dataclass(frozen=True)
@@ -262,3 +292,135 @@ def validate_sale_input(payload: dict[str, Any]) -> SaleInput:
         )
 
     return SaleInput(lines=lines, occurred_at=payload.get("occurred_at"))
+
+
+@dataclass(frozen=True)
+class SimulationInput:
+    offering_id: str | None
+    unit_cost_idr: int | None
+    selling_price_idr: int | None
+    discount_percent: Decimal
+
+
+def _parse_non_negative_idr(value: Any, field: str, errors: dict[str, str]) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value > MAX_DERIVED_IDR:
+        errors[field] = f"{field} harus bilangan bulat 0..{MAX_DERIVED_IDR:,}."
+        return None
+    return value
+
+
+def _parse_discount_percent(value: Any, errors: dict[str, str]) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    if isinstance(value, bool):
+        errors["discount_percent"] = "discount_percent tidak boleh boolean."
+        return Decimal("0")
+    try:
+        dec = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        errors["discount_percent"] = "discount_percent harus berupa angka desimal yang valid."
+        return Decimal("0")
+    if not dec.is_finite() or dec < 0 or dec > Decimal("100"):
+        errors["discount_percent"] = "discount_percent harus di antara 0 dan 100."
+        return Decimal("0")
+    return dec
+
+
+def validate_simulation_input(payload: dict[str, Any]) -> SimulationInput:
+    """Validate price & discount simulation payload."""
+    errors: dict[str, str] = {}
+    raw_offering_id = payload.get("offering_id")
+    offering_id: str | None = None
+    if raw_offering_id is not None:
+        if not isinstance(raw_offering_id, str) or not raw_offering_id.strip():
+            errors["offering_id"] = "offering_id harus berupa string non-kosong."
+        else:
+            offering_id = raw_offering_id.strip()
+
+    unit_cost_idr: int | None = None
+    if payload.get("unit_cost_idr") is not None:
+        unit_cost_idr = _parse_non_negative_idr(payload.get("unit_cost_idr"), "unit_cost_idr", errors)
+
+    raw_price = payload.get("simulated_price_idr")
+    price_field = "simulated_price_idr"
+    if raw_price is None and "selling_price_idr" in payload:
+        raw_price = payload.get("selling_price_idr")
+        price_field = "selling_price_idr"
+
+    selling_price_idr: int | None = None
+    if raw_price is not None:
+        selling_price_idr = _parse_non_negative_idr(raw_price, price_field, errors)
+    elif offering_id is None:
+        errors["selling_price_idr"] = "selling_price_idr atau simulated_price_idr wajib diisi jika tanpa offering_id."
+
+    discount_percent = _parse_discount_percent(payload.get("discount_percent"), errors)
+
+    if errors:
+        raise DomainError(422, "validation_error", "Data simulasi tidak valid.", errors)
+    return SimulationInput(
+        offering_id=offering_id,
+        unit_cost_idr=unit_cost_idr,
+        selling_price_idr=selling_price_idr,
+        discount_percent=discount_percent,
+    )
+
+
+def _format_pct(value: Decimal) -> str:
+    q = value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if q == 0:
+        return "0"
+    return format(q.normalize(), "f")
+
+
+def compute_price_simulation(
+    *,
+    selling_price_idr: int,
+    discount_percent: Decimal,
+    unit_cost_idr: int | None,
+) -> dict[str, Any]:
+    """Deterministically compute net price, gross delta, margin, and markup without mutating state."""
+    ensure_idr_bound(selling_price_idr, "selling_price_idr")
+    net_price_idr = round_idr(
+        Decimal(selling_price_idr) * (Decimal("100") - discount_percent) / Decimal("100")
+    )
+    ensure_idr_bound(net_price_idr, "net_price_idr")
+
+    if unit_cost_idr is None:
+        return {
+            "selling_price_idr": selling_price_idr,
+            "discount_percent": _format_pct(discount_percent),
+            "net_price_idr": net_price_idr,
+            "unit_cost_idr": None,
+            "cost_status": "open",
+            "gross_delta_idr": None,
+            "margin_percent": None,
+            "markup_percent": None,
+            "margin_status": "unavailable",
+        }
+
+    ensure_idr_bound(unit_cost_idr, "unit_cost_idr")
+    gross_delta_idr = net_price_idr - unit_cost_idr
+    ensure_idr_bound(gross_delta_idr, "gross_delta_idr")
+
+    if net_price_idr == 0:
+        margin_status = "unavailable"
+        margin_percent: str | None = None
+    else:
+        margin_status = "assessed"
+        margin_percent = _format_pct(Decimal(gross_delta_idr) * Decimal("100") / Decimal(net_price_idr))
+
+    markup_percent: str | None = None
+    if unit_cost_idr > 0:
+        markup_percent = _format_pct(Decimal(gross_delta_idr) * Decimal("100") / Decimal(unit_cost_idr))
+
+    return {
+        "selling_price_idr": selling_price_idr,
+        "discount_percent": _format_pct(discount_percent),
+        "net_price_idr": net_price_idr,
+        "unit_cost_idr": unit_cost_idr,
+        "cost_status": "assessed",
+        "gross_delta_idr": gross_delta_idr,
+        "margin_percent": margin_percent,
+        "markup_percent": markup_percent,
+        "margin_status": margin_status,
+    }

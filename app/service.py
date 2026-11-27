@@ -16,10 +16,13 @@ from app.domain import (
     DEFAULT_TAX_REASON,
     POLICY_VERSION,
     DomainError,
+    compute_price_simulation,
+    ensure_idr_bound,
     round_idr,
     validate_offering_input,
     validate_purchase_input,
     validate_sale_input,
+    validate_simulation_input,
     validate_workspace_input,
 )
 
@@ -500,6 +503,7 @@ class BaselineService:
             if pool:
                 new_qty = Decimal(pool["qty_on_hand"]) + validated.qty
                 new_val = int(pool["total_value_idr"]) + validated.total_cost_idr
+                ensure_idr_bound(new_val, "total_value_idr")
                 conn.execute(
                     "UPDATE inventory_pools SET qty_on_hand = ?, total_value_idr = ? WHERE workspace_id = ? AND offering_id = ?",
                     (str(new_qty), new_val, workspace_id, validated.offering_id),
@@ -571,7 +575,9 @@ class BaselineService:
                     if line.total_price_idr is not None
                     else round_idr(line.qty * Decimal(off["unit_price_idr"]))
                 )
+                ensure_idr_bound(revenue_idr, "revenue_idr")
                 total_revenue_idr += revenue_idr
+                ensure_idr_bound(total_revenue_idr, "total_revenue_idr")
 
                 line_cogs_idr: int | None = None
                 line_cost_status = "open"
@@ -683,6 +689,9 @@ class BaselineService:
                         "cost_status": line_cost_status,
                     }
                 )
+
+            if total_cogs_idr is not None:
+                ensure_idr_bound(total_cogs_idr, "total_cogs_idr")
 
             conn.execute(
                 """
@@ -928,4 +937,60 @@ class BaselineService:
                     "cash_movements": [dict(r) for r in cash_rows],
                     "audit_events": [dict(r) for r in audit_rows],
                 },
+            }
+
+    def simulate_price(
+        self,
+        workspace_id: str,
+        actor_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Read-only price & discount simulation; never mutates offerings, stock, or ledger."""
+        with db_transaction(self.db_path) as conn:
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+            validated = validate_simulation_input(payload)
+            offering_name: str | None = None
+            offering_type: str | None = None
+            base_price_idr = validated.selling_price_idr
+            unit_cost_idr = validated.unit_cost_idr
+
+            if validated.offering_id is not None:
+                off = conn.execute(
+                    "SELECT * FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                    (workspace_id, validated.offering_id),
+                ).fetchone()
+                if not off:
+                    raise DomainError(
+                        404,
+                        "offering_not_found",
+                        f"Offering {validated.offering_id} tidak ditemukan.",
+                    )
+                offering_name = off["name"]
+                offering_type = off["offering_type"]
+                if base_price_idr is None:
+                    base_price_idr = int(off["unit_price_idr"])
+                if unit_cost_idr is None and off["requires_stock_movement"]:
+                    pool = conn.execute(
+                        "SELECT qty_on_hand, total_value_idr FROM inventory_pools WHERE workspace_id = ? AND offering_id = ?",
+                        (workspace_id, validated.offering_id),
+                    ).fetchone()
+                    if pool and Decimal(pool["qty_on_hand"]) > 0:
+                        unit_cost_idr = round_idr(
+                            Decimal(pool["total_value_idr"]) / Decimal(pool["qty_on_hand"])
+                        )
+
+            assert base_price_idr is not None
+            result = compute_price_simulation(
+                selling_price_idr=base_price_idr,
+                discount_percent=validated.discount_percent,
+                unit_cost_idr=unit_cost_idr,
+            )
+            return {
+                "workspace_id": workspace_id,
+                "offering_id": validated.offering_id,
+                "offering_name": offering_name,
+                "offering_type": offering_type,
+                **result,
+                "read_only": True,
+                "simulation_note": "Simulasi bersifat read-only dan tidak mengubah offering, stok, atau ledger.",
             }
