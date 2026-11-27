@@ -1,0 +1,1 @@
+ALTER TABLE offerings ADD COLUMN description TEXT NOT NULL DEFAULT '';

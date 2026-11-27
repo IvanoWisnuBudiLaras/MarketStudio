@@ -290,7 +290,7 @@ def validate_poster_draft_input(payload: dict[str, Any], *, partial: bool = Fals
     title = _validate_str_field(
         payload, "title", required=not partial, min_len=2, max_len=120, errors=errors
     )
-    if title is not None:
+    if title is not None and (not partial or "title" in payload):
         if partial and not title:
             errors["title"] = "title tidak boleh kosong."
         else:
@@ -299,7 +299,7 @@ def validate_poster_draft_input(payload: dict[str, Any], *, partial: bool = Fals
     headline = _validate_str_field(
         payload, "headline", required=not partial, min_len=2, max_len=140, errors=errors
     )
-    if headline is not None:
+    if headline is not None and (not partial or "headline" in payload):
         if partial and not headline:
             errors["headline"] = "headline tidak boleh kosong."
         else:
@@ -308,7 +308,7 @@ def validate_poster_draft_input(payload: dict[str, Any], *, partial: bool = Fals
     caption = _validate_str_field(
         payload, "caption", required=False, min_len=0, max_len=600, errors=errors
     )
-    if caption is not None:
+    if caption is not None and (not partial or "caption" in payload):
         cleaned["caption"] = caption
     elif not partial:
         cleaned["caption"] = ""
@@ -316,7 +316,7 @@ def validate_poster_draft_input(payload: dict[str, Any], *, partial: bool = Fals
     cta_text = _validate_str_field(
         payload, "cta_text", required=False, min_len=0, max_len=80, errors=errors
     )
-    if cta_text is not None:
+    if cta_text is not None and (not partial or "cta_text" in payload):
         cleaned["cta_text"] = cta_text
     elif not partial:
         cleaned["cta_text"] = ""
@@ -324,7 +324,7 @@ def validate_poster_draft_input(payload: dict[str, Any], *, partial: bool = Fals
     price_label = _validate_str_field(
         payload, "price_label", required=False, min_len=0, max_len=60, errors=errors
     )
-    if price_label is not None:
+    if price_label is not None and (not partial or "price_label" in payload):
         cleaned["price_label"] = price_label
     elif not partial:
         cleaned["price_label"] = ""

@@ -19,3 +19,5 @@ jobs:
           persist-credentials: false
       - name: Check project documents, skills and tracked files
         run: python3 scripts/check_repository.py
+      - name: Run Python unit and integration tests
+        run: python3 -W error::ResourceWarning -m unittest discover -s tests -v

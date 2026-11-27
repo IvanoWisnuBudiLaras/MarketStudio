@@ -270,11 +270,6 @@ def _call_gemini_adapter(
     model: str,
     timeout_seconds: float,
 ) -> tuple[dict[str, Any] | None, str | None]:
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        return None, "provider_unconfigured"
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     prompt = (
         "Anda adalah analis bisnis MarketStudio. Kembalikan HANYA JSON valid dengan keys: "
         "summary (string), highlights (list of strings), missing_data (list of strings), "
@@ -282,6 +277,17 @@ def _call_gemini_adapter(
         "Jangan mengubah angka. Gunakan hanya data berikut:\n"
         + json.dumps(outbound_payload)
     )
+    return call_gemini_json(prompt, model, timeout_seconds)
+
+
+def call_gemini_json(
+    prompt: str, model: str, timeout_seconds: float
+) -> tuple[Any, str | None]:
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return None, "provider_unconfigured"
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = json.dumps(
         {
             "contents": [{"parts": [{"text": prompt}]}],

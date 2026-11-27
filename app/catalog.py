@@ -10,9 +10,10 @@ def render_catalog(snapshot: dict[str, Any]) -> str:
     for item in snapshot["offerings"]:
         price = f'{item["unit_price_idr"]:,}'.replace(",", ".")
         kind = "Jasa" if item["offering_type"] == "service" else "Barang"
+        caption = f'<p class="caption">{escape(item["caption"])}</p>' if item.get("caption") else ""
         cards.append(
             f'<li><p class="kind">{kind}</p><h2>{escape(item["name"])}</h2>'
-            f'<p class="price">Rp {price} / {escape(item["unit"])}</p></li>'
+            f'<p class="price">Rp {price} / {escape(item["unit"])}</p>{caption}</li>'
         )
 
     artwork = ""
@@ -49,6 +50,7 @@ def render_catalog(snapshot: dict[str, Any]) -> str:
   li h2 {{ font-size: 18px; margin: 4px 0 12px; }}
   .kind {{ font-size: 14px; color: #475569; margin: 0; }}
   .price {{ color: #142B52; font-weight: 700; font-variant-numeric: tabular-nums; margin: 0; }}
+  .caption {{ white-space: pre-wrap; margin-bottom: 0; }}
 </style>
 </head>
 <body>

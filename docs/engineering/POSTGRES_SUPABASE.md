@@ -35,6 +35,7 @@ Setiap migrasi memakai pasangan `.up.sql` dan `.down.sql` bernomor urut serta te
 
 1. `0001_initial_schema`: membuat 13 tabel domain (`sessions`, `workspaces`, `workspace_memberships`, `offerings`, `purchases`, `inventory_batches`, `inventory_pools`, `stock_movements`, `sales`, `sale_lines`, `cash_movements`, `idempotency_keys`, `audit_events`) dengan `BIGINT` + guard `<= 10^15` untuk nilai IDR, `NUMERIC` untuk kuantitas/biaya unit tanpa drift float, `TIMESTAMPTZ`, dan `BOOLEAN`.
 2. `0002_rls_and_service_privileges`: mengaktifkan Row Level Security (default-deny) pada seluruh tabel, mencabut akses `PUBLIC`/`anon`/`authenticated` bila role ada, dan memberi hak DML-only (`SELECT, INSERT, UPDATE, DELETE`) kepada `service_role` pada tabel domain serta `SELECT` pada `schema_migrations`.
+3. `0003_offering_description`: menambahkan deskripsi opsional pada offering dengan nilai kosong untuk data lama. Pilih versi aplikasi yang sesuai saat rollback. Migrasi turun menghapus kolom beserta deskripsi di dalamnya.
 
 ### Perintah CLI Migrasi
 

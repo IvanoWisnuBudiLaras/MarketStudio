@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
+from app.ai_copy import TONES, generate_copy
 from app.catalog import render_catalog
 from app.creative import (
     BUILTIN_ASSET_MAP,
@@ -135,6 +136,7 @@ def _row_to_offering(row: Any) -> dict[str, Any]:
         "offering_id": row["offering_id"],
         "workspace_id": row["workspace_id"],
         "name": row["name"],
+        "description": row["description"],
         "offering_type": row["offering_type"],
         "unit_price_idr": row["unit_price_idr"],
         "currency": "IDR",
@@ -466,8 +468,8 @@ class BaselineService:
                 INSERT INTO offerings (
                     offering_id, workspace_id, name, offering_type, unit_price_idr,
                     unit, requires_stock_movement, valuation_method,
-                    tax_status, tax_reason, tax_amount, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+                    tax_status, tax_reason, tax_amount, created_at, description
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
                 """,
                 (
                     offering_id,
@@ -481,12 +483,14 @@ class BaselineService:
                     validated.tax_status,
                     validated.tax_reason,
                     created_at,
+                    validated.description,
                 ),
             )
             result = {
                 "offering_id": offering_id,
                 "workspace_id": workspace_id,
                 "name": validated.name,
+                "description": validated.description,
                 "offering_type": validated.offering_type,
                 "unit_price_idr": validated.unit_price_idr,
                 "currency": "IDR",
@@ -1871,6 +1875,78 @@ class BaselineService:
             )
             return 201, result
 
+    def create_caption_draft(
+        self,
+        workspace_id: str,
+        actor_id: str,
+        payload: dict[str, Any],
+        idempotency_key: str | None,
+    ) -> tuple[int, dict[str, Any]]:
+        offering_id = payload.get("offering_id")
+        asset_id = payload.get("asset_id")
+        tone = payload.get("tone")
+        mode = payload.get("mode", "ai")
+        with self._tx() as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            if (not isinstance(offering_id, str) or not offering_id
+                    or not isinstance(asset_id, str) or not asset_id
+                    or mode not in ("ai", "manual") or tone not in TONES):
+                raise DomainError(422, "invalid_copy_input", "Pilih produk atau jasa, aset berizin, dan gaya bahasa.")
+            request_hash = _hash_payload(payload)
+            replay = self._check_idempotency(
+                conn, workspace_id, "create_caption_draft", idempotency_key, request_hash,
+            )
+            if replay:
+                return replay
+            facts = self._caption_facts(conn, workspace_id, offering_id)
+            self._assert_verified_asset_metadata(self._resolve_asset_record(conn, workspace_id, asset_id))
+
+        headline, caption = facts["name"], ""
+        provenance = {"offering_facts": facts}
+        if mode == "ai":
+            headline, caption, generation = generate_copy(facts, tone)
+            provenance.update(generation, generated_at=_utc_now())
+        price = f'Rp {facts["unit_price_idr"]:,}'.replace(",", ".")
+        cleaned = validate_poster_draft_input({
+            "offering_id": offering_id,
+            "asset_id": asset_id,
+            "title": facts["name"][:120],
+            "headline": headline[:140],
+            "caption": caption,
+            "price_label": price,
+            "copy_source": "ai_copy" if mode == "ai" else "manual",
+            "copy_provenance": provenance,
+        })
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            replay = self._check_idempotency(
+                conn, workspace_id, "create_caption_draft", idempotency_key, request_hash,
+            )
+            if replay:
+                return replay
+            if facts != self._caption_facts(conn, workspace_id, offering_id):
+                raise DomainError(409, "offering_changed", "Fakta produk atau jasa berubah. Buat ulang draft.")
+            asset = self._resolve_asset_record(conn, workspace_id, asset_id)
+            self._assert_verified_asset_metadata(asset)
+            result = self._insert_poster_draft(
+                conn, workspace_id=workspace_id, actor_id=actor_id, cleaned=cleaned, asset_record=asset,
+            )
+            self._save_idempotency(
+                conn, workspace_id, "create_caption_draft", idempotency_key, request_hash,
+                201, result, result["created_at"],
+            )
+            return 201, result
+
+    def _caption_facts(self, conn: Any, workspace_id: str, offering_id: str) -> dict[str, Any]:
+        row = conn.execute(
+            """SELECT name, offering_type, description, unit_price_idr, unit FROM offerings
+               WHERE workspace_id = ? AND offering_id = ?""",
+            (workspace_id, offering_id),
+        ).fetchone()
+        if not row:
+            raise DomainError(404, "offering_not_found", "Produk atau jasa tidak ditemukan pada workspace ini.")
+        return dict(row)
+
     def create_sample_poster_draft(
         self,
         workspace_id: str,
@@ -2040,6 +2116,13 @@ class BaselineService:
                 }
             )
             now_utc = _utc_now()
+            if "copy_provenance" not in cleaned and copy_prov_json and (
+                headline != row["headline"] or caption != row["caption"]
+            ):
+                copy_provenance = json.loads(copy_prov_json)
+                copy_provenance["last_copy_edit_at"] = now_utc
+                copy_provenance["last_copy_edit_version"] = new_version
+                copy_prov_json = json.dumps(copy_provenance, sort_keys=True)
             conn.execute(
                 """
                 UPDATE poster_drafts SET
@@ -2354,6 +2437,7 @@ class BaselineService:
             self._assert_catalog_owner(conn, workspace_id, actor_id)
             ids = payload.get("offering_ids")
             asset_id = payload.get("asset_id")
+            copy_ref = payload.get("copy_draft")
             if (not isinstance(ids, list) or not 1 <= len(ids) <= 100
                     or any(not isinstance(value, str) or not 1 <= len(value) <= 128 for value in ids)
                     or len(set(ids)) != len(ids)):
@@ -2372,6 +2456,24 @@ class BaselineService:
                     raise DomainError(404, "offering_not_found", "Produk atau jasa tidak ditemukan.")
                 offerings.append(dict(row))
 
+            if copy_ref is not None:
+                if (not isinstance(copy_ref, dict)
+                        or not isinstance(copy_ref.get("draft_id"), str)
+                        or type(copy_ref.get("version")) is not int):
+                    raise DomainError(422, "invalid_copy_draft", "Pilihan draft caption tidak valid.")
+                copy_row = conn.execute(
+                    """SELECT offering_id, version, caption FROM poster_drafts
+                       WHERE workspace_id = ? AND draft_id = ?""",
+                    (workspace_id, copy_ref["draft_id"]),
+                ).fetchone()
+                if not copy_row:
+                    raise DomainError(404, "poster_draft_not_found", "Draft caption tidak ditemukan.")
+                if copy_row["version"] != copy_ref["version"]:
+                    raise DomainError(409, "draft_version_conflict", "Draft caption sudah berubah. Pilih kembali versi terbaru.")
+                if copy_row["offering_id"] not in ids or not copy_row["caption"]:
+                    raise DomainError(422, "invalid_copy_draft", "Pilih produk atau jasa yang sesuai dengan draft caption.")
+                offerings[ids.index(copy_row["offering_id"])]["caption"] = copy_row["caption"]
+
             asset = None
             if asset_id:
                 record = self._resolve_asset_record(conn, workspace_id, asset_id)
@@ -2387,6 +2489,8 @@ class BaselineService:
 
             workspace = conn.execute("SELECT name FROM workspaces WHERE workspace_id = ?", (workspace_id,)).fetchone()
             selection = {"offering_ids": ids, "asset_id": asset_id}
+            if copy_ref is not None:
+                selection["copy_draft"] = {"draft_id": copy_ref["draft_id"], "version": copy_ref["version"]}
             snapshot = {"name": workspace["name"], "offerings": offerings, "asset": asset}
             conn.execute("DELETE FROM catalog_versions WHERE workspace_id = ? AND state = 'draft'", (workspace_id,))
             conn.execute(
