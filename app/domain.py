@@ -429,6 +429,23 @@ def compute_price_simulation(
 
 BENCHMARK_SNAPSHOTS: tuple[dict[str, Any], ...] = (
     {
+        "snapshot_id": "bapanas_beras_medium_maret_2026",
+        "source_kind": "transcribed_official",
+        "is_synthetic": False,
+        "is_historical": True,
+        "source_name": "Badan Pangan Nasional (Bapanas) — Publikasi Resmi",
+        "source_url": "https://data.badanpangan.go.id/nfs_storage/public/publication/documents/1779588677.pdf",
+        "observed_at": "2026-03",
+        "observation_period": "Maret 2026",
+        "location_market": "Nasional (Tingkat Konsumen)",
+        "commodity_name": "Beras Medium",
+        "unit": "kg",
+        "quantity": "1",
+        "currency": "IDR",
+        "observed_price_idr": 13378,
+        "evidence_note": "Transkripsi resmi Bapanas: Tabel Harga Pangan Tingkat Konsumen Periode Maret 2026, halaman cetak 20, baris Beras Medium, kolom Harga Nasional (data historis, bukan harga spot saat ini).",
+    },
+    {
         "snapshot_id": "demo_beras_medium_jkt",
         "source_kind": "synthetic_demo",
         "is_synthetic": True,
@@ -501,6 +518,8 @@ class BenchmarkObservation:
     snapshot_id: str | None = None
     commodity_name: str | None = None
     evidence_note: str | None = None
+    is_historical: bool = False
+    observation_period: str | None = None
 
 
 def _validate_iso_observed_at(raw: Any, errors: dict[str, str]) -> str:
@@ -530,21 +549,23 @@ def validate_benchmark_input(payload: dict[str, Any]) -> tuple[str, BenchmarkObs
         offering_id = raw_offering_id.strip()
 
     raw_kind = payload.get("source_kind")
-    if raw_kind not in ("synthetic_demo", "manual_fallback"):
-        errors["source_kind"] = "source_kind harus 'synthetic_demo' atau 'manual_fallback'."
+    if raw_kind not in ("transcribed_official", "synthetic_demo", "manual_fallback"):
+        errors["source_kind"] = "source_kind harus 'transcribed_official', 'synthetic_demo', atau 'manual_fallback'."
         raise DomainError(422, "validation_error", "Data benchmark tidak valid.", errors)
 
-    if raw_kind == "synthetic_demo":
+    if raw_kind in ("transcribed_official", "synthetic_demo"):
         snap_id = payload.get("snapshot_id")
         if not isinstance(snap_id, str) or not snap_id.strip():
-            errors["snapshot_id"] = "snapshot_id wajib diisi untuk synthetic_demo."
+            errors["snapshot_id"] = f"snapshot_id wajib diisi untuk {raw_kind}."
         elif snap_id.strip() not in _BENCHMARK_SNAPSHOT_MAP:
             errors["snapshot_id"] = f"Snapshot '{snap_id}' tidak ditemukan."
+        elif _BENCHMARK_SNAPSHOT_MAP[snap_id.strip()]["source_kind"] != raw_kind:
+            errors["snapshot_id"] = f"Snapshot '{snap_id}' bukan bertipe {raw_kind}."
         if errors:
             raise DomainError(422, "validation_error", "Data benchmark tidak valid.", errors)
         snap = _BENCHMARK_SNAPSHOT_MAP[snap_id.strip()]
         return offering_id, BenchmarkObservation(
-            source_kind="synthetic_demo",
+            source_kind=snap["source_kind"],
             source_name=snap["source_name"],
             source_url=snap["source_url"],
             observed_at=snap["observed_at"],
@@ -556,6 +577,8 @@ def validate_benchmark_input(payload: dict[str, Any]) -> tuple[str, BenchmarkObs
             snapshot_id=snap["snapshot_id"],
             commodity_name=snap["commodity_name"],
             evidence_note=snap["evidence_note"],
+            is_historical=bool(snap.get("is_historical", False)),
+            observation_period=snap.get("observation_period"),
         )
 
     # manual_fallback
@@ -663,6 +686,8 @@ def compute_price_benchmark(
             "commodity_name": observation.commodity_name,
             "source_kind": observation.source_kind,
             "is_synthetic": observation.source_kind == "synthetic_demo",
+            "is_historical": observation.is_historical,
+            "observation_period": observation.observation_period,
             "source_name": observation.source_name,
             "source_url": observation.source_url,
             "observed_at": observation.observed_at,

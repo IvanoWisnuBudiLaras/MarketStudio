@@ -265,6 +265,7 @@
         <label>
           Sumber Benchmark
           <select id="benchSourceKind">
+            <option value="transcribed_official">Transkripsi Resmi Bapanas (Historis Maret 2026)</option>
             <option value="synthetic_demo">Demo Sintetis (Bukan Observasi Nyata)</option>
             <option value="manual_fallback">Manual Fallback (Input Operator dengan Bukti)</option>
           </select>
@@ -272,9 +273,10 @@
         <label id="benchSnapshotWrap">
           Snapshot Komoditas
           <select id="benchSnapshotId">
-            <option value="demo_beras_medium_jkt">Beras Medium (Demo Sintetis) — Rp13.500 / 1 kg</option>
-            <option value="demo_gula_pasir_500g_jkt">Gula Konsumsi 500 g (Demo Sintetis) — Rp9.000 / 500 g</option>
-            <option value="demo_minyak_goreng_jkt">Minyak Goreng (Demo Sintetis) — Rp17.500 / 1 liter</option>
+            <option value="bapanas_beras_medium_maret_2026">[Resmi · Historis Maret 2026] Beras Medium — Rp 13.378 / 1 kg · Nasional</option>
+            <option value="demo_beras_medium_jkt">[Demo Sintetis] Beras Medium — Rp13.500 / 1 kg</option>
+            <option value="demo_gula_pasir_500g_jkt">[Demo Sintetis] Gula Konsumsi 500 g — Rp9.000 / 500 g</option>
+            <option value="demo_minyak_goreng_jkt">[Demo Sintetis] Minyak Goreng — Rp17.500 / 1 liter</option>
           </select>
         </label>
         <div id="benchManualWrap" class="row" style="display:none; flex-basis: 100%;">
@@ -773,7 +775,10 @@
         items.forEach((snap) => {
           const opt = document.createElement("option");
           opt.value = snap.snapshot_id;
-          opt.textContent = `${snap.commodity_name} — ${fmtIdr(snap.observed_price_idr)} / ${snap.quantity} ${snap.unit} (${snap.location_market})`;
+          const prefix = snap.source_kind === "transcribed_official"
+            ? `[Resmi · Historis ${snap.observation_period || snap.observed_at}]`
+            : "[Demo Sintetis]";
+          opt.textContent = `${prefix} ${snap.commodity_name} — ${fmtIdr(snap.observed_price_idr)} / ${snap.quantity} ${snap.unit} · ${snap.location_market}`;
           sel.appendChild(opt);
         });
       } catch {
@@ -791,7 +796,7 @@
         offering_id: document.getElementById("benchOfferingId").value.trim(),
         source_kind: kind,
       };
-      if (kind === "synthetic_demo") {
+      if (kind !== "manual_fallback") {
         payload.snapshot_id = document.getElementById("benchSnapshotId").value;
       } else {
         const rawPrice = document.getElementById("benchObservedPrice").value.trim();
@@ -824,7 +829,8 @@
         benchResultGrid.appendChild(renderSimKpi("Harga Offering", `${fmtIdr(item.offering_unit_price_idr)} / ${item.offering_unit}`));
         benchResultGrid.appendChild(renderSimKpi("Benchmark Ternormalisasi", `${fmtIdr(item.normalized_benchmark_price_idr)} / ${item.offering_unit}`));
         benchResultGrid.appendChild(renderSimKpi("Selisih Harga", `${fmtIdr(item.price_delta_idr)} (${item.price_delta_percent === null ? "N/A" : item.price_delta_percent + "%"})`));
-        benchResultGrid.appendChild(renderSimKpi("Observasi Asli", `${fmtIdr(obs.observed_price_idr)} (${obs.currency}) / ${obs.quantity} ${obs.unit} · ${obs.location_market} (${obs.observed_at})`));
+        benchResultGrid.appendChild(renderSimKpi("Observasi Asli", `${fmtIdr(obs.observed_price_idr)} (${obs.currency}) / ${obs.quantity} ${obs.unit} · ${obs.location_market} (${obs.observation_period || obs.observed_at})`));
+        benchResultGrid.appendChild(renderSimKpi("Status Periode", obs.is_historical ? `Historis (Periode ${obs.observation_period || obs.observed_at})` : `Observasi (${obs.observed_at})`));
         benchResultGrid.appendChild(renderSimKpi("Sumber & Atribusi", `${obs.source_kind}: ${obs.source_name}${obs.source_url ? " | " + obs.source_url : ""}`));
         benchResultGrid.appendChild(renderSimKpi("Catatan Bukti (Evidence)", obs.evidence_note || "-"));
         setStatus(benchStatus, item.benchmark_note || "Benchmark selesai (read-only).");

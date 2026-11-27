@@ -118,8 +118,14 @@ class PriceBenchmarkTest(unittest.TestCase):
             token=self.token_a,
         )
         self.assertEqual(status, 200)
-        self.assertGreaterEqual(len(snaps["items"]), 3)
-        first = snaps["items"][0]
+        self.assertGreaterEqual(len(snaps["items"]), 4)
+        official = snaps["items"][0]
+        self.assertEqual(official["snapshot_id"], "bapanas_beras_medium_maret_2026")
+        self.assertEqual(official["source_kind"], "transcribed_official")
+        self.assertFalse(official["is_synthetic"])
+        self.assertTrue(official["is_historical"])
+
+        first = snaps["items"][1]
         self.assertEqual(first["source_kind"], "synthetic_demo")
         self.assertTrue(first["is_synthetic"])
         self.assertIsNone(first["source_url"])
@@ -293,6 +299,63 @@ class PriceBenchmarkTest(unittest.TestCase):
             stock_cnt = conn.execute("SELECT COUNT(*) FROM stock_movements").fetchone()[0]
             cash_cnt = conn.execute("SELECT COUNT(*) FROM cash_movements").fetchone()[0]
             self.assertEqual((sales_cnt, stock_cnt, cash_cnt), (0, 0, 0))
+
+    def test_transcribed_official_bapanas_snapshot_and_invariance(self) -> None:
+        # Compare kg offering against official Bapanas March 2026 Beras Medium (13378 IDR / kg)
+        status, res = self._request(
+            "POST",
+            f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
+            body={
+                "offering_id": self.off_kg,
+                "source_kind": "transcribed_official",
+                "snapshot_id": "bapanas_beras_medium_maret_2026",
+            },
+            token=self.token_a,
+        )
+        self.assertEqual(status, 200)
+        item = res["item"]
+        self.assertEqual(item["normalized_benchmark_price_idr"], 13378)
+        self.assertEqual(item["price_delta_idr"], 1622)
+        obs = item["observation"]
+        self.assertEqual(obs["source_kind"], "transcribed_official")
+        self.assertFalse(obs["is_synthetic"])
+        self.assertTrue(obs["is_historical"])
+        self.assertEqual(obs["observed_at"], "2026-03")
+        self.assertEqual(obs["location_market"], "Nasional (Tingkat Konsumen)")
+        self.assertEqual(obs["source_url"], "https://data.badanpangan.go.id/nfs_storage/public/publication/documents/1779588677.pdf")
+        self.assertIn("halaman cetak 20", obs["evidence_note"])
+
+        # Also compare a gram offering (500 g @ Rp 7.500 -> benchmark 6689 IDR / 500 g)
+        _, off_g = self.service.create_offering(
+            self.ws_a,
+            actor_id="actor_a",
+            payload={
+                "name": "Beras 500g",
+                "offering_type": "goods",
+                "unit": "g",
+                "unit_price_idr": 7500,
+                "requires_stock_movement": True,
+            },
+            actor="actor_a",
+        )
+        status_g, res_g = self._request(
+            "POST",
+            f"/v1/workspaces/{self.ws_a}/price-benchmarks/compare",
+            body={
+                "offering_id": off_g["offering_id"],
+                "source_kind": "transcribed_official",
+                "snapshot_id": "bapanas_beras_medium_maret_2026",
+            },
+            token=self.token_a,
+        )
+        self.assertEqual(status_g, 200)
+        self.assertEqual(res_g["item"]["normalized_benchmark_price_idr"], 13)
+        # Wait: 13378 / 1000 = 13.378 -> round_idr = 13 IDR per 1 g
+        self.assertEqual(res_g["item"]["offering_unit"], "g")
+
+        with db_transaction(self.db_path) as conn:
+            sales_cnt = conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0]
+            self.assertEqual(sales_cnt, 0)
 
 
 if __name__ == "__main__":
