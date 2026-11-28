@@ -65,6 +65,7 @@ SYNTHETIC_PRINCIPALS: dict[str, str] = {
     "synthetic_owner": "dev-owner-pass",
     "actor_a": "dev-a-pass",
     "actor_b": "dev-b-pass",
+    "actor_c": "dev-c-pass",
 }
 
 
@@ -290,6 +291,34 @@ class BaselineService:
             if not row or row["revoked_at"] is not None:
                 raise DomainError(401, "unauthenticated", "Session tidak valid atau telah dicabut.")
             return str(row["actor_id"])
+
+    def add_membership(
+        self,
+        workspace_id: str,
+        actor_id: str,
+        role: str = "member",
+    ) -> None:
+        # ponytail: direct membership provisioning for baseline and test lifecycle; upgrade to formal invitation flow in #31
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
+            ws = conn.execute(
+                "SELECT workspace_id FROM workspaces WHERE workspace_id = ?",
+                (workspace_id,),
+            ).fetchone()
+            if not ws:
+                raise DomainError(404, "workspace_not_found", "Workspace tidak ditemukan.")
+            created_at = _utc_now()
+            conn.execute(
+                "DELETE FROM workspace_memberships WHERE workspace_id = ? AND actor_id = ?",
+                (workspace_id, actor_id),
+            )
+            conn.execute(
+                """
+                INSERT INTO workspace_memberships (workspace_id, actor_id, role, created_at, revoked_at)
+                VALUES (?, ?, ?, ?, NULL)
+                """,
+                (workspace_id, actor_id, role, created_at),
+            )
 
     def revoke_membership(self, workspace_id: str, actor_id: str) -> None:
         with self._tx(immediate=True) as conn:
