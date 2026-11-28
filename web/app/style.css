@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --navy: #111f38;
+  --navy: #142B52;
   --brand: #2563eb;
   --surface: #fff;
   --line: #dce4ef;
@@ -9,17 +9,73 @@
   --background: #f4f7fb;
 }
 body { background: var(--background); color: var(--navy); font: 15px/1.5 system-ui, sans-serif; }
-body > header { background: var(--navy); color: white; }
-.brand { background: white; border-radius: 8px; padding: 6px 10px; }
 .panel, .astryx-card.business-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; min-width: 0; }
 h1 { font-size: clamp(1.55rem, 4vw, 2.2rem); font-weight: 680; letter-spacing: -.025em; }
 h2 { font-weight: 650; font-size: 1.12rem; margin-bottom: 12px; }
 @scope (body) to (.worksheet-editor) { label { display: grid; gap: 5px; font-weight: 550; } }
-@scope (body) to (.worksheet-editor) { input, select { border: 1px solid #aebdd0; border-radius: 7px; min-height: 42px; padding: 8px 10px; width: 100%; background: white; color: var(--navy); } }
-@scope (body) to (.worksheet-editor) { button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--brand); color: white; padding: 9px 14px; min-height: 42px; border-radius: 7px; font-weight: 630; cursor: pointer; } }
+@scope (body) to (.worksheet-editor) { input, select { border: 1px solid #aebdd0; border-radius: 7px; min-height: 44px; padding: 8px 10px; width: 100%; background: white; color: var(--navy); } }
+@scope (body) to (.worksheet-editor) { button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--brand); color: white; padding: 9px 14px; min-height: 44px; border-radius: 7px; font-weight: 630; cursor: pointer; } }
 @scope (body) to (.worksheet-editor) { button:disabled { opacity: .55; cursor: wait; } }
 @scope (body) to (.worksheet-editor) { :focus-visible { outline: 3px solid #6da5ff; outline-offset: 2px; } }
 dt { color: var(--muted); }
-dd { font-size: 1.25rem; font-weight: 650; }
+dd { font-variant-numeric: tabular-nums; font-size: 1.25rem; font-weight: 650; }
 @scope (body) to (.worksheet-editor) { [role="alert"] { color: #a02032; overflow-wrap: anywhere; } }
 @scope (body) to (.worksheet-editor) { th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); } }
+
+.app-shell { min-height: 100dvh; }
+.app-content { min-width: 0; }
+.sidebar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 16px; color: white; background: var(--navy); }
+.sidebar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.sidebar-brand img { width: 36px; height: 36px; object-fit: contain; background: white; border-radius: 8px; }
+.sidebar nav { min-width: 0; }
+.sidebar nav a, .sidebar button.sidebar-toggle {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px;
+  border-radius: 8px; color: white; background: transparent; font-weight: 600;
+}
+.sidebar svg { flex: none; }
+.sidebar nav a:hover, .sidebar button.sidebar-toggle:hover { background: #ffffff20; }
+.sidebar nav a[aria-current="page"] { background: #ffffff29; box-shadow: inset 3px 0 #a8cbff; }
+.sidebar button.sidebar-toggle { display: none; }
+.topbar {
+  display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px;
+  min-height: 64px; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--surface);
+}
+.topbar-title { font-weight: 680; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.workspace-selector { min-width: 0; width: clamp(130px, 32vw, 260px); }
+.workspace-selector select { text-overflow: ellipsis; }
+.topbar button.sign-out { background: var(--surface); color: var(--navy); border: 1px solid var(--line); }
+.topbar button.sign-out:hover { background: var(--background); }
+.studio-main { display: grid; gap: 24px; max-width: 1280px; margin-inline: auto; padding: 24px 16px 40px; overflow-wrap: anywhere; }
+.studio-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.transaction-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.transaction-grid section { min-width: 0; }
+.primary-link, .text-link {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 650; border-radius: 7px;
+}
+.primary-link { background: var(--brand); color: white; padding: 8px 14px; }
+.text-link { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+.skip-link { position: fixed; z-index: 2; top: 8px; left: 8px; padding: 12px; color: var(--navy); background: white; transform: translateY(-150%); }
+.skip-link:focus { transform: none; }
+.report-metrics { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.report-metrics > div { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--background); }
+@media (min-width: 1024px) {
+  .app-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+  .app-shell[data-collapsed="true"] { grid-template-columns: 64px minmax(0, 1fr); }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100dvh; flex-direction: column; flex-wrap: nowrap; align-items: stretch; padding: 16px 10px; gap: 20px; }
+  .sidebar-brand { min-height: 44px; padding-inline: 4px; }
+  .sidebar nav { display: grid; gap: 6px; }
+  .sidebar button.sidebar-toggle { display: flex; justify-content: flex-start; margin-top: auto; }
+  [data-collapsed="true"] .sidebar-label { display: none; }
+  [data-collapsed="true"] .sidebar nav a, [data-collapsed="true"] .sidebar button.sidebar-toggle { justify-content: center; padding-inline: 0; }
+  .topbar { padding-inline: 32px; }
+  .studio-main { padding: 32px; }
+}
+@media (max-width: 479px) {
+  .sidebar { gap: 4px 12px; }
+  .sidebar-brand { font-size: 14px; }
+  .sidebar nav a { font-size: 14px; padding-inline: 8px; }
+  .topbar-actions { width: 100%; }
+  .workspace-selector { flex: 1; }
+  .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
