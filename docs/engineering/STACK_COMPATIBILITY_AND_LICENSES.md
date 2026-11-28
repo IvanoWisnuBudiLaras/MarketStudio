@@ -211,4 +211,4 @@ python3 -W error::ResourceWarning -m unittest discover -s tests -v
 python3 scripts/check_repository.py
 ```
 
-Seluruh pengujian terverifikasi: **110 tests lulus**, **10 tests dilewati** (10 pengujian integrasi live PostgreSQL 17 dilewati secara aman karena `MARKETSTUDIO_TEST_POSTGRES_URL` tidak diset), total 120 tests tanpa peringatan kebocoran sumber daya (*zero ResourceWarning*).
+Seluruh pengujian terverifikasi: **113 tests lulus**, **10 tests dilewati** (10 pengujian integrasi live PostgreSQL 17 dilewati secara aman karena `MARKETSTUDIO_TEST_POSTGRES_URL` tidak diset), total 123 tests tanpa peringatan kebocoran sumber daya (*zero ResourceWarning*).

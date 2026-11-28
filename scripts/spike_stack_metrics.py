@@ -96,83 +96,84 @@ def run_spike(
     if iterations < 1:
         raise ValueError("iterations must be at least 1")
 
-    if not verbose_logs:
-        os.environ["MARKETSTUDIO_QUIET_LOGS"] = "1"
-
     temp_dir: tempfile.TemporaryDirectory | None = None
-    if db_path is None:
-        temp_dir = tempfile.TemporaryDirectory(prefix="marketstudio_spike_")
-        target_db = Path(temp_dir.name) / "spike_marketstudio.db"
-    else:
-        target_db = Path(db_path).resolve()
-        if target_db.exists():
-            raise ValueError(
-                f"File database '{target_db}' sudah ada. "
-                "Spike benchmark alur #1 hanya menerima path file baru untuk menjamin isolasi data tanpa memutasi data existing."
-            )
-        target_db.parent.mkdir(parents=True, exist_ok=True)
-
-    target_db_str = str(target_db)
-
-    # Force explicit SQLite backend isolation against any PostgreSQL ambient environment
-    prev_backend = os.environ.get("MARKETSTUDIO_DB_BACKEND")
-    prev_db_url = os.environ.get("DATABASE_URL")
-    prev_ms_db_url = os.environ.get("MARKETSTUDIO_DATABASE_URL")
-    os.environ["MARKETSTUDIO_DB_BACKEND"] = "sqlite"
-    os.environ.pop("DATABASE_URL", None)
-    os.environ.pop("MARKETSTUDIO_DATABASE_URL", None)
-
-    # Construct explicit SQLite configuration object
-    db_config = DatabaseConfig(
-        backend="sqlite",
-        target=target_db_str,
-        auto_migrate=True,
-    )
-
-    # 1. In-process Server & SQLite Initialization Measurement
-    t_start0 = time.perf_counter()
-    server = create_server(
-        host=host,
-        port=port,
-        db_path=db_config,
-        backend="sqlite",
-        database_url=None,
-    )
-    startup_inprocess_ms = (time.perf_counter() - t_start0) * 1000.0
-
-    actual_port = server.server_address[1]
-    base_url = f"http://{host}:{actual_port}"
-    idle_rss_kb = get_current_rss_kb()
-
-    # Start server in daemon thread
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    server_thread.start()
-
-    results: dict[str, Any] = {
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "python_version": sys.version.split()[0],
-        "platform": sys.platform,
-        "database_backend": "sqlite",
-        "database_path": target_db_str,
-        "startup_inprocess_ms": round(startup_inprocess_ms, 2),
-        "cold_startup_ms": round(startup_inprocess_ms, 2),  # backward compatibility alias
-        "idle_rss_mb": round(idle_rss_kb / 1024.0, 2),
-        "iterations": iterations,
-        "step_latencies_ms": {},
-        "summary": {},
-    }
-
-    step_measurements: dict[str, list[float]] = {
-        "post_sessions": [],
-        "post_workspaces": [],
-        "post_offerings_goods": [],
-        "post_offerings_service": [],
-        "post_purchases": [],
-        "post_sales": [],
-        "get_daily_report": [],
-    }
+    server: Any | None = None
+    server_thread: threading.Thread | None = None
 
     try:
+        if db_path is None:
+            temp_dir = tempfile.TemporaryDirectory(prefix="marketstudio_spike_")
+            target_db = Path(temp_dir.name) / "spike_marketstudio.db"
+        else:
+            target_db = Path(db_path)
+            target_db.parent.mkdir(parents=True, exist_ok=True)
+
+        target_db_str = str(target_db)
+
+        # Atomically reserve exclusive new file without dereferencing trailing symlink
+        flags = os.O_CREAT | os.O_EXCL | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            fd = os.open(target_db_str, flags, 0o600)
+            os.close(fd)
+        except FileExistsError as exc:
+            raise ValueError(
+                f"File database '{target_db}' sudah ada atau berupa symlink. "
+                "Spike benchmark alur #1 hanya menerima path file baru untuk menjamin isolasi data tanpa memutasi data existing."
+            ) from exc
+        except OSError as exc:
+            raise ValueError(
+                f"Tidak dapat mereservasi file database baru di '{target_db}': {exc}"
+            ) from exc
+
+        # Construct explicit SQLite configuration object (strictly isolates backend without touching os.environ)
+        db_config = DatabaseConfig(
+            backend="sqlite",
+            target=target_db_str,
+            auto_migrate=True,
+        )
+
+        # 1. In-process Server & SQLite Initialization Measurement
+        t_start0 = time.perf_counter()
+        server = create_server(
+            host=host,
+            port=port,
+            db_path=db_config,
+            quiet_logs=not verbose_logs,
+        )
+        startup_inprocess_ms = (time.perf_counter() - t_start0) * 1000.0
+
+        actual_port = server.server_address[1]
+        base_url = f"http://{host}:{actual_port}"
+        idle_rss_kb = get_current_rss_kb()
+
+        # Start server in daemon thread
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+
+        results: dict[str, Any] = {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "python_version": sys.version.split()[0],
+            "platform": sys.platform,
+            "database_backend": "sqlite",
+            "database_path": target_db_str,
+            "startup_inprocess_ms": round(startup_inprocess_ms, 2),
+            "cold_startup_ms": round(startup_inprocess_ms, 2),  # backward compatibility alias
+            "idle_rss_mb": round(idle_rss_kb / 1024.0, 2),
+            "iterations": iterations,
+            "step_latencies_ms": {},
+            "summary": {},
+        }
+
+        step_measurements: dict[str, list[float]] = {
+            "post_sessions": [],
+            "post_workspaces": [],
+            "post_offerings_goods": [],
+            "post_offerings_service": [],
+            "post_purchases": [],
+            "post_sales": [],
+            "get_daily_report": [],
+        }
+
         # Run iterations
         for it in range(1, iterations + 1):
             # Step 1: Login
@@ -316,20 +317,13 @@ def run_spike(
         }
 
     finally:
-        server.shutdown()
-        server.server_close()
-        server_thread.join(timeout=2.0)
+        if server is not None:
+            server.shutdown()
+            server.server_close()
+        if server_thread is not None:
+            server_thread.join(timeout=2.0)
         if temp_dir is not None:
             temp_dir.cleanup()
-        # Restore ambient environment variables
-        if prev_backend is not None:
-            os.environ["MARKETSTUDIO_DB_BACKEND"] = prev_backend
-        else:
-            os.environ.pop("MARKETSTUDIO_DB_BACKEND", None)
-        if prev_db_url is not None:
-            os.environ["DATABASE_URL"] = prev_db_url
-        if prev_ms_db_url is not None:
-            os.environ["MARKETSTUDIO_DATABASE_URL"] = prev_ms_db_url
 
     if not quiet:
         _print_report(results)

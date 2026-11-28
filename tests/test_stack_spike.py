@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from scripts.spike_stack_metrics import run_spike
@@ -130,6 +131,37 @@ class StackSpikeMetricsTest(unittest.TestCase):
                 run_spike(db_path=existing_file.name, iterations=1, quiet=True)
             self.assertIn("sudah ada", str(ctx.exception))
 
+    def test_collision_deterministic_preserves_content(self) -> None:
+        """Verify collision on existing file with specific bytes is rejected and leaves content intact."""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tf:
+            test_content = b"CRITICAL_USER_DATA_DO_NOT_CORRUPT_1234567890"
+            tf.write(test_content)
+            tf.flush()
+            target_path = Path(tf.name)
+
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                run_spike(db_path=target_path, iterations=1, quiet=True)
+            self.assertIn("sudah ada atau berupa symlink", str(ctx.exception))
+            self.assertEqual(target_path.read_bytes(), test_content)
+        finally:
+            target_path.unlink(missing_ok=True)
+
+    def test_rejection_symlink_without_dereferencing(self) -> None:
+        """Verify symlink target path is rejected atomically without dereferencing or mutating target file."""
+        with tempfile.TemporaryDirectory() as td:
+            real_file = Path(td) / "real_store.db"
+            real_bytes = b"IMMUTABLE_REAL_DATABASE_BYTES"
+            real_file.write_bytes(real_bytes)
+
+            symlink_file = Path(td) / "symlink_pointer.db"
+            symlink_file.symlink_to(real_file)
+
+            with self.assertRaises(ValueError) as ctx:
+                run_spike(db_path=symlink_file, iterations=1, quiet=True)
+            self.assertIn("sudah ada atau berupa symlink", str(ctx.exception))
+            self.assertEqual(real_file.read_bytes(), real_bytes)
+
     def test_spike_backend_isolation_with_postgres_env(self) -> None:
         """Verify spike strictly isolates SQLite backend even when PostgreSQL environment variables are configured."""
         script_path = str(Path(__file__).resolve().parents[1] / "scripts" / "spike_stack_metrics.py")
@@ -150,6 +182,31 @@ class StackSpikeMetricsTest(unittest.TestCase):
         data = json.loads(proc.stdout)
         self.assertEqual(data["database_backend"], "sqlite")
         self.assertIn("total_flow_latency_mean_ms", data["summary"])
+
+    @unittest.mock.patch.dict(
+        os.environ,
+        {
+            "MARKETSTUDIO_DB_BACKEND": "postgres",
+            "DATABASE_URL": "postgresql://dummy_user:dummy_pass@127.0.0.1:5432/dummy_db",
+            "MARKETSTUDIO_DATABASE_URL": "postgresql://dummy_user:dummy_pass@127.0.0.1:5432/dummy_db",
+        },
+        clear=False,
+    )
+    def test_no_environ_mutation_even_on_failure(self) -> None:
+        """Verify run_spike never mutates os.environ even if create_server raises an exception."""
+        os.environ.pop("MARKETSTUDIO_QUIET_LOGS", None)
+        orig_backend = os.environ["MARKETSTUDIO_DB_BACKEND"]
+        orig_db_url = os.environ["DATABASE_URL"]
+        orig_ms_url = os.environ["MARKETSTUDIO_DATABASE_URL"]
+
+        with unittest.mock.patch("scripts.spike_stack_metrics.create_server", side_effect=OSError("simulated_init_fail")):
+            with self.assertRaises(OSError):
+                run_spike(iterations=1, quiet=True)
+
+        self.assertEqual(os.environ.get("MARKETSTUDIO_DB_BACKEND"), orig_backend)
+        self.assertEqual(os.environ.get("DATABASE_URL"), orig_db_url)
+        self.assertEqual(os.environ.get("MARKETSTUDIO_DATABASE_URL"), orig_ms_url)
+        self.assertNotIn("MARKETSTUDIO_QUIET_LOGS", os.environ)
 
 
 if __name__ == "__main__":
