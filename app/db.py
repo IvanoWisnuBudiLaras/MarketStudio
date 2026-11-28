@@ -66,6 +66,9 @@ CREATE TABLE IF NOT EXISTS offerings (
     tax_status TEXT NOT NULL CHECK (tax_status IN ('not_assessed', 'unknown')),
     tax_reason TEXT NOT NULL,
     tax_amount INTEGER,
+    service_cost_idr INTEGER CHECK (service_cost_idr IS NULL OR service_cost_idr >= 0),
+    is_archived INTEGER NOT NULL DEFAULT 0 CHECK (is_archived IN (0, 1)),
+    archived_at TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE
 );
@@ -255,6 +258,26 @@ CREATE TABLE IF NOT EXISTS catalog_versions (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_current_state
     ON catalog_versions (workspace_id, state) WHERE state IN ('draft', 'active');
+
+CREATE TABLE IF NOT EXISTS pricing_decisions (
+    decision_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    offering_id TEXT NOT NULL,
+    previous_price_idr INTEGER NOT NULL,
+    new_price_idr INTEGER NOT NULL,
+    unit_cost_idr INTEGER,
+    cost_status TEXT NOT NULL CHECK (cost_status IN ('known', 'unknown')),
+    margin_idr INTEGER,
+    margin_pct REAL,
+    strategy_notes TEXT NOT NULL DEFAULT '',
+    actor_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    FOREIGN KEY (offering_id) REFERENCES offerings(offering_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pricing_decisions_offering
+    ON pricing_decisions (workspace_id, offering_id, created_at);
 
 CREATE TABLE IF NOT EXISTS audit_events (
     event_id TEXT PRIMARY KEY,
@@ -786,6 +809,12 @@ def _init_sqlite_db(db_path: str) -> str:
         offering_cols = {r["name"] for r in conn.execute("PRAGMA table_info(offerings)")}
         if "description" not in offering_cols:
             conn.execute("ALTER TABLE offerings ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+        if "service_cost_idr" not in offering_cols:
+            conn.execute("ALTER TABLE offerings ADD COLUMN service_cost_idr INTEGER")
+        if "is_archived" not in offering_cols:
+            conn.execute("ALTER TABLE offerings ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0")
+        if "archived_at" not in offering_cols:
+            conn.execute("ALTER TABLE offerings ADD COLUMN archived_at TEXT")
         ws_cols = {r["name"] for r in conn.execute("PRAGMA table_info(workspaces)").fetchall()}
         if "is_demo" not in ws_cols:
             conn.execute("ALTER TABLE workspaces ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")

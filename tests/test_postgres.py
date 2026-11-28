@@ -140,9 +140,10 @@ class PostgresAdapterUnitTest(unittest.TestCase):
 
     def test_discover_migrations_valid(self) -> None:
         specs = discover_migrations()
-        self.assertEqual([s.version for s in specs], ["0001", "0002", "0003"])
+        self.assertEqual([s.version for s in specs], ["0001", "0002", "0003", "0004"])
         self.assertEqual(specs[0].name, "initial_schema")
         self.assertEqual(specs[1].name, "rls_and_service_privileges")
+        self.assertEqual(specs[3].name, "offering_pricing_and_archive")
         for spec in specs:
             self.assertTrue(spec.up_path.is_file())
             self.assertTrue(spec.down_path.is_file())
@@ -164,6 +165,7 @@ class PostgresIntegrationTest(unittest.TestCase):
     """Full end-to-end verification against an isolated local PostgreSQL 17 database."""
 
     _DOMAIN_TABLES = (
+        "pricing_decisions",
         "audit_events",
         "idempotency_keys",
         "cash_movements",

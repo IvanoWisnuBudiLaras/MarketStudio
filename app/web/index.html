@@ -865,6 +865,26 @@
       color: var(--accent);
     }
 
+    .chip-btn.active {
+      background: var(--brand-navy);
+      border-color: var(--brand-navy);
+      color: #fff;
+    }
+
+    .btn-action-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .btn-action-cell .btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+
     .subtabs {
       display: flex;
       flex-wrap: wrap;
@@ -1364,6 +1384,63 @@
     </fieldset>
     <button id="restoreSummaryBtn" type="button" class="btn btn-secondary">Pulihkan tampilan</button>
     <p id="summaryPreferenceStatus" class="status" aria-live="polite"></p>
+  </dialog>
+
+  <dialog id="pricingModal" class="summary-drawer" aria-labelledby="pricingModalTitle">
+    <div class="card-header">
+      <div>
+        <h2 id="pricingModalTitle">Keputusan Harga Jual</h2>
+        <p id="pricingModalOfferingName" class="muted"></p>
+      </div>
+      <form method="dialog">
+        <button type="submit" class="btn btn-secondary drawer-icon-btn" aria-label="Tutup dialog keputusan harga" autofocus>
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-close"/></svg>
+        </button>
+      </form>
+    </div>
+    <form id="pricingDecisionForm" novalidate style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
+      <input type="hidden" id="pricingOfferingId" />
+      <div class="field">
+        <label class="field-label">Harga Jual Saat Ini</label>
+        <div id="pricingCurrentPrice" class="field-helper" style="font-size:15px; font-weight:600; color:var(--text);"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">Dasar Biaya Satuan Saat Ini</label>
+        <div id="pricingCurrentCost" class="field-helper" style="font-size:14px;"></div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="pricingNewPrice">Harga Jual Baru (IDR)</label>
+        <input id="pricingNewPrice" type="number" min="0" step="1" placeholder="Contoh: 18000" aria-describedby="pricingNewPriceErr" />
+        <div id="pricingNewPriceErr" class="field-error"></div>
+      </div>
+      <div id="pricingServiceCostWrap" class="field hidden">
+        <label class="field-label" for="pricingNewServiceCost">Biaya Dasar Jasa Baru (IDR, opsional)</label>
+        <input id="pricingNewServiceCost" type="number" min="0" step="1" placeholder="Kosongkan jika tidak berubah" aria-describedby="pricingNewServiceCostHelper pricingNewServiceCostErr" />
+        <div id="pricingNewServiceCostHelper" class="field-helper">Biaya dasar jasa satuan baru.</div>
+        <div id="pricingNewServiceCostErr" class="field-error"></div>
+      </div>
+      <div id="pricingPreviewBox" class="banner banner-info hidden" role="status">
+        <strong>Pratinjau Komparasi Margin:</strong>
+        <div id="pricingPreviewText" style="margin-top:4px;"></div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="pricingStrategyNotes">Catatan Strategi &amp; Dasar Keputusan</label>
+        <textarea id="pricingStrategyNotes" rows="3" maxlength="500" placeholder="Contoh: Penyesuaian margin target 35% mengikuti kenaikan bahan baku atau strategi penetrasi." aria-describedby="pricingStrategyNotesErr"></textarea>
+        <div id="pricingStrategyNotesErr" class="field-error"></div>
+      </div>
+      <div class="form-actions" style="margin-top:0;">
+        <button id="savePricingBtn" type="submit" class="btn btn-primary">Simpan Keputusan Harga</button>
+        <button id="cancelPricingBtn" type="button" class="btn btn-secondary">Batal</button>
+      </div>
+      <div id="pricingStatus" class="status" aria-live="polite"></div>
+    </form>
+
+    <div style="margin-top:24px; border-top:1px solid var(--border); padding-top:16px;">
+      <h3>Riwayat Keputusan Harga</h3>
+      <div id="pricingDecisionsHistory" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        <p class="muted">Belum ada riwayat keputusan harga tersimpan.</p>
+      </div>
+    </div>
   </dialog>
 
   <div class="app-shell">
@@ -1866,6 +1943,12 @@
                     <div id="offUnitHelper" class="field-helper">Pilih satuan standar: kg, g, liter, ml, pcs, sesi.</div>
                     <div id="offUnitErr" class="field-error"></div>
                   </div>
+                  <div id="offServiceCostField" class="field hidden">
+                    <label class="field-label" for="offServiceCost">Biaya Dasar Jasa Satuan (IDR, opsional)</label>
+                    <input id="offServiceCost" type="number" min="0" step="1" placeholder="Contoh: 50000" aria-describedby="offServiceCostHelper offServiceCostErr" />
+                    <div id="offServiceCostHelper" class="field-helper">Biaya dasar jasa satuan input pemilik. Status biaya tetap 'belum diketahui' jika dikosongkan.</div>
+                    <div id="offServiceCostErr" class="field-error"></div>
+                  </div>
                 </div>
                 <div class="chip-row" aria-label="Pilih cepat satuan">
                   <button type="button" class="chip-btn js-unit-pick" data-unit="pcs">pcs</button>
@@ -1885,10 +1968,15 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2>Daftar Katalog &amp; Sisa Stok Aktual</h2>
-                  <p class="muted" style="margin-top:4px;">Stok dan biaya rata-rata (WA) terbarui otomatis setiap pembelian dan penjualan.</p>
+                  <h2>Daftar Katalog &amp; Dasar Biaya</h2>
+                  <p class="muted" style="margin-top:4px;">Stok dan biaya persediaan (WA) terbarui otomatis. Biaya jasa dan komparasi margin tersimpan transparan.</p>
                 </div>
                 <a href="#transaksi" class="btn btn-secondary">Buka transaksi</a>
+              </div>
+              <div class="chip-row" role="tablist" aria-label="Filter status katalog" style="margin-bottom:8px;">
+                <button type="button" class="chip-btn active js-off-filter" data-filter="all" role="tab" aria-selected="true">Semua (<span id="offCountAll">0</span>)</button>
+                <button type="button" class="chip-btn js-off-filter" data-filter="active" role="tab" aria-selected="false">Aktif (<span id="offCountActive">0</span>)</button>
+                <button type="button" class="chip-btn js-off-filter" data-filter="archived" role="tab" aria-selected="false">Diarsipkan (<span id="offCountArchived">0</span>)</button>
               </div>
               <div class="table-wrap" tabindex="0" role="region" aria-label="Tabel dapat digulir">
                 <table>
@@ -1897,9 +1985,10 @@
                       <th>Produk / Jasa</th>
                       <th>Tipe</th>
                       <th>Harga Jual</th>
+                      <th>Dasar Biaya Satuan</th>
+                      <th>Komparasi (Margin)</th>
                       <th>Sisa Stok Aktual</th>
-                      <th>Nilai Stok (WA)</th>
-                      <th>Status Pajak</th>
+                      <th>Aksi</th>
                     </tr>
                   </thead>
                   <tbody id="offeringTableBody"></tbody>
@@ -2512,6 +2601,8 @@
     let sessionToken = localStorage.getItem(SESSION_KEY) || "";
     let workspacesCache = [];
     let offeringsCache = [];
+    let currentOfferingFilter = "all";
+    const DRAFT_OFFERING_KEY = "marketstudio_draft_offering";
     let catalogWorkspaceId = "";
     let activeReportCache = null;
 
@@ -3419,6 +3510,313 @@
       }
     }
 
+    function renderOfferingsTable() {
+      const countAll = offeringsCache.length;
+      const countActive = offeringsCache.filter(o => !o.is_archived).length;
+      const countArchived = offeringsCache.filter(o => o.is_archived).length;
+      const elAll = document.getElementById("offCountAll");
+      const elAct = document.getElementById("offCountActive");
+      const elArc = document.getElementById("offCountArchived");
+      if (elAll) elAll.textContent = String(countAll);
+      if (elAct) elAct.textContent = String(countActive);
+      if (elArc) elArc.textContent = String(countArchived);
+
+      offBody.textContent = "";
+
+      const displayed = offeringsCache.filter(item => {
+        if (currentOfferingFilter === "active") return !item.is_archived;
+        if (currentOfferingFilter === "archived") return item.is_archived;
+        return true;
+      });
+
+      if (displayed.length === 0) {
+        const emptyTr = document.createElement("tr");
+        const emptyTd = document.createElement("td");
+        emptyTd.colSpan = 7;
+        emptyTd.textContent = currentOfferingFilter === "archived"
+          ? "Tidak ada produk atau jasa yang diarsipkan."
+          : (currentOfferingFilter === "active"
+            ? "Tidak ada produk atau jasa aktif saat ini."
+            : "Katalog masih kosong. Gunakan contoh cepat atau form di atas untuk menambahkan produk atau jasa pertama.");
+        emptyTr.appendChild(emptyTd);
+        offBody.appendChild(emptyTr);
+        return;
+      }
+
+      displayed.forEach((item) => {
+        const tr = document.createElement("tr");
+
+        // 1. Produk / Jasa
+        const tdName = document.createElement("td");
+        const nameStrong = document.createElement("strong");
+        nameStrong.textContent = item.name;
+        tdName.appendChild(nameStrong);
+        const statusBadge = makePill(item.is_archived ? "Diarsipkan" : "Aktif", item.is_archived ? "pill-roadmap" : "pill-active");
+        statusBadge.style.marginLeft = "6px";
+        tdName.appendChild(statusBadge);
+        if (item.description) {
+          const descDiv = document.createElement("div");
+          descDiv.className = "muted";
+          descDiv.style.fontSize = "12px";
+          descDiv.style.marginTop = "2px";
+          descDiv.textContent = item.description;
+          tdName.appendChild(descDiv);
+        }
+        tr.appendChild(tdName);
+
+        // 2. Tipe
+        const tdType = document.createElement("td");
+        tdType.appendChild(makePill(fmtOfferingType(item.offering_type), "pill-actual"));
+        tr.appendChild(tdType);
+
+        // 3. Harga Jual
+        const tdPrice = document.createElement("td");
+        tdPrice.className = "num";
+        tdPrice.textContent = `${fmtIdr(item.unit_price_idr)} / ${item.unit}`;
+        tr.appendChild(tdPrice);
+
+        // 4. Dasar Biaya Satuan
+        const tdCost = document.createElement("td");
+        tdCost.className = "num";
+        if (item.cost_status === "known") {
+          const costVal = document.createElement("div");
+          costVal.textContent = fmtIdr(item.unit_cost_idr);
+          tdCost.appendChild(costVal);
+          const costSrc = document.createElement("div");
+          costSrc.className = "muted";
+          costSrc.style.fontSize = "11.5px";
+          costSrc.textContent = item.cost_source_label;
+          tdCost.appendChild(costSrc);
+        } else {
+          tdCost.appendChild(makePill("Belum diketahui", "pill-roadmap"));
+        }
+        tr.appendChild(tdCost);
+
+        // 5. Komparasi (Margin)
+        const tdMargin = document.createElement("td");
+        tdMargin.className = "num";
+        if (item.cost_status === "known") {
+          const spanM = document.createElement("span");
+          spanM.style.fontWeight = "600";
+          if (item.margin_idr >= 0) {
+            spanM.style.color = "var(--ok)";
+            spanM.textContent = `+${fmtIdr(item.margin_idr)} (+${item.margin_pct}%)`;
+          } else {
+            spanM.style.color = "var(--err)";
+            spanM.textContent = `-${fmtIdr(Math.abs(item.margin_idr))} (${item.margin_pct}%)`;
+          }
+          tdMargin.appendChild(spanM);
+        } else {
+          const spanM = document.createElement("span");
+          spanM.className = "muted";
+          spanM.textContent = "Belum diketahui";
+          tdMargin.appendChild(spanM);
+        }
+        tr.appendChild(tdMargin);
+
+        // 6. Sisa Stok
+        const tdStock = document.createElement("td");
+        tdStock.className = "num";
+        if (item.requires_stock_movement) {
+          tdStock.textContent = `${fmtQty(item.qty_on_hand)} ${item.unit}`;
+        } else {
+          tdStock.textContent = "Tidak melacak stok";
+        }
+        tr.appendChild(tdStock);
+
+        // 7. Aksi
+        const tdAction = document.createElement("td");
+        const actDiv = document.createElement("div");
+        actDiv.className = "btn-action-cell";
+
+        const btnPricing = document.createElement("button");
+        btnPricing.type = "button";
+        btnPricing.className = "btn btn-secondary js-btn-pricing";
+        btnPricing.dataset.offId = item.offering_id;
+        btnPricing.textContent = "Keputusan Harga";
+        btnPricing.addEventListener("click", () => openPricingModal(item.offering_id));
+        actDiv.appendChild(btnPricing);
+
+        const btnArchive = document.createElement("button");
+        btnArchive.type = "button";
+        btnArchive.className = "btn btn-soft js-btn-archive";
+        btnArchive.dataset.offId = item.offering_id;
+        btnArchive.textContent = item.is_archived ? "Aktifkan" : "Arsipkan";
+        btnArchive.addEventListener("click", () => toggleArchiveOffering(item));
+        actDiv.appendChild(btnArchive);
+
+        tdAction.appendChild(actDiv);
+        tr.appendChild(tdAction);
+
+        offBody.appendChild(tr);
+      });
+    }
+
+    async function toggleArchiveOffering(item) {
+      if (!activeWorkspaceId) return;
+      const action = item.is_archived ? "unarchive" : "archive";
+      const actionLabel = item.is_archived ? "mengaktifkan" : "mengarsipkan";
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/offerings/${encodeURIComponent(item.offering_id)}/${action}`, {
+          method: "POST"
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          return setStatus(offStatus, data.message || `Gagal ${actionLabel} offering.`, "err");
+        }
+        setStatus(offStatus, `Offering '${item.name}' berhasil ${item.is_archived ? "diaktifkan kembali" : "diarsipkan"}.`, "ok");
+        await loadOfferings();
+      } catch {
+        setStatus(offStatus, `Gangguan jaringan saat ${actionLabel} offering.`, "err");
+      }
+    }
+
+    function updatePricingModalPreview(item) {
+      if (!item) {
+        const offId = document.getElementById("pricingOfferingId").value;
+        item = offeringsCache.find(o => o.offering_id === offId);
+      }
+      if (!item) return;
+
+      const previewBox = document.getElementById("pricingPreviewBox");
+      const previewText = document.getElementById("pricingPreviewText");
+      const newPriceStr = document.getElementById("pricingNewPrice").value.trim();
+      const newServiceCostStr = document.getElementById("pricingNewServiceCost").value.trim();
+
+      if (!newPriceStr || Number.isNaN(Number(newPriceStr))) {
+        previewBox.classList.add("hidden");
+        return;
+      }
+      const newPrice = parseInt(newPriceStr, 10);
+
+      let effectiveCost = null;
+      let costLabel = "";
+      if (item.offering_type === "goods") {
+        effectiveCost = item.wa_unit_cost_idr;
+        costLabel = "Saldo Persediaan (WA)";
+      } else if (item.offering_type === "service") {
+        if (newServiceCostStr !== "" && !Number.isNaN(Number(newServiceCostStr))) {
+          effectiveCost = parseInt(newServiceCostStr, 10);
+        } else {
+          effectiveCost = item.service_cost_idr;
+        }
+        costLabel = "Biaya Dasar Jasa";
+      } else if (item.offering_type === "hybrid") {
+        let sc = item.service_cost_idr;
+        if (newServiceCostStr !== "" && !Number.isNaN(Number(newServiceCostStr))) {
+          sc = parseInt(newServiceCostStr, 10);
+        }
+        if (item.wa_unit_cost_idr !== null && sc !== null) {
+          effectiveCost = item.wa_unit_cost_idr + sc;
+          costLabel = "Kombinasi (WA + Jasa)";
+        } else if (item.wa_unit_cost_idr !== null) {
+          effectiveCost = item.wa_unit_cost_idr;
+          costLabel = "Saldo Persediaan (WA)";
+        } else if (sc !== null) {
+          effectiveCost = sc;
+          costLabel = "Biaya Dasar Jasa";
+        }
+      }
+
+      previewBox.classList.remove("hidden");
+      if (effectiveCost !== null) {
+        const marginIdr = newPrice - effectiveCost;
+        const marginPct = newPrice > 0 ? (((newPrice - effectiveCost) / newPrice) * 100).toFixed(2) : "0.00";
+        const sign = marginIdr >= 0 ? "+" : "";
+        previewText.textContent = `Harga baru ${fmtIdr(newPrice)} vs Biaya ${fmtIdr(effectiveCost)} (${costLabel}) → Margin: ${sign}${fmtIdr(marginIdr)} (${sign}${marginPct}%). Sesuai batas Issue #33, transaksi historis tetap utuh dengan harga lama.`;
+      } else {
+        previewText.textContent = `Harga baru ${fmtIdr(newPrice)} • Biaya pokok per unit belum tersedia (berstatus 'unknown'). Margin belum dapat dihitung pasti.`;
+      }
+    }
+
+    async function openPricingModal(offeringId) {
+      const item = offeringsCache.find(o => o.offering_id === offeringId);
+      if (!item) return;
+
+      document.getElementById("pricingOfferingId").value = item.offering_id;
+      document.getElementById("pricingModalOfferingName").textContent = `${item.name} (${fmtOfferingType(item.offering_type)}) · Satuan: ${item.unit}`;
+      document.getElementById("pricingCurrentPrice").textContent = `${fmtIdr(item.unit_price_idr)} / ${item.unit}`;
+      document.getElementById("pricingCurrentCost").textContent = item.cost_status === "known"
+        ? `${fmtIdr(item.unit_cost_idr)} / ${item.unit} (${item.cost_source_label})`
+        : "Belum diketahui (riwayat pembelian/biaya jasa belum ada)";
+      document.getElementById("pricingNewPrice").value = String(item.unit_price_idr);
+
+      const serviceCostWrap = document.getElementById("pricingServiceCostWrap");
+      const serviceCostInput = document.getElementById("pricingNewServiceCost");
+      if (item.offering_type === "service" || item.offering_type === "hybrid") {
+        serviceCostWrap.classList.remove("hidden");
+        serviceCostInput.value = item.service_cost_idr !== null ? String(item.service_cost_idr) : "";
+      } else {
+        serviceCostWrap.classList.add("hidden");
+        serviceCostInput.value = "";
+      }
+
+      document.getElementById("pricingStrategyNotes").value = "";
+      clearFieldErrors(document.getElementById("pricingDecisionForm"));
+      setStatus(document.getElementById("pricingStatus"), "");
+
+      updatePricingModalPreview(item);
+
+      const historyContainer = document.getElementById("pricingDecisionsHistory");
+      historyContainer.textContent = "Memuat riwayat keputusan harga...";
+      try {
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/offerings/${encodeURIComponent(item.offering_id)}/pricing-decisions`);
+        const data = await res.json();
+        historyContainer.textContent = "";
+        const decisions = data.items || [];
+        if (decisions.length === 0) {
+          const p = document.createElement("p");
+          p.className = "muted";
+          p.textContent = "Belum ada riwayat keputusan harga tersimpan.";
+          historyContainer.appendChild(p);
+        } else {
+          decisions.forEach(dec => {
+            const row = document.createElement("div");
+            row.style.border = "1px solid var(--border)";
+            row.style.borderRadius = "var(--radius)";
+            row.style.padding = "8px 12px";
+            row.style.fontSize = "13px";
+            row.style.background = "var(--canvas)";
+
+            const header = document.createElement("div");
+            header.style.display = "flex";
+            header.style.justifyContent = "space-between";
+            header.style.fontWeight = "600";
+            header.textContent = `${fmtIdr(dec.previous_price_idr)} → ${fmtIdr(dec.new_price_idr)}`;
+            const dateSpan = document.createElement("span");
+            dateSpan.className = "muted";
+            dateSpan.style.fontWeight = "normal";
+            dateSpan.textContent = dec.created_at.slice(0, 16).replace("T", " ");
+            header.appendChild(dateSpan);
+            row.appendChild(header);
+
+            const marginInfo = document.createElement("div");
+            marginInfo.className = "muted";
+            marginInfo.style.marginTop = "2px";
+            if (dec.cost_status === "known") {
+              marginInfo.textContent = `Dasar Biaya: ${fmtIdr(dec.unit_cost_idr)} · Margin: ${dec.margin_idr >= 0 ? "+" : ""}${fmtIdr(dec.margin_idr)} (${dec.margin_pct}%)`;
+            } else {
+              marginInfo.textContent = "Dasar Biaya: Belum diketahui";
+            }
+            row.appendChild(marginInfo);
+
+            if (dec.strategy_notes) {
+              const notesDiv = document.createElement("div");
+              notesDiv.style.marginTop = "4px";
+              notesDiv.style.fontStyle = "italic";
+              notesDiv.textContent = `Catatan: "${dec.strategy_notes}"`;
+              row.appendChild(notesDiv);
+            }
+            historyContainer.appendChild(row);
+          });
+        }
+      } catch {
+        historyContainer.textContent = "Gagal memuat riwayat keputusan harga.";
+      }
+
+      document.getElementById("pricingModal").showModal();
+    }
+
     async function loadOfferings() {
       if (!activeWorkspaceId) return;
       const reqWsId = activeWorkspaceId;
@@ -3440,7 +3838,9 @@
         const remaining = soldOut.length > 3 ? ` dan ${soldOut.length - 3} lainnya` : "";
         stockAlert.textContent = `Stok habis saat ini · ${names}${remaining}`;
       }
-      offBody.textContent = "";
+
+      renderOfferingsTable();
+
       purOffering.textContent = "";
       saleOffering.textContent = "";
       simOffering.textContent = "";
@@ -3455,62 +3855,9 @@
       simManualOpt.textContent = "-- Input Manual --";
       simOffering.appendChild(simManualOpt);
 
-      if (offeringsCache.length === 0) {
-        const emptyTr = document.createElement("tr");
-        const emptyTd = document.createElement("td");
-        emptyTd.colSpan = 6;
-        emptyTd.textContent = "Katalog masih kosong. Gunakan contoh cepat atau form di atas untuk menambahkan produk atau jasa pertama.";
-        emptyTr.appendChild(emptyTd);
-        offBody.appendChild(emptyTr);
-      }
-
       let stockTrackedCount = 0;
       offeringsCache.forEach((item) => {
-        const tr = document.createElement("tr");
-
-        const tdName = document.createElement("td");
-        const nameStrong = document.createElement("strong");
-        nameStrong.textContent = item.name;
-        tdName.appendChild(nameStrong);
-        tr.appendChild(tdName);
-
-        const tdType = document.createElement("td");
-        tdType.appendChild(makePill(fmtOfferingType(item.offering_type), "pill-actual"));
-        tr.appendChild(tdType);
-
-        const tdPrice = document.createElement("td");
-        tdPrice.className = "num";
-        tdPrice.textContent = `${fmtIdr(item.unit_price_idr)} / ${item.unit}`;
-        tr.appendChild(tdPrice);
-
-        const tdStock = document.createElement("td");
-        tdStock.className = "num";
-        if (item.requires_stock_movement) {
-          tdStock.textContent = `${fmtQty(item.qty_on_hand)} ${item.unit}`;
-        } else {
-          tdStock.textContent = "Tidak melacak stok";
-        }
-        tr.appendChild(tdStock);
-
-        const tdVal = document.createElement("td");
-        tdVal.className = "num";
-        if (item.requires_stock_movement) {
-          const valText = fmtIdr(item.inventory_value_idr || 0);
-          tdVal.textContent = item.wa_unit_cost_idr !== null
-            ? `${valText} (WA ${fmtIdr(item.wa_unit_cost_idr)}/${item.unit})`
-            : `${valText} (belum ada stok)`;
-        } else {
-          tdVal.textContent = "Jasa (non-persediaan)";
-        }
-        tr.appendChild(tdVal);
-
-        const tdTax = document.createElement("td");
-        tdTax.textContent = item.tax_status === "not_assessed"
-          ? "Belum dinilai (nominal absen)"
-          : `${item.tax_status} (nominal absen)`;
-        tr.appendChild(tdTax);
-
-        offBody.appendChild(tr);
+        if (item.is_archived) return;
 
         const optSale = document.createElement("option");
         optSale.value = item.offering_id;
@@ -3539,15 +3886,16 @@
         }
       });
 
-      const hasAnyOfferings = offeringsCache.length > 0;
-      document.getElementById("saleNoOfferingEmpty").classList.toggle("hidden", hasAnyOfferings);
-      document.getElementById("saleForm").classList.toggle("hidden", !hasAnyOfferings);
+      const activeOfferings = offeringsCache.filter(o => !o.is_archived);
+      const hasActiveOfferings = activeOfferings.length > 0;
+      document.getElementById("saleNoOfferingEmpty").classList.toggle("hidden", hasActiveOfferings);
+      document.getElementById("saleForm").classList.toggle("hidden", !hasActiveOfferings);
 
       document.getElementById("purNoOfferingEmpty").classList.toggle("hidden", stockTrackedCount > 0);
       document.getElementById("purchaseForm").classList.toggle("hidden", stockTrackedCount === 0);
 
-      document.getElementById("benchNoOfferingEmpty").classList.toggle("hidden", hasAnyOfferings);
-      document.getElementById("benchFormWrap").classList.toggle("hidden", !hasAnyOfferings);
+      document.getElementById("benchNoOfferingEmpty").classList.toggle("hidden", hasActiveOfferings);
+      document.getElementById("benchFormWrap").classList.toggle("hidden", !hasActiveOfferings);
 
       [saleOffering, purOffering, simOffering, benchOffering].forEach((select, index) => {
         const previous = previousSelections[index];
@@ -3831,30 +4179,162 @@
     document.querySelectorAll("[data-preset-off]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const key = btn.dataset.presetOff;
+        const serviceCostField = document.getElementById("offServiceCostField");
+        const serviceCostInput = document.getElementById("offServiceCost");
         if (key === "bakso") {
           document.getElementById("offName").value = "Bakso Urat";
           document.getElementById("offType").value = "goods";
           document.getElementById("offPrice").value = "15000";
           document.getElementById("offUnit").value = "pcs";
+          serviceCostField.classList.add("hidden");
+          serviceCostInput.value = "";
         } else if (key === "beras") {
           document.getElementById("offName").value = "Beras Medium";
           document.getElementById("offType").value = "goods";
           document.getElementById("offPrice").value = "14500";
           document.getElementById("offUnit").value = "kg";
+          serviceCostField.classList.add("hidden");
+          serviceCostInput.value = "";
         } else if (key === "jasa") {
           document.getElementById("offName").value = "Jasa Katering Acara";
           document.getElementById("offType").value = "service";
           document.getElementById("offPrice").value = "500000";
           document.getElementById("offUnit").value = "sesi";
+          serviceCostField.classList.remove("hidden");
+          serviceCostInput.value = "300000";
         }
         clearFieldErrors(document.getElementById("offeringForm"));
+        saveOfferingDraft();
       });
     });
 
     document.querySelectorAll(".js-unit-pick").forEach((btn) => {
       btn.addEventListener("click", () => {
         document.getElementById("offUnit").value = btn.dataset.unit || "pcs";
+        saveOfferingDraft();
       });
+    });
+
+    function saveOfferingDraft() {
+      const draft = {
+        name: document.getElementById("offName").value,
+        description: document.getElementById("offDescription").value,
+        offType: document.getElementById("offType").value,
+        price: document.getElementById("offPrice").value,
+        unit: document.getElementById("offUnit").value,
+        serviceCost: document.getElementById("offServiceCost").value,
+      };
+      sessionStorage.setItem(DRAFT_OFFERING_KEY, JSON.stringify(draft));
+    }
+
+    function restoreOfferingDraft() {
+      try {
+        const raw = sessionStorage.getItem(DRAFT_OFFERING_KEY);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+        if (d.name) document.getElementById("offName").value = d.name;
+        if (d.description) document.getElementById("offDescription").value = d.description;
+        if (d.offType) {
+          document.getElementById("offType").value = d.offType;
+          document.getElementById("offServiceCostField").classList.toggle("hidden", d.offType === "goods");
+        }
+        if (d.price) document.getElementById("offPrice").value = d.price;
+        if (d.unit) document.getElementById("offUnit").value = d.unit;
+        if (d.serviceCost) document.getElementById("offServiceCost").value = d.serviceCost;
+      } catch (_) {}
+    }
+
+    function clearOfferingDraft() {
+      sessionStorage.removeItem(DRAFT_OFFERING_KEY);
+    }
+
+    ["offName", "offDescription", "offPrice", "offUnit", "offServiceCost"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("input", saveOfferingDraft);
+    });
+
+    document.getElementById("offType").addEventListener("change", () => {
+      const isGoods = document.getElementById("offType").value === "goods";
+      document.getElementById("offServiceCostField").classList.toggle("hidden", isGoods);
+      if (isGoods) document.getElementById("offServiceCost").value = "";
+      saveOfferingDraft();
+    });
+
+    document.querySelectorAll(".js-off-filter").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".js-off-filter").forEach(b => {
+          b.classList.remove("active");
+          b.setAttribute("aria-selected", "false");
+        });
+        btn.classList.add("active");
+        btn.setAttribute("aria-selected", "true");
+        currentOfferingFilter = btn.dataset.filter || "all";
+        renderOfferingsTable();
+      });
+    });
+
+    document.getElementById("pricingNewPrice").addEventListener("input", () => updatePricingModalPreview());
+    document.getElementById("pricingNewServiceCost").addEventListener("input", () => updatePricingModalPreview());
+    document.getElementById("cancelPricingBtn").addEventListener("click", () => {
+      document.getElementById("pricingModal").close();
+    });
+
+    document.getElementById("pricingDecisionForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearFieldErrors(e.target);
+      const offId = document.getElementById("pricingOfferingId").value;
+      const item = offeringsCache.find(o => o.offering_id === offId);
+      if (!item || !activeWorkspaceId) return;
+
+      const rawPrice = document.getElementById("pricingNewPrice").value.trim();
+      const rawServiceCost = document.getElementById("pricingNewServiceCost").value.trim();
+      const notes = document.getElementById("pricingStrategyNotes").value.trim();
+
+      if (rawPrice === "" || Number.isNaN(Number(rawPrice)) || Number(rawPrice) < 0 || !Number.isInteger(Number(rawPrice))) {
+        setFieldError("pricingNewPrice", "pricingNewPriceErr", "Harga baru (IDR) harus berupa bilangan bulat >= 0.");
+        return;
+      }
+      let serviceCostVal = null;
+      if ((item.offering_type === "service" || item.offering_type === "hybrid") && rawServiceCost !== "") {
+        if (Number.isNaN(Number(rawServiceCost)) || Number(rawServiceCost) < 0 || !Number.isInteger(Number(rawServiceCost))) {
+          setFieldError("pricingNewServiceCost", "pricingNewServiceCostErr", "Biaya dasar jasa harus bilangan bulat >= 0.");
+          return;
+        }
+        serviceCostVal = parseInt(rawServiceCost, 10);
+      }
+
+      const saveBtn = document.getElementById("savePricingBtn");
+      saveBtn.disabled = true;
+      setStatus(document.getElementById("pricingStatus"), "Menyimpan keputusan harga...", "info");
+
+      try {
+        const payload = {
+          new_price_idr: parseInt(rawPrice, 10),
+          strategy_notes: notes
+        };
+        if (serviceCostVal !== null) payload.service_cost_idr = serviceCostVal;
+
+        const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/offerings/${encodeURIComponent(offId)}/pricing`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const fe = data.field_errors || {};
+          if (fe.new_price_idr) setFieldError("pricingNewPrice", "pricingNewPriceErr", fe.new_price_idr);
+          if (fe.service_cost_idr) setFieldError("pricingNewServiceCost", "pricingNewServiceCostErr", fe.service_cost_idr);
+          if (fe.strategy_notes) setFieldError("pricingStrategyNotes", "pricingStrategyNotesErr", fe.strategy_notes);
+          return setStatus(document.getElementById("pricingStatus"), data.message || "Gagal menyimpan keputusan harga.", "err");
+        }
+        document.getElementById("pricingModal").close();
+        setStatus(offStatus, `Keputusan harga untuk '${data.item.offering.name}' (${fmtIdr(data.item.offering.unit_price_idr)}/${data.item.offering.unit}) tersimpan.`, "ok");
+        await loadOfferings();
+      } catch {
+        setStatus(document.getElementById("pricingStatus"), "Gangguan jaringan saat menyimpan keputusan harga.", "err");
+      } finally {
+        saveBtn.disabled = false;
+      }
     });
 
     document.getElementById("offeringForm").addEventListener("submit", async (e) => {
@@ -3866,6 +4346,7 @@
       const offType = document.getElementById("offType").value;
       const rawPrice = document.getElementById("offPrice").value.trim();
       const unit = document.getElementById("offUnit").value.trim();
+      const rawServiceCost = document.getElementById("offServiceCost").value.trim();
       let hasErr = false;
 
       if (name.length < 2) {
@@ -3880,6 +4361,17 @@
         setFieldError("offUnit", "offUnitErr", "Satuan unit wajib diisi (mis. pcs, kg, g, liter, ml, sesi).");
         hasErr = true;
       }
+
+      let serviceCostVal = null;
+      if ((offType === "service" || offType === "hybrid") && rawServiceCost !== "") {
+        if (Number.isNaN(Number(rawServiceCost)) || Number(rawServiceCost) < 0 || !Number.isInteger(Number(rawServiceCost))) {
+          setFieldError("offServiceCost", "offServiceCostErr", "Biaya dasar jasa satuan wajib bilangan bulat >= 0.");
+          hasErr = true;
+        } else {
+          serviceCostVal = parseInt(rawServiceCost, 10);
+        }
+      }
+
       if (hasErr) {
         return setStatus(offStatus, "Lengkapi kolom katalog yang bertanda merah.", "err");
       }
@@ -3888,16 +4380,21 @@
       btn.disabled = true;
       setStatus(offStatus, "Menyimpan offering ke katalog...", "info");
       try {
+        const payload = {
+          name,
+          description: document.getElementById("offDescription").value.trim(),
+          offering_type: offType,
+          unit_price_idr: parseInt(rawPrice, 10),
+          unit
+        };
+        if (serviceCostVal !== null) {
+          payload.service_cost_idr = serviceCostVal;
+        }
+
         const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/offerings`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            description: document.getElementById("offDescription").value.trim(),
-            offering_type: offType,
-            unit_price_idr: parseInt(rawPrice, 10),
-            unit
-          })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (!res.ok) {
@@ -3907,10 +4404,14 @@
           if (fe.offering_type) setFieldError("offType", "offTypeErr", fe.offering_type);
           if (fe.unit_price_idr) setFieldError("offPrice", "offPriceErr", fe.unit_price_idr);
           if (fe.unit) setFieldError("offUnit", "offUnitErr", fe.unit);
+          if (fe.service_cost_idr) setFieldError("offServiceCost", "offServiceCostErr", fe.service_cost_idr);
           return setStatus(offStatus, data.message || "Gagal menyimpan offering.", "err");
         }
+        clearOfferingDraft();
         document.getElementById("offName").value = "";
         document.getElementById("offDescription").value = "";
+        document.getElementById("offPrice").value = "";
+        document.getElementById("offServiceCost").value = "";
         setStatus(offStatus, `Offering '${data.item.name}' (${fmtIdr(data.item.unit_price_idr)}/${data.item.unit}) tersimpan.`, "ok");
         await loadOfferings();
       } catch {
@@ -5151,6 +5652,7 @@
 
     // Initial boot: restore route from hash or localStorage, prefill date, load workspaces
     (function initApp() {
+      restoreOfferingDraft();
       document.getElementById("reportDate").value = jakartaIsoDate();
       const fromHash = normalizeRouteFromHash(window.location.hash);
       const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY) || "ringkasan";

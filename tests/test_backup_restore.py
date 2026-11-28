@@ -131,7 +131,7 @@ class BackupRestoreCoreTest(unittest.TestCase):
         quant = verify_quantitative_tables(self.source_db, self.restored_db)
         self.assertEqual(quant["status"], "passed")
         self.assertEqual(quant["total_rows_source"], quant["total_rows_restored"])
-        self.assertEqual(quant["tables_checked"], 17)
+        self.assertEqual(quant["tables_checked"], 18)
         for t_name, counts in quant["tables"].items():
             self.assertEqual(counts["source"], counts["restored"], f"Mismatch on table {t_name}")
 
@@ -363,7 +363,7 @@ class BackupRestoreCLITest(unittest.TestCase):
         proc_v = subprocess.run(cmd_verify, capture_output=True, text=True, check=False)
         self.assertEqual(proc_v.returncode, 0, f"STDOUT: {proc_v.stdout}\nSTDERR: {proc_v.stderr}")
         self.assertIn("[PASS] Seluruh verifikasi integritas berhasil", proc_v.stdout)
-        self.assertIn("17", proc_v.stdout)
+        self.assertIn("18", proc_v.stdout)
 
     def test_cli_drill_command_json_and_text(self) -> None:
         # JSON mode

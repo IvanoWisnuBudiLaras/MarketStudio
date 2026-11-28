@@ -30,6 +30,10 @@ BRAND_ASSETS = {
 }
 _RE_OFFERINGS = re.compile(r"^/v1/workspaces/([^/]+)/offerings$")
 _RE_OFFERING_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)$")
+_RE_OFFERING_ARCHIVE = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)/archive$")
+_RE_OFFERING_UNARCHIVE = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)/unarchive$")
+_RE_OFFERING_PRICING = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)/pricing$")
+_RE_OFFERING_PRICING_DECISIONS = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)/pricing-decisions$")
 _RE_PURCHASES = re.compile(r"^/v1/workspaces/([^/]+)/purchases$")
 _RE_SALES = re.compile(r"^/v1/workspaces/([^/]+)/sales$")
 _RE_SIMULATIONS = re.compile(r"^/v1/workspaces/([^/]+)/simulations$")
@@ -203,7 +207,17 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
             if m_list:
                 actor_id = self._require_actor()
                 ws_id = m_list.group(1)
-                items = self.service.list_offerings(ws_id, actor_id)
+                qs = parse_qs(urlparse(self.path).query)
+                status_filter = qs.get("status", [None])[0]
+                items = self.service.list_offerings(ws_id, actor_id, status=status_filter)
+                self._send_json(200, {"items": items, "request_id": request_id})
+                return
+
+            m_decisions = _RE_OFFERING_PRICING_DECISIONS.match(path)
+            if m_decisions:
+                actor_id = self._require_actor()
+                ws_id, off_id = m_decisions.group(1), m_decisions.group(2)
+                items = self.service.list_pricing_decisions(ws_id, off_id, actor_id)
                 self._send_json(200, {"items": items, "request_id": request_id})
                 return
 
@@ -329,6 +343,38 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 body = self._read_json_body()
                 status, item = self.service.create_offering(
                     ws_id,
+                    actor_id=actor_id,
+                    payload=body,
+                    idempotency_key=idem_key,
+                    actor=actor_id,
+                )
+                self._send_json(status, {"item": item, "request_id": request_id})
+                return
+
+            m_archive = _RE_OFFERING_ARCHIVE.match(path)
+            if m_archive:
+                actor_id = self._require_actor()
+                ws_id, off_id = m_archive.group(1), m_archive.group(2)
+                item = self.service.archive_offering(ws_id, off_id, actor_id, actor=actor_id)
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_unarchive = _RE_OFFERING_UNARCHIVE.match(path)
+            if m_unarchive:
+                actor_id = self._require_actor()
+                ws_id, off_id = m_unarchive.group(1), m_unarchive.group(2)
+                item = self.service.unarchive_offering(ws_id, off_id, actor_id, actor=actor_id)
+                self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_pricing = _RE_OFFERING_PRICING.match(path) or _RE_OFFERING_PRICING_DECISIONS.match(path)
+            if m_pricing:
+                actor_id = self._require_actor()
+                ws_id, off_id = m_pricing.group(1), m_pricing.group(2)
+                body = self._read_json_body()
+                status, item = self.service.save_pricing_decision(
+                    ws_id,
+                    off_id,
                     actor_id=actor_id,
                     payload=body,
                     idempotency_key=idem_key,
