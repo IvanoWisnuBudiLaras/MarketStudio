@@ -330,15 +330,15 @@ class PostgresIntegrationTest(unittest.TestCase):
             with self.assertRaises(MigrationError):
                 apply_migrations(self.pg_url, migrations_dir=tmp_migs)
 
-        # 4. Step rollback (0002) disables RLS cleanly, then re-apply 0002
-        rolled_one = rollback_migrations(self.pg_url, steps=2)
-        self.assertEqual(rolled_one, ["0003", "0002"])
+        # 4. Step rollback (0002) disables RLS cleanly, then re-apply 0002..0004
+        rolled_one = rollback_migrations(self.pg_url, steps=3)
+        self.assertEqual(rolled_one, ["0004", "0003", "0002"])
         with db_transaction(database_url=self.pg_url) as conn:
             rls_sales = conn.execute(
                 "SELECT relrowsecurity FROM pg_class WHERE relname = 'sales'"
             ).fetchone()["relrowsecurity"]
             self.assertFalse(bool(rls_sales))
-        self.assertEqual(apply_migrations(self.pg_url), ["0002", "0003"])
+        self.assertEqual(apply_migrations(self.pg_url), ["0002", "0003", "0004"])
 
     def test_pg_rls_and_service_pool_privileges_and_503_unavailable(self) -> None:
         import psycopg

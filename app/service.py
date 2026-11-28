@@ -65,6 +65,7 @@ SYNTHETIC_PRINCIPALS: dict[str, str] = {
     "synthetic_owner": "dev-owner-pass",
     "actor_a": "dev-a-pass",
     "actor_b": "dev-b-pass",
+    "actor_c": "dev-c-pass",
 }
 
 
@@ -291,6 +292,34 @@ class BaselineService:
                 raise DomainError(401, "unauthenticated", "Session tidak valid atau telah dicabut.")
             return str(row["actor_id"])
 
+    def add_membership(
+        self,
+        workspace_id: str,
+        actor_id: str,
+        role: str = "member",
+    ) -> None:
+        # ponytail: direct membership provisioning for baseline and test lifecycle; upgrade to formal invitation flow in #31
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
+            ws = conn.execute(
+                "SELECT workspace_id FROM workspaces WHERE workspace_id = ?",
+                (workspace_id,),
+            ).fetchone()
+            if not ws:
+                raise DomainError(404, "workspace_not_found", "Workspace tidak ditemukan.")
+            created_at = _utc_now()
+            conn.execute(
+                "DELETE FROM workspace_memberships WHERE workspace_id = ? AND actor_id = ?",
+                (workspace_id, actor_id),
+            )
+            conn.execute(
+                """
+                INSERT INTO workspace_memberships (workspace_id, actor_id, role, created_at, revoked_at)
+                VALUES (?, ?, ?, ?, NULL)
+                """,
+                (workspace_id, actor_id, role, created_at),
+            )
+
     def revoke_membership(self, workspace_id: str, actor_id: str) -> None:
         with self._tx(immediate=True) as conn:
             conn.acquire_write_lock(f"workspace:{workspace_id}")
@@ -487,9 +516,9 @@ class BaselineService:
             """
             params: list[Any] = [workspace_id]
             if status == "active":
-                query += " AND o.is_archived = 0"
+                query += " AND o.is_archived = FALSE"
             elif status == "archived":
-                query += " AND o.is_archived = 1"
+                query += " AND o.is_archived = TRUE"
             query += " ORDER BY o.created_at ASC"
             rows = conn.execute(query, tuple(params)).fetchall()
             return [_row_to_offering(r) for r in rows]
@@ -545,7 +574,7 @@ class BaselineService:
                     unit, requires_stock_movement, valuation_method,
                     tax_status, tax_reason, tax_amount, created_at, description,
                     service_cost_idr, is_archived, archived_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 0, NULL)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, FALSE, NULL)
                 """,
                 (
                     offering_id,
@@ -599,7 +628,7 @@ class BaselineService:
                 raise DomainError(404, "offering_not_found", "Offering tidak ditemukan pada workspace ini.")
             archived_at = _utc_now()
             conn.execute(
-                "UPDATE offerings SET is_archived = 1, archived_at = ? WHERE workspace_id = ? AND offering_id = ?",
+                "UPDATE offerings SET is_archived = TRUE, archived_at = ? WHERE workspace_id = ? AND offering_id = ?",
                 (archived_at, workspace_id, offering_id),
             )
             updated_row = conn.execute(
@@ -634,7 +663,7 @@ class BaselineService:
             if not row:
                 raise DomainError(404, "offering_not_found", "Offering tidak ditemukan pada workspace ini.")
             conn.execute(
-                "UPDATE offerings SET is_archived = 0, archived_at = NULL WHERE workspace_id = ? AND offering_id = ?",
+                "UPDATE offerings SET is_archived = FALSE, archived_at = NULL WHERE workspace_id = ? AND offering_id = ?",
                 (workspace_id, offering_id),
             )
             updated_row = conn.execute(
