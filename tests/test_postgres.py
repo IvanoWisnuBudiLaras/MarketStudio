@@ -252,10 +252,10 @@ class PostgresIntegrationTest(unittest.TestCase):
 
         # 1. Roll back all applied migrations down to 0000
         rolled_all = rollback_migrations(self.pg_url, to_version="0000")
-        self.assertEqual(rolled_all, ["0003", "0002", "0001"])
+        self.assertEqual(rolled_all, ["0004", "0003", "0002", "0001"])
         status_empty = get_migration_status(self.pg_url)
         self.assertEqual(status_empty["applied"], [])
-        self.assertEqual(status_empty["pending"], ["0001", "0002", "0003"])
+        self.assertEqual(status_empty["pending"], ["0001", "0002", "0003", "0004"])
         self.assertFalse(status_empty["current"])
 
         with db_transaction(database_url=self.pg_url) as conn:
@@ -269,7 +269,7 @@ class PostgresIntegrationTest(unittest.TestCase):
 
         # 2. Apply migrations up cleanly + verify idempotent re-run
         applied = apply_migrations(self.pg_url)
-        self.assertEqual(applied, ["0001", "0002", "0003"])
+        self.assertEqual(applied, ["0001", "0002", "0003", "0004"])
         applied_again = apply_migrations(self.pg_url)
         self.assertEqual(applied_again, [])
         with db_transaction(database_url=self.pg_url) as conn:
@@ -280,7 +280,7 @@ class PostgresIntegrationTest(unittest.TestCase):
 
         status_current = get_migration_status(self.pg_url)
         self.assertTrue(status_current["current"])
-        self.assertEqual([a["version"] for a in status_current["applied"]], ["0001", "0002", "0003"])
+        self.assertEqual([a["version"] for a in status_current["applied"]], ["0001", "0002", "0003", "0004"])
         self.assertIn("://***@", status_current["target"])
         parsed_pg = urlsplit(self.pg_url)
         if parsed_pg.password:
