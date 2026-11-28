@@ -5,8 +5,10 @@ export type DailyReport = {
   revenue_idr: number;
   cogs_idr: number | null;
   gross_profit_idr: number | null;
+  cash_in_idr: number;
+  cash_out_idr: number;
   net_cash_flow_idr: number;
-  ending_inventory: { items: { offering_id: string; name: string; unit: string; qty_remaining: string; value_idr: number }[] };
+  ending_inventory: { total_value_idr: number; items: { offering_id: string; name: string; unit: string; qty_remaining: string; value_idr: number }[] };
   drill_down: { purchases: { purchase_id: string; total_cost_idr: number }[]; sales: { sale_id: string; total_revenue_idr: number }[] };
 };
 

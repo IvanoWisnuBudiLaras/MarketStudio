@@ -73,18 +73,26 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
     page.on("pageerror", error => errors.push(error.message));
     await page.goto(origin);
     await login(page, "owner-test", owner);
+    await expect(page.getByRole("heading", { name: "Ruang kerja", exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("business-empty-1440.png"), fullPage: true });
     await page.getByLabel("Nama usaha").fill("Warung Padi");
     await page.getByRole("button", { name: "Buat ruang kerja" }).click();
     await expect(page.getByRole("heading", { name: "Warung Padi" })).toBeVisible();
     const worksheetCanvas = page.getByLabel("Editor lembar kerja").locator("canvas:visible").first();
     const openWorksheet = async () => {
-      await page.getByRole("button", { name: "Buka lembar kerja" }).click();
+      await page.getByRole("link", { name: "Lembar kerja", exact: true }).click();
+      await expect(page).toHaveURL(`${origin}/worksheet`);
       await expect(page.getByRole("button", { name: "Simpan lembar kerja" })).toBeVisible();
       await expect(worksheetCanvas).toBeVisible();
     };
     await openWorksheet();
     await expect(page.getByLabel("Referensi laporan")).toHaveText(/Omzet Rp\s?0 ·/);
     expect(sql(db, "SELECT COUNT(*) FROM v3_worksheets")).toBe("[(0,)]");
+    const openBusiness = async () => {
+      await page.getByRole("link", { name: "Business Studio", exact: true }).click();
+      await expect(page).toHaveURL(`${origin}/`);
+    };
+    await openBusiness();
     await page.getByLabel("Nama produk").fill("Beras medium");
     await page.getByLabel("Satuan", { exact: true }).fill("kg");
     await page.getByLabel("Harga jual per satuan (Rp)").fill("14500");
@@ -141,6 +149,7 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
       for (const [label, value] of [
         ["Omzet", /Rp\s?29\.000/], ["HPP", /Rp\s?24\.000/], ["Laba kotor", /Rp\s?5\.000/],
         ["Margin kotor", /17,24\s?%/], ["Arus kas bersih", /-\s?Rp\s?91\.000/],
+        ["Nilai stok akhir", /Rp\s?96\.000/], ["Kas masuk", /Rp\s?29\.000/], ["Kas keluar", /Rp\s?120\.000/],
       ] as const) {
         await expect(report.getByText(label, { exact: true }).locator("..").locator("dd")).toHaveText(value);
       }
@@ -156,6 +165,7 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
       .map(table => sql(db, `SELECT * FROM ${table} ORDER BY rowid`));
     const before = ledger();
     const reference = /Omzet Rp\s?29\.000 · \d{4}-\d{2}-\d{2} \(Asia\/Jakarta\) · Laporan harian/;
+    await openWorksheet();
     await expect(page.getByLabel("Referensi laporan")).toHaveText(reference);
     await worksheetCanvas.dblclick({ position: { x: 64, y: 30 } });
     await page.keyboard.insertText("Target stok 12 kg");
@@ -164,31 +174,77 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
     expect(sql(db, "SELECT cells_json FROM v3_worksheets")).toContain("Target stok 12 kg");
 
     await page.reload();
-    await values();
-    await openWorksheet();
+    await expect(page).toHaveURL(`${origin}/worksheet`);
     await expect(page.getByLabel("Referensi laporan")).toHaveText(reference);
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await worksheetCanvas.click({ position: { x: 64, y: 30 } });
     await page.keyboard.press("Control+c");
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("Target stok 12 kg");
     const worksheetScreenshot = testInfo.outputPath("univer-worksheet.png");
-    await page.getByRole("heading", { name: "Lembar kerja perencanaan" }).locator("../..").screenshot({ path: worksheetScreenshot });
+    await page.screenshot({ path: worksheetScreenshot, fullPage: true });
     await testInfo.attach("Lembar kerja Univer", { path: worksheetScreenshot, contentType: "image/png" });
     expect(ledger()).toEqual(before);
+    const selector = page.getByRole("combobox", { name: "Ruang kerja", exact: true });
+    const workspace = await selector.inputValue();
+    await openBusiness();
+    await page.getByText("Buat profil usaha", { exact: true }).click();
+    const secondName = page.getByLabel("Nama usaha");
+    await secondName.fill("Warung Sari");
+    await page.getByRole("button", { name: "Buat ruang kerja" }).click();
+    await expect(selector.getByRole("option", { name: "Warung Sari" })).toHaveCount(1);
+    await selector.selectOption({ label: "Warung Sari" });
+    await expect(page.getByRole("heading", { name: "Warung Sari" })).toBeVisible();
+    await expect(page.getByText("Belum ada produk.")).toBeVisible();
+    const second = await selector.inputValue();
+    await openWorksheet();
+    await expect(selector).toHaveValue(second);
+    await expect(page.getByLabel("Referensi laporan")).toHaveText(/Omzet Rp\s?0 ·/);
+    await worksheetCanvas.click({ position: { x: 64, y: 30 } });
+    await page.keyboard.press("Control+c");
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("");
+    await selector.selectOption(workspace);
+    await expect(page.getByLabel("Referensi laporan")).toHaveText(reference);
+    await openBusiness();
+    await expect(selector).toHaveValue(workspace);
+    await page.reload();
+    await values();
     await page.getByRole("button", { name: "Keluar" }).click();
     await stop(backend!);
     await startBackend();
     await login(page, "owner-test", owner);
     await values();
     await expect(page.locator(".astryx-card.business-panel").first()).toHaveCSS("border-radius", "14px");
-    const screenshot = testInfo.outputPath("business-studio.png");
-    await page.screenshot({ path: screenshot, fullPage: true });
-    await testInfo.attach("Business Studio", { path: screenshot, contentType: "image/png" });
-    await page.setViewportSize({ width: 390, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    await page.screenshot({ path: testInfo.outputPath("business-studio-mobile.png"), fullPage: true });
+    await page.keyboard.press("Tab");
+    await page.getByRole("button", { name: "Ringkas sidebar" }).focus();
+    await expect(page.getByRole("button", { name: "Ringkas sidebar" })).toHaveCSS("outline-style", "solid");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Perluas sidebar" })).toHaveAttribute("aria-expanded", "false");
+    await openWorksheet();
+    await expect(page.getByRole("button", { name: "Perluas sidebar" })).toBeVisible();
+    await openBusiness();
+    await page.getByRole("button", { name: "Perluas sidebar" }).click();
 
-    const workspace = await page.getByRole("combobox", { name: "Ruang kerja", exact: true }).inputValue();
+    for (const width of [1440, 1280, 768, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.getByRole("link", { name: "Business Studio", exact: true })).toHaveAttribute("aria-current", "page");
+      await expect(page.getByRole("link", { name: "Lembar kerja", exact: true })).toHaveCount(width >= 1024 ? 1 : 0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      await page.screenshot({ path: testInfo.outputPath(`business-${width}.png`), fullPage: true });
+      await page.goto(`${origin}/worksheet`);
+      if (width >= 1024) {
+        await expect(worksheetCanvas).toBeVisible();
+      } else {
+        await expect(page.getByText(/lebar minimal 1024 piksel/)).toBeVisible();
+        await expect(page.getByRole("button", { name: "Simpan lembar kerja" })).toHaveCount(0);
+        await expect(page.getByLabel("Editor lembar kerja")).toHaveCount(0);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      await page.screenshot({ path: testInfo.outputPath(`worksheet-${width}.png`), fullPage: true });
+      if (width >= 1024) await openBusiness();
+      else await page.getByRole("link", { name: "Kembali ke Business Studio" }).click();
+      await values();
+    }
+
     const other = await browser.newPage();
     try {
       await other.goto(origin);

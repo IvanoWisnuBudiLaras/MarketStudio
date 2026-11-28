@@ -5,7 +5,7 @@ import { createUniver, LocaleType, type ICellData, type IWorkbookData } from "@u
 import { UniverSheetsCorePreset } from "@univerjs/preset-sheets-core";
 import enUS from "@univerjs/preset-sheets-core/locales/en-US";
 import "@univerjs/preset-sheets-core/lib/index.css";
-import { api, ApiError } from "./client";
+import { api, ApiError } from "../client";
 
 type Cells = Record<string, Record<string, Pick<ICellData, "v" | "t" | "f">>>;
 type Document = { cells: Cells; revision: number; can_edit: boolean };
@@ -96,7 +96,7 @@ export default function Worksheet({ path, token }: { path: string; token: string
   }
 
   return <>
-    <p className="mb-3">Simpan nilai dan rumus sel untuk perencanaan. Angka laporan di atas berasal dari transaksi ruang kerja.</p>
+    <p className="mb-3">Simpan nilai dan rumus sel untuk perencanaan. Angka referensi berasal dari laporan harian ruang kerja.</p>
     {!ready && !error && <p role="status">Memuat lembar kerja…</p>}
     <div className="worksheet-editor relative h-[420px] min-w-0 overflow-hidden rounded-lg border border-slate-200"
       aria-label="Editor lembar kerja" ref={host} />

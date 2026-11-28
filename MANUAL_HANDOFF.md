@@ -38,7 +38,13 @@ npx playwright test
 
 Playwright membuat SQLite sementara, file identitas acak privat, dan port loopback sendiri. Dataset bisnis berasal dari form UI. Skenario menguji nilai laporan, kegagalan atomik, submit ganda, respons sukses yang hilang, restart API, relogin dan batas akses tenant. Screenshot tersimpan pada `web/test-results/`. Untuk Chromium lokal, atur `MARKETSTUDIO_TEST_CHROMIUM=/path/to/chromium`.
 
-Rollback lokal memakai commit `2966d968852b1079e688e3596a51bea21b6f944b` di checkout terpisah dan perintah baseline di bawah. Simpan file SQLite V3 sebagai artefak, dan biarkan Docker preview baseline berjalan dengan penyimpanan aslinya. Batch ini menggunakan skema existing. Mode produksi gagal tertutup sampai Supabase Auth tersedia. Integrasi Supabase/PG17 dan rilis menunggu environment terisolasi atau izin deploy. Setelah slice diterima, tugas berikutnya adalah membuktikan satu worksheet Univer editable dengan persistensi dan sumber data laporan yang otoritatif.
+Rollback lokal memakai commit `2966d968852b1079e688e3596a51bea21b6f944b` di checkout terpisah dan perintah baseline di bawah. Simpan file SQLite V3 sebagai artefak, dan biarkan Docker preview baseline berjalan dengan penyimpanan aslinya. Batch ini menggunakan skema existing. Mode produksi gagal tertutup sampai Supabase Auth tersedia. Integrasi Supabase/PG17 dan rilis menunggu environment terisolasi atau izin deploy.
+
+### V3 P2 · Navigasi Business Studio dan lembar kerja (#85)
+
+- Business Studio tersedia di `/`. Editor lembar kerja tersedia di `/worksheet` pada lebar viewport minimal 1024 piksel. Tautan langsung pada layar yang lebih sempit menampilkan batas editor dan tautan kembali.
+- Pilihan ruang kerja mengikuti sesi tab dan identitas. Kedua rute memvalidasi pilihan terhadap daftar workspace dari API. Saat berpindah ruang kerja, simpan edit lembar kerja terlebih dahulu. Referensi omzet worksheet memakai tanggal hari ini menurut zona waktu workspace.
+- Alur lokal memakai perintah V3 di atas. Jalankan `npm run build && npm run typecheck && npx playwright test` dari `web/` setelah menyiapkan runtime dan browser uji. Screenshot tersimpan di `web/test-results/` dan diunggah oleh job CI V3. Rollback shell secara lokal dapat memakai base PR #84 `bc72fd962db64ea8631fcd35588bfa568085cbef` dengan database V3 yang sama.
 
 ## 1. Cara Menjalankan Aplikasi
 
