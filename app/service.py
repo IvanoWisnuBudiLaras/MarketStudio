@@ -47,6 +47,7 @@ from app.domain import (
     compute_price_benchmark,
     compute_price_simulation,
     ensure_idr_bound,
+    is_transaction_write_permitted,
     round_idr,
     validate_benchmark_input,
     validate_offering_input,
@@ -66,6 +67,8 @@ SYNTHETIC_PRINCIPALS: dict[str, str] = {
     "actor_a": "dev-a-pass",
     "actor_b": "dev-b-pass",
     "actor_c": "dev-c-pass",
+    "actor_operator": "dev-operator-pass",
+    "actor_viewer": "dev-viewer-pass",
 }
 
 
@@ -320,6 +323,33 @@ class BaselineService:
                 (workspace_id, actor_id, role, created_at),
             )
 
+    def set_membership_role(
+        self,
+        workspace_id: str,
+        actor_id: str,
+        role: str,
+    ) -> None:
+        """Set or update workspace membership role for an actor."""
+        self.add_membership(workspace_id, actor_id, role=role)
+
+    def get_membership_role(
+        self,
+        workspace_id: str,
+        actor_id: str,
+    ) -> str | None:
+        """Return the active role for an actor in a workspace, or None if not an active member."""
+        with self._tx() as conn:
+            row = conn.execute(
+                """
+                SELECT role, revoked_at FROM workspace_memberships
+                WHERE workspace_id = ? AND actor_id = ?
+                """,
+                (workspace_id, actor_id),
+            ).fetchone()
+            if not row or row["revoked_at"] is not None:
+                return None
+            return str(row["role"])
+
     def revoke_membership(self, workspace_id: str, actor_id: str) -> None:
         with self._tx(immediate=True) as conn:
             conn.acquire_write_lock(f"workspace:{workspace_id}")
@@ -422,7 +452,7 @@ class BaselineService:
         conn: Any,
         workspace_id: str,
         actor_id: str | None,
-    ) -> None:
+    ) -> str:
         if not actor_id:
             raise DomainError(401, "unauthenticated", "Aktor tidak terautentikasi.")
         ws = conn.execute(
@@ -442,6 +472,7 @@ class BaselineService:
                 "workspace_not_found",
                 "Workspace tidak ditemukan atau akses ditolak.",
             )
+        return str(membership["role"])
 
     def require_poster_access(self, workspace_id: str, actor_id: str) -> None:
         """Authorize poster requests before decoding their body."""
@@ -967,7 +998,14 @@ class BaselineService:
     ) -> tuple[int, dict[str, Any]]:
         with self._tx(immediate=True) as conn:
             conn.acquire_write_lock(f"workspace:{workspace_id}")
-            self._assert_workspace_access(conn, workspace_id, actor_id)
+            # ponytail: role-based write authorization for candidate write operation POST /sales; upgrade to granular RBAC matrix when multi-user permission management is scheduled
+            role = self._assert_workspace_access(conn, workspace_id, actor_id)
+            if not is_transaction_write_permitted(role):
+                raise DomainError(
+                    403,
+                    "forbidden",
+                    "Akses ditolak: role ini tidak memiliki izin untuk mencatat transaksi.",
+                )
             validated = validate_sale_input(payload)
             req_hash = _hash_payload(payload)
 
