@@ -16,6 +16,17 @@ DEFAULT_TAX_REASON = "Pajak belum dinilai pada baseline sintetis (tidak diasumsi
 POLICY_VERSION = "v1-wa-not-assessed"
 _NAME_PATTERN = re.compile(r"^[\w\s\-.,/+&()]+$", re.UNICODE)
 
+TRANSACTION_WRITE_ROLES = frozenset({"owner", "operator", "admin", "manager", "cashier", "staff", "member"})
+READ_ONLY_ROLES = frozenset({"viewer", "read_only", "readonly", "auditor", "guest"})
+
+
+def is_transaction_write_permitted(role: str | None) -> bool:
+    """Return True if the role is authorized to record sales transactions."""
+    if not role or not isinstance(role, str):
+        return False
+    normalized = role.strip().lower()
+    return normalized in TRANSACTION_WRITE_ROLES and normalized not in READ_ONLY_ROLES
+
 
 class DomainError(Exception):
     """Base error mapped to structured HTTP error envelope."""
