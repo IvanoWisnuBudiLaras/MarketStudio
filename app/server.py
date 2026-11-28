@@ -27,6 +27,7 @@ BRAND_ASSETS_PATH = WEB_INDEX_PATH.parents[2] / "assets" / "branding"
 BRAND_ASSETS = {
     "/brand/lockup.png": BRAND_ASSETS_PATH / "marketstudio-lockup.png",
     "/brand/mark.png": BRAND_ASSETS_PATH / "marketstudio-mark.png",
+    "/brand/logo.png": BRAND_ASSETS_PATH / "logo-reference.png",
 }
 _RE_OFFERINGS = re.compile(r"^/v1/workspaces/([^/]+)/offerings$")
 _RE_OFFERING_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/offerings/([^/]+)$")
