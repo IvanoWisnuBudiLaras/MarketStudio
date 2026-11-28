@@ -1,10 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ArrowRight, ChartNoAxesColumnIncreasing, LogOut } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { api, ApiError, type DailyReport, type Offering, type Workspace } from "./client";
 import { Panel } from "./panel";
+
+const Worksheet = dynamic(() => import("./worksheet"), { ssr: false, loading: () => <p role="status">Memuat editor…</p> });
 
 const currency = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
 const idr = (value: number | null) => value === null ? "Belum dinilai" : currency.format(value);
@@ -197,6 +200,7 @@ function WorkspaceView({ workspace, token, write }: {
     setRevision(n => n + 1);
   }
 
+  const [worksheetOpen, setWorksheetOpen] = useState(false);
   const inventory = offerings.filter(offering => offering.requires_stock_movement);
   return <>
     {error && <div><p role="alert">{error}</p><button onClick={() => setRevision(n => n + 1)}>Muat ulang data usaha</button></div>}
@@ -230,6 +234,15 @@ function WorkspaceView({ workspace, token, write }: {
         if (event.target.value) { setReport(undefined); setDate(event.target.value); }
       }} /></label>
       {report ? <ReportView report={report} /> : !error && <p role="status">Memuat laporan…</p>}
+    </Panel>
+    <Panel title="Lembar kerja perencanaan">
+      {!worksheetOpen ? <button onClick={() => setWorksheetOpen(true)}>Buka lembar kerja</button> :
+        <>
+          {report && !error && <p className="mb-3" aria-label="Referensi laporan">
+            Omzet {idr(report.revenue_idr)} · {report.period.date} ({report.period.timezone}) · Laporan harian
+          </p>}
+          <Worksheet path={`${path}/worksheet`} token={token} />
+        </>}
     </Panel>
   </>;
 }

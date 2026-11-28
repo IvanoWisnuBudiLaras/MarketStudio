@@ -84,6 +84,44 @@ class TransportParity(unittest.TestCase):
         legacy_actor, legacy_password = next(iter(SYNTHETIC_PRINCIPALS.items()))
         self.assertEqual(run(self.old, legacy_actor, legacy_password), run(self.new, "authorized", self.credentials["authorized"]))
 
+    def test_worksheet_validation_and_revisions(self):
+        def headers_for(identity):
+            session = self.new.post("/v1/sessions", json={
+                "actor_id": identity, "passcode": self.credentials[identity],
+            }).json()["item"]
+            return {"X-Session-Token": session["token"]}
+
+        headers = headers_for("authorized")
+        workspace = self.new.post("/v1/workspaces", headers=headers, json={"name": "Warung Padi"}).json()["item"]
+        path = f"/v1/workspaces/{workspace['workspace_id']}/worksheet"
+        self.assertEqual(self.new.get(path).status_code, 401)
+        self.assertEqual(self.new.put(path, json={}).status_code, 401)
+        self.assertEqual(self.new.get(path, headers=headers).json()["item"],
+                         {"cells": {}, "revision": 0, "can_edit": True})
+
+        for cells in (
+            {"100": {"0": {"v": 1}}}, {"0": {"26": {"v": 1}}},
+            {"0": {"0": {"p": {"arbitrary": "data"}}}}, {"0": {"0": {"v": [1]}}},
+        ):
+            self.assertEqual(self.new.put(path, headers=headers, json={"cells": cells, "revision": 0}).status_code, 422)
+
+        draft = {"cells": {"0": {"0": {"v": "Rencana", "t": 1}, "1": {"f": "=1+2"}}}, "revision": 0}
+        for _ in range(2):
+            saved = self.new.put(path, headers=headers, json=draft)
+            self.assertEqual(saved.status_code, 200, saved.text)
+            self.assertEqual(saved.json()["item"], {"revision": 1})
+        self.assertEqual(self.new.put(path, headers=headers, json={"cells": {}, "revision": 0}).status_code, 409)
+
+        other = headers_for("other")
+        self.assertEqual(self.new.get(path, headers=other).status_code, 404)
+        self.assertEqual(self.new.put(path, headers=other, json=draft).status_code, 404)
+        app.state.service.add_membership(workspace["workspace_id"], "other")
+        self.assertFalse(self.new.get(path, headers=other).json()["item"]["can_edit"])
+        self.assertEqual(self.new.put(path, headers=other, json=draft).status_code, 403)
+        app.state.service.revoke_membership(workspace["workspace_id"], "other")
+        self.assertEqual(self.new.get(path, headers=other).status_code, 404)
+        self.assertEqual(self.new.get(path, headers=headers).json()["item"]["cells"], draft["cells"])
+
     def test_production_fails_closed_and_no_demo_route(self):
         for mode in ("", "production", "typo"):
             with patch.dict(os.environ, MARKETSTUDIO_ENV=mode), self.assertRaises(RuntimeError):

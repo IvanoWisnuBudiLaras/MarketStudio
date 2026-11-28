@@ -76,6 +76,15 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
     await page.getByLabel("Nama usaha").fill("Warung Padi");
     await page.getByRole("button", { name: "Buat ruang kerja" }).click();
     await expect(page.getByRole("heading", { name: "Warung Padi" })).toBeVisible();
+    const worksheetCanvas = page.getByLabel("Editor lembar kerja").locator("canvas:visible").first();
+    const openWorksheet = async () => {
+      await page.getByRole("button", { name: "Buka lembar kerja" }).click();
+      await expect(page.getByRole("button", { name: "Simpan lembar kerja" })).toBeVisible();
+      await expect(worksheetCanvas).toBeVisible();
+    };
+    await openWorksheet();
+    await expect(page.getByLabel("Referensi laporan")).toHaveText(/Omzet Rp\s?0 ·/);
+    expect(sql(db, "SELECT COUNT(*) FROM v3_worksheets")).toBe("[(0,)]");
     await page.getByLabel("Nama produk").fill("Beras medium");
     await page.getByLabel("Satuan", { exact: true }).fill("kg");
     await page.getByLabel("Harga jual per satuan (Rp)").fill("14500");
@@ -143,8 +152,29 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
     expect(sql(db, "SELECT total_revenue_idr,total_cogs_idr FROM sales")).toBe("[(29000, 24000)]");
     expect(sql(db, "SELECT amount_idr FROM cash_movements ORDER BY direction")).toBe("[(29000,), (120000,)]");
 
+    const ledger = () => ["sales", "purchases", "cash_movements", "stock_movements"]
+      .map(table => sql(db, `SELECT * FROM ${table} ORDER BY rowid`));
+    const before = ledger();
+    const reference = /Omzet Rp\s?29\.000 · \d{4}-\d{2}-\d{2} \(Asia\/Jakarta\) · Laporan harian/;
+    await expect(page.getByLabel("Referensi laporan")).toHaveText(reference);
+    await worksheetCanvas.dblclick({ position: { x: 64, y: 30 } });
+    await page.keyboard.insertText("Target stok 12 kg");
+    await page.getByRole("button", { name: "Simpan lembar kerja" }).click();
+    await expect(page.getByText("Lembar kerja tersimpan.")).toBeVisible();
+    expect(sql(db, "SELECT cells_json FROM v3_worksheets")).toContain("Target stok 12 kg");
+
     await page.reload();
     await values();
+    await openWorksheet();
+    await expect(page.getByLabel("Referensi laporan")).toHaveText(reference);
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await worksheetCanvas.click({ position: { x: 64, y: 30 } });
+    await page.keyboard.press("Control+c");
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("Target stok 12 kg");
+    const worksheetScreenshot = testInfo.outputPath("univer-worksheet.png");
+    await page.getByRole("heading", { name: "Lembar kerja perencanaan" }).locator("../..").screenshot({ path: worksheetScreenshot });
+    await testInfo.attach("Lembar kerja Univer", { path: worksheetScreenshot, contentType: "image/png" });
+    expect(ledger()).toEqual(before);
     await page.getByRole("button", { name: "Keluar" }).click();
     await stop(backend!);
     await startBackend();
@@ -170,9 +200,13 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
         const report = await fetch(`/api/workspaces/${id}/reports/daily`, { headers });
         const write = await fetch(`/api/workspaces/${id}/sales`, { method: "POST", headers, body: "{}" });
         const blocked = await fetch("/api/workspaces/demo", { method: "POST", headers, body: "{}" });
-        return { status: report.status, cache: report.headers.get("cache-control"), body: await report.json(), write: write.status, blocked: blocked.status };
+        const worksheet = await fetch(`/api/workspaces/${id}/worksheet`, { headers });
+        const worksheetSave = await fetch(`/api/workspaces/${id}/worksheet`, {
+          method: "PUT", headers, body: JSON.stringify({ cells: {}, revision: 1 }),
+        });
+        return { worksheet: worksheet.status, worksheetSave: worksheetSave.status, status: report.status, cache: report.headers.get("cache-control"), body: await report.json(), write: write.status, blocked: blocked.status };
       }, workspace);
-      expect(result).toMatchObject({ status: 404, cache: "no-store", body: { code: "workspace_not_found" }, write: 404, blocked: 404 });
+      expect(result).toMatchObject({ status: 404, cache: "no-store", body: { code: "workspace_not_found" }, write: 404, blocked: 404, worksheet: 404, worksheetSave: 404 });
     } finally {
       await other.close();
     }

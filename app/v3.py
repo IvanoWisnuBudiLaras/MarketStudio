@@ -1,5 +1,6 @@
 """Private FastAPI transport for the MarketStudio V3 transaction slice."""
 import json
+import math
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -68,6 +69,14 @@ async def lifespan(app: FastAPI):
     db, identities = local_settings()
     service = BaselineService(str(db), backend="sqlite", session_principals=identities)
     init_db(service.db_config)
+    with service._tx(immediate=True) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS v3_worksheets (
+                workspace_id TEXT PRIMARY KEY REFERENCES workspaces(workspace_id),
+                cells_json TEXT NOT NULL,
+                revision INTEGER NOT NULL
+            )
+        """)
     app.state.service = service
     app.state.identities = frozenset(identities)
     try:
@@ -213,3 +222,81 @@ def daily_report(request: Request, workspace_id: str, principal: str = Depends(a
     date = parse_qs(request.url.query).get("date", [None])[0]
     result = request.app.state.service.get_daily_report(workspace_id, principal, date_str=date)
     return reply(request, 200, report=result)
+
+
+def validate_worksheet(data: dict) -> tuple[int, str]:
+    def invalid():
+        return DomainError(422, "invalid_worksheet", "Isi lembar kerja tidak valid.")
+
+    def index(value: str, limit: int) -> bool:
+        return value.isascii() and value.isdecimal() and len(value) <= 2 and (
+            int(value) < limit and str(int(value)) == value
+        )
+
+    cells, revision = data.get("cells"), data.get("revision")
+    if set(data) != {"cells", "revision"} or type(revision) is not int or revision < 0 or not isinstance(cells, dict):
+        raise invalid()
+    for row, columns in cells.items():
+        if not index(row, 100) or not isinstance(columns, dict):
+            raise invalid()
+        for column, cell in columns.items():
+            if not index(column, 26) or not isinstance(cell, dict) or not cell or cell.keys() - {"v", "t", "f"}:
+                raise invalid()
+            value, kind, formula = cell.get("v"), cell.get("t"), cell.get("f")
+            if (
+                ("v" in cell and not (
+                    type(value) is bool or isinstance(value, str) and len(value) <= 4096
+                    or type(value) is int and abs(value) <= 2**53 - 1
+                    or type(value) is float and math.isfinite(value)
+                ))
+                or ("t" in cell and (type(kind) is not int or kind not in {1, 2, 3, 4}))
+                or ("f" in cell and (not isinstance(formula, str) or not formula.startswith("=") or len(formula) > 4096))
+                or cell.keys().isdisjoint({"v", "f"})
+            ):
+                raise invalid()
+    try:
+        encoded = json.dumps(cells, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        encoded.encode("utf-8")
+    except UnicodeEncodeError:
+        raise invalid() from None
+    return revision, encoded
+
+
+@app.get("/v1/workspaces/{workspace_id}/worksheet", response_model=Item)
+def load_worksheet(request: Request, workspace_id: str, principal: str = Depends(actor)):
+    service = request.app.state.service
+    with service._tx() as conn:
+        role = service._assert_workspace_access(conn, workspace_id, principal)
+        row = conn.execute(
+            "SELECT cells_json, revision FROM v3_worksheets WHERE workspace_id = ?", (workspace_id,)
+        ).fetchone()
+    return reply(request, 200, item={
+        "cells": json.loads(row["cells_json"]) if row else {},
+        "revision": row["revision"] if row else 0,
+        "can_edit": role == "owner",
+    })
+
+
+@app.put("/v1/workspaces/{workspace_id}/worksheet", response_model=Item,
+         openapi_extra=body_schema("cells", "revision"))
+def save_worksheet(request: Request, workspace_id: str, principal: str = Depends(actor),
+                   data: dict = Depends(payload)):
+    service = request.app.state.service
+    with service._tx(immediate=True) as conn:
+        if service._assert_workspace_access(conn, workspace_id, principal) != "owner":
+            raise DomainError(403, "forbidden", "Hanya pemilik ruang kerja yang dapat menyimpan lembar kerja.")
+        expected_revision, cells = validate_worksheet(data)
+        row = conn.execute(
+            "SELECT cells_json, revision FROM v3_worksheets WHERE workspace_id = ?", (workspace_id,)
+        ).fetchone()
+        revision = row["revision"] if row else 0
+        if row and row["cells_json"] == cells:
+            return reply(request, 200, item={"revision": revision})
+        if revision != expected_revision:
+            raise DomainError(409, "worksheet_conflict", "Lembar kerja telah berubah. Salin edit Anda sebelum membuka ulang.")
+        revision += 1
+        conn.execute("""
+            INSERT INTO v3_worksheets (workspace_id, cells_json, revision) VALUES (?, ?, ?)
+            ON CONFLICT (workspace_id) DO UPDATE SET cells_json = excluded.cells_json, revision = excluded.revision
+        """, (workspace_id, cells, revision))
+    return reply(request, 200, item={"revision": revision})
