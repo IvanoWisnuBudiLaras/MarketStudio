@@ -1080,38 +1080,27 @@
       color: var(--text);
     }
 
-    .card-ai-spotlight {
-      background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+    .cash-education-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: var(--surface-elevated);
+      border: 1px solid #BFDBFE;
+      border-radius: var(--radius);
     }
 
-    .ai-spotlight-body {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .ai-spotlight-features {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .ai-feature-item {
+    .cash-education-header {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
       font-size: 13px;
-      color: var(--text);
-      padding: 8px 12px;
-      background: var(--canvas);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
+      color: var(--brand-navy);
+      margin-bottom: 4px;
     }
 
-    .ai-feature-item .ui-icon {
+    .cash-education-header .ui-icon {
       color: var(--accent);
+      width: 16px;
+      height: 16px;
     }
 
     .tabular-nums {
@@ -1127,24 +1116,22 @@
 
     .overview-header-row,
     .business-hero-banner,
-    .quick-metrics,
-    .report-metrics-grid,
+    .quick-metrics-headline,
+    #homeStockCard,
     #reportDetailsCard {
       grid-column: 1 / -1;
     }
 
-    #dailyReport,
-    #homeStockCard {
+    #dailyReport {
       grid-column: 1;
     }
 
-    #homeAiSpotlightCard,
     #homeRecentCard {
       grid-column: 2;
     }
 
-    #homeStockCard:has(+ #homeRecentCard.hidden),
-    #homeStockCard.hidden + #homeRecentCard {
+    #dailyReport:has(+ #homeRecentCard.hidden),
+    #homeRecentCard.hidden ~ #dailyReport {
       grid-column: 1 / -1;
     }
 
@@ -1157,14 +1144,96 @@
     @media (max-width: 900px) {
       #ringkasanPopulated {
         grid-template-columns: minmax(0, 1fr);
-        gap: 16px;
+        gap: 14px;
       }
 
       #dailyReport,
-      #homeStockCard,
-      #homeAiSpotlightCard,
-      #homeRecentCard {
+      #homeRecentCard,
+      #homeStockCard {
         grid-column: 1 / -1;
+      }
+
+      .overview-header-row {
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .overview-header-text h2 {
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .overview-header-text p {
+        font-size: 11.5px;
+      }
+
+      .overview-header-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .overview-header-controls .field-date {
+        flex: 1;
+        min-width: 0 !important;
+      }
+
+      .overview-header-controls .field-date input {
+        width: 100%;
+        min-height: 44px;
+        font-size: 13px;
+      }
+
+      .overview-header-controls button {
+        min-height: 44px;
+        white-space: nowrap;
+      }
+
+      .business-hero-banner {
+        padding: 12px 14px;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+
+      .business-hero-content h3 {
+        font-size: 14px;
+      }
+
+      .business-hero-content p {
+        font-size: 11.5px;
+      }
+
+      .report-metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .report-metrics-grid .kpi {
+        padding: 12px 10px;
+        gap: 4px;
+      }
+
+      .report-metrics-grid .kpi-top .label {
+        font-size: 11.5px;
+        gap: 4px;
+      }
+
+      .report-metrics-grid .kpi-top .ui-icon {
+        width: 14px;
+        height: 14px;
+      }
+
+      .report-metrics-grid .kpi .val {
+        font-size: 17px;
+      }
+
+      .report-metrics-grid .kpi .sub {
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       button, .btn, .nav-link, input, select, summary {
@@ -1182,13 +1251,8 @@
     }
 
     @media (max-width: 540px) {
-      .quick-metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .report-metrics,
       .report-metrics-grid {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       }
     }
 
@@ -2123,72 +2187,72 @@
               </div>
             </div>
 
-            <!-- 3. 4 Main KPI Cards Grid -->
-            <div id="kpiGrid" class="report-metrics report-metrics-grid" aria-label="Indikator Kinerja Utama"></div>
+            <!-- 3. Headline 4 KPI Cards (Single source, toggled by quickMetrics preference) -->
+            <div id="quickMetrics" class="quick-metrics-headline">
+              <div id="kpiGrid" class="report-metrics report-metrics-grid" aria-label="Indikator Kinerja Utama">
+                <div class="kpi">
+                  <div class="kpi-top"><span class="label"><svg class="ui-icon kpi-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-wallet"/></svg><span>Arus kas bersih</span></span></div>
+                  <div class="val tabular-nums" id="quickCash">Rp 0</div>
+                  <div class="sub">Kas masuk Rp 0 · Kas keluar Rp 0</div>
+                </div>
+                <div class="kpi">
+                  <div class="kpi-top"><span class="label"><svg class="ui-icon kpi-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-chart"/></svg><span>Laba kotor</span></span></div>
+                  <div class="val tabular-nums" id="quickProfit">Rp 0</div>
+                  <div class="sub">Omzet Rp 0 · HPP Rp 0</div>
+                </div>
+                <div class="kpi">
+                  <div class="kpi-top"><span class="label"><svg class="ui-icon kpi-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-coins"/></svg><span>Omzet</span></span></div>
+                  <div class="val tabular-nums" id="quickRevenue">Rp 0</div>
+                  <div class="sub">Total penjualan tercatat</div>
+                </div>
+                <div class="kpi">
+                  <div class="kpi-top"><span class="label"><svg class="ui-icon kpi-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-box"/></svg><span>Nilai persediaan</span></span></div>
+                  <div class="val tabular-nums" id="quickInventory">Rp 0</div>
+                  <div class="sub">Metode rata-rata tertimbang (WA)</div>
+                </div>
+              </div>
+            </div>
 
-            <!-- 4. Cash Summary & Breakdown Card -->
+            <!-- 4. Modul Arus Kas (Inflow, Outflow, Net, and Cash vs Profit Education) -->
             <div class="card report-card" id="dailyReport" aria-busy="true">
               <div class="card-header">
                 <div>
-                  <h2>Ringkasan Arus Kas &amp; Laba</h2>
-                  <p class="muted">Perbandingan uang riil masuk/keluar vs laba operasional.</p>
+                  <h2>Ringkasan Arus Kas</h2>
+                  <p class="muted">Pergerakan uang tunai riil pada tanggal laporan.</p>
                 </div>
               </div>
-
-              <!-- Quick Metrics for preference toggle compatibility -->
-              <dl id="quickMetrics" class="quick-metrics" aria-label="Angka ringkas">
-                <div><dt>Omzet</dt><dd id="quickRevenue"></dd></div>
-                <div><dt>Laba kotor</dt><dd id="quickProfit"></dd></div>
-                <div><dt>Arus kas bersih</dt><dd id="quickCash"></dd></div>
-                <div><dt>Nilai stok akhir</dt><dd id="quickInventory"></dd></div>
-              </dl>
 
               <div id="cashFlowSummaryBreakdown" class="cash-flow-breakdown">
                 <div class="cash-row cash-in">
-                  <span class="cash-label"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Kas Masuk</span>
+                  <span class="cash-label"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Kas Masuk (Inflow)</span>
                   <span id="cashInDisplay" class="cash-val tabular-nums">Rp 0</span>
                 </div>
                 <div class="cash-row cash-out">
-                  <span class="cash-label"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg> Kas Keluar</span>
+                  <span class="cash-label"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg> Kas Keluar (Outflow)</span>
                   <span id="cashOutDisplay" class="cash-val tabular-nums">Rp 0</span>
                 </div>
                 <div class="cash-row cash-net">
-                  <span class="cash-label"><strong>Arus Kas Bersih</strong></span>
+                  <span class="cash-label"><strong>Arus Kas Bersih (Net)</strong></span>
                   <span id="cashNetDisplay" class="cash-val tabular-nums"><strong>Rp 0</strong></span>
                 </div>
               </div>
-              <p id="cashVsProfitNote" class="report-note hidden"></p>
+              <div class="cash-education-box">
+                <div class="cash-education-header">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-info"/></svg>
+                  <strong>Mengapa Kas Berbeda dari Laba?</strong>
+                </div>
+                <p id="cashVsProfitNote" class="report-note"></p>
+              </div>
               <div id="reportStatus" class="status" aria-live="polite"></div>
             </div>
 
-            <!-- 5. AI Business Review Spotlight Card -->
-            <div class="card card-ai-spotlight" id="homeAiSpotlightCard">
+            <!-- 5. Recent Transactions Card (Side-by-side with Arus Kas on Desktop) -->
+            <div class="card" id="homeRecentCard">
               <div class="card-header">
-                <div>
-                  <h2>Pusat Insight &amp; Rekomendasi</h2>
-                  <p class="muted">Analisis performa, margin laba, dan deteksi stok menipis.</p>
-                </div>
+                <h2>Transaksi terbaru</h2>
+                <a href="#transaksi" class="btn btn-secondary">Buka transaksi</a>
               </div>
-              <div class="ai-spotlight-body">
-                <p class="muted">Intelligence Studio memadukan data transaksi dan persediaan Anda untuk memberikan evaluasi performa bisnis yang objektif tanpa mengarang angka.</p>
-                <div class="ai-spotlight-features">
-                  <div class="ai-feature-item">
-                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-chart"/></svg>
-                    <span>Evaluasi omzet &amp; margin</span>
-                  </div>
-                  <div class="ai-feature-item">
-                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-box"/></svg>
-                    <span>Peringatan stok kritis</span>
-                  </div>
-                  <div class="ai-feature-item">
-                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-spark"/></svg>
-                    <span>Rekomendasi tindakan terarah</span>
-                  </div>
-                </div>
-                <a href="#studio-intelligence" class="btn btn-secondary" style="width:100%; justify-content:center; margin-top:8px;">
-                  <span>Buka Intelligence Studio &rarr;</span>
-                </a>
-              </div>
+              <ul id="homeRecentList" class="recent-list"></ul>
             </div>
 
             <!-- 6. Critical Stock & Inventory Card -->
@@ -2214,15 +2278,6 @@
                   <tbody id="ringkasanStockBody"></tbody>
                 </table>
               </div>
-            </div>
-
-            <!-- 7. Recent Transactions Card -->
-            <div class="card" id="homeRecentCard">
-              <div class="card-header">
-                <h2>Transaksi terbaru</h2>
-                <a href="#transaksi" class="btn btn-secondary">Buka transaksi</a>
-              </div>
-              <ul id="homeRecentList" class="recent-list"></ul>
             </div>
 
             <div id="reportDetailsCard" class="card">
@@ -4533,7 +4588,7 @@
     }
 
     // Report & Drill-down rendering
-    function makeKpiCard(label, val, badgeText, badgeCls, subText = "", iconHref = "") {
+    function makeKpiCard(label, val, badgeText, badgeCls, subText = "", iconHref = "", valId = "") {
       const box = document.createElement("div");
       box.className = "kpi";
       const top = document.createElement("div");
@@ -4558,6 +4613,7 @@
       if (badgeText) top.appendChild(makePill(badgeText, badgeCls));
       const v = document.createElement("div");
       v.className = "val tabular-nums";
+      if (valId) v.id = valId;
       v.textContent = val;
       box.appendChild(top);
       box.appendChild(v);
@@ -4778,10 +4834,14 @@
         const { cash_in_idr, cash_out_idr, net_cash_flow_idr, revenue_idr, cogs_idr, gross_profit_idr } = report;
         const inventory = report.ending_inventory?.total_value_idr ?? 0;
         const grossProfit = gross_profit_idr === null ? "Belum dinilai" : fmtIdr(gross_profit_idr);
-        document.getElementById("quickRevenue").textContent = fmtIdr(revenue_idr);
-        document.getElementById("quickProfit").textContent = grossProfit;
-        document.getElementById("quickCash").textContent = fmtIdr(net_cash_flow_idr);
-        document.getElementById("quickInventory").textContent = fmtIdr(inventory);
+        const quickRevEl = document.getElementById("quickRevenue");
+        if (quickRevEl) quickRevEl.textContent = fmtIdr(revenue_idr);
+        const quickProfitEl = document.getElementById("quickProfit");
+        if (quickProfitEl) quickProfitEl.textContent = grossProfit;
+        const quickCashEl = document.getElementById("quickCash");
+        if (quickCashEl) quickCashEl.textContent = fmtIdr(net_cash_flow_idr);
+        const quickInvEl = document.getElementById("quickInventory");
+        if (quickInvEl) quickInvEl.textContent = fmtIdr(inventory);
 
         const cashInEl = document.getElementById("cashInDisplay");
         if (cashInEl) cashInEl.textContent = `+ ${fmtIdr(cash_in_idr)}`;
@@ -4800,16 +4860,16 @@
         grid.replaceChildren(
           makeKpiCard("Arus kas bersih", fmtIdr(net_cash_flow_idr), "", "",
             `Kas masuk ${fmtIdr(cash_in_idr)} · Kas keluar ${fmtIdr(cash_out_idr)}`,
-            "#icon-wallet"),
+            "#icon-wallet", "quickCash"),
           makeKpiCard("Laba kotor", grossProfit, "", "",
             `Omzet ${fmtIdr(revenue_idr)} · HPP ${cogs_idr === null ? "belum dinilai" : fmtIdr(cogs_idr)}`,
-            "#icon-chart"),
+            "#icon-chart", "quickProfit"),
           makeKpiCard("Omzet", fmtIdr(revenue_idr), "", "",
             "Total penjualan tercatat",
-            "#icon-coins"),
+            "#icon-coins", "quickRevenue"),
           makeKpiCard("Nilai persediaan", fmtIdr(inventory), "", "",
             "Metode rata-rata tertimbang (WA)",
-            "#icon-box")
+            "#icon-box", "quickInventory")
         );
         const cashNote = document.getElementById("cashVsProfitNote");
         const definition = "Arus kas bersih adalah selisih uang masuk dan keluar. Laba kotor adalah omzet (total penjualan) dikurangi harga pokok penjualan (HPP).";

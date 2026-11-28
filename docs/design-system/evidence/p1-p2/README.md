@@ -28,19 +28,15 @@ Dokumen ini memuat bukti penerimaan visual aktual untuk penerapan Issue #76 (P1 
    - Topbar bersama (~60px) dengan konteks studio (`Business Studio`), judul halaman (`Beranda`), status workspace, tombol utama aksi `Catat transaksi`, dan pemicu dialog pengaturan `Atur ringkasan`.
    - Responsif tanpa overflow horizontal (`scrollWidth <= window.innerWidth`) di seluruh viewport 1440px, 1280px, 768px, dan 390px. Di mobile 390px seluruh tombol sentuh memenuhi minimum 44×44px.
 
-2. **P2 — Business Studio Overview**:
-   - Tata letak berjenjang analitikal dan operasional:
-     1. Heading dashboard dan kontrol tanggal/periode laporan (WIB).
-     2. Hero banner performa usaha dengan greeting personal dan entry point langsung menuju AI Business Review.
-     3. 4 KPI utama berurutan dengan tabular figures:
-        - **Arus kas bersih** (mis. `-Rp 150.000` pada fixture demo)
-        - **Laba kotor** (mis. `Rp 24.000` pada fixture demo)
-        - **Omzet** (mis. `Rp 60.000` pada fixture demo)
-        - **Nilai persediaan** (mis. `Rp 174.000` pada fixture demo, metode rata-rata tertimbang WA)
-     4. Modul operasional 2-kolom:
-        - Kolom 1: Ringkasan arus kas (kas masuk, kas keluar, arus kas bersih) dan catatan pembeda kas vs laba, serta stok akhir & persediaan kritis.
-        - Kolom 2: Pusat rekomendasi & AI Review spotlight serta transaksi terbaru dengan tautan riwayat.
-     5. Rincian laporan, mutasi stok, audit trail, dan data JSON mentah di bawah lipatan (details disclosure).
+2. **P2 — Business Studio Overview & Resolusi HOLD Atlas**:
+   - **Eliminasi Duplikasi 4 KPI**: Headline 4 KPI (Arus kas bersih, Laba kotor, Omzet, Nilai persediaan) hanya muncul SATU KALI sebagai headline cards utama (toggled terpadu via `#quickMetrics` di preferensi ringkasan). Duplikasi kartu ringkasan kecil di dalam modul kas telah dihapus total.
+   - **Rekonstruksi Modul Arus Kas**: Modul kas (`#dailyReport`) didedikasikan secara terfokus pada pergerakan kas riil: Kas Masuk (Inflow), Kas Keluar (Outflow), Arus Kas Bersih (Net), serta kotak edukasi finansial terstruktur (`.cash-education-box`) yang menjelaskan perbedaan esensial antara laba kotor operasional vs uang kas riil di tangan.
+   - **Penyederhanaan Entry Point AI Review**: Menghilangkan panel promosi AI statis di kolom kanan desktop yang memakan ruang dan memiliki CTA kedua redundan. Menyisakan SATU entry point AI Business Review yang ringkas, elegan, dan fungsional pada greeting banner (`#heroAiReviewBtn`).
+   - **Penataan Kolom Desktop yang Seimbang**: Di desktop (1440px / 1280px), kolom kiri memuat Ringkasan Arus Kas dan kolom kanan memuat Transaksi Terbaru dengan tinggi yang proporsional dan sejajar, diikuti Ringkasan Persediaan (stok akhir, alert stok habis, tabel produk) di bawahnya, dan rincian audit di bawah lipatan.
+   - **Optimasi Mobile (390px Above-The-Fold)**:
+     - Ketinggian header, date controls, dan greeting banner diringkas.
+     - 4 KPI headline cards disusun dalam format **grid 2x2** pada viewport 390px sehingga seluruh nominal angka terbaca jelas dengan tabular figures dan langsung tampak di atas lipatan layar (**above the fold**) tanpa perlu scroll.
+     - Touch target kontrol interaktif tetap memenuhi standar minimum 44×44px.
    - Penanganan state kosong yang jujur (formulir pembuatan profil usaha onboarding) dan state terisi tanpa mengarang data atau proyeksi palsu.
 
 ## Cara Mengulang Pengujian Visual
