@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -20,6 +21,8 @@ class StackSpikeMetricsTest(unittest.TestCase):
         res = run_spike(iterations=1, quiet=True)
 
         self.assertIn("timestamp_utc", res)
+        self.assertIn("startup_inprocess_ms", res)
+        self.assertGreater(res["startup_inprocess_ms"], 0.0)
         self.assertIn("cold_startup_ms", res)
         self.assertGreater(res["cold_startup_ms"], 0.0)
         self.assertIn("idle_rss_mb", res)
@@ -71,10 +74,10 @@ class StackSpikeMetricsTest(unittest.TestCase):
         self.assertIn("total_flow_latency_mean_ms", data["summary"])
 
     def test_cli_quiet_and_custom_db_path(self) -> None:
-        """Verify CLI execution with custom --db-path and quiet flag creates file."""
+        """Verify CLI execution with custom new --db-path and quiet flag creates file."""
         script_path = str(Path(__file__).resolve().parents[1] / "scripts" / "spike_stack_metrics.py")
         with tempfile.TemporaryDirectory() as tmpdir:
-            custom_db = Path(tmpdir) / "custom_spike.db"
+            custom_db = Path(tmpdir) / "new_custom_spike.db"
             proc = subprocess.run(
                 [
                     sys.executable,
@@ -93,6 +96,60 @@ class StackSpikeMetricsTest(unittest.TestCase):
             self.assertEqual(proc.stdout.strip(), "")
             self.assertTrue(custom_db.is_file())
             self.assertGreater(custom_db.stat().st_size, 0)
+
+    def test_cli_rejects_existing_db_path(self) -> None:
+        """Verify CLI execution rejects existing database file with non-zero exit code without mutating it."""
+        script_path = str(Path(__file__).resolve().parents[1] / "scripts" / "spike_stack_metrics.py")
+        with tempfile.NamedTemporaryFile(suffix=".db") as existing_file:
+            existing_path = Path(existing_file.name)
+            original_size = existing_path.stat().st_size
+
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    script_path,
+                    "--db-path",
+                    str(existing_path),
+                    "--iterations",
+                    "1",
+                    "--quiet",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 2)
+            self.assertIn("sudah ada", proc.stderr)
+            self.assertIn("hanya menerima path file baru", proc.stderr)
+            self.assertEqual(existing_path.stat().st_size, original_size)
+
+    def test_run_spike_library_rejects_existing_db_path(self) -> None:
+        """Verify library execution raises ValueError when target db file already exists."""
+        with tempfile.NamedTemporaryFile(suffix=".db") as existing_file:
+            with self.assertRaises(ValueError) as ctx:
+                run_spike(db_path=existing_file.name, iterations=1, quiet=True)
+            self.assertIn("sudah ada", str(ctx.exception))
+
+    def test_spike_backend_isolation_with_postgres_env(self) -> None:
+        """Verify spike strictly isolates SQLite backend even when PostgreSQL environment variables are configured."""
+        script_path = str(Path(__file__).resolve().parents[1] / "scripts" / "spike_stack_metrics.py")
+        env = dict(
+            os.environ,
+            MARKETSTUDIO_DB_BACKEND="postgres",
+            DATABASE_URL="postgresql://unreachable_user:dummy@127.0.0.1:5432/unreachable_db",
+            MARKETSTUDIO_DATABASE_URL="postgresql://unreachable_user:dummy@127.0.0.1:5432/unreachable_db",
+        )
+        proc = subprocess.run(
+            [sys.executable, script_path, "--iterations", "1", "--json"],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, f"Spike should isolate to SQLite despite PG env: {proc.stderr}")
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["database_backend"], "sqlite")
+        self.assertIn("total_flow_latency_mean_ms", data["summary"])
 
 
 if __name__ == "__main__":

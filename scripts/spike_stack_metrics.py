@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Spike benchmark script measuring startup time, latency, memory RSS, and database size for MarketStudio alur #1."""
+"""Spike benchmark script measuring in-process server/SQLite initialization time, latency, memory RSS, and database size for MarketStudio alur #1."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from app.db import resolve_db_config
+from app.db import DatabaseConfig, resolve_db_config
 from app.server import create_server
 
 
@@ -92,7 +92,7 @@ def run_spike(
     port: int = 0,
     verbose_logs: bool = False,
 ) -> dict[str, Any]:
-    """Execute reproducible spike benchmark for MarketStudio alur #1."""
+    """Execute reproducible spike benchmark for MarketStudio alur #1 with strict SQLite isolation."""
     if iterations < 1:
         raise ValueError("iterations must be at least 1")
 
@@ -105,14 +105,40 @@ def run_spike(
         target_db = Path(temp_dir.name) / "spike_marketstudio.db"
     else:
         target_db = Path(db_path).resolve()
+        if target_db.exists():
+            raise ValueError(
+                f"File database '{target_db}' sudah ada. "
+                "Spike benchmark alur #1 hanya menerima path file baru untuk menjamin isolasi data tanpa memutasi data existing."
+            )
         target_db.parent.mkdir(parents=True, exist_ok=True)
 
     target_db_str = str(target_db)
 
-    # 1. Cold Startup Measurement
+    # Force explicit SQLite backend isolation against any PostgreSQL ambient environment
+    prev_backend = os.environ.get("MARKETSTUDIO_DB_BACKEND")
+    prev_db_url = os.environ.get("DATABASE_URL")
+    prev_ms_db_url = os.environ.get("MARKETSTUDIO_DATABASE_URL")
+    os.environ["MARKETSTUDIO_DB_BACKEND"] = "sqlite"
+    os.environ.pop("DATABASE_URL", None)
+    os.environ.pop("MARKETSTUDIO_DATABASE_URL", None)
+
+    # Construct explicit SQLite configuration object
+    db_config = DatabaseConfig(
+        backend="sqlite",
+        target=target_db_str,
+        auto_migrate=True,
+    )
+
+    # 1. In-process Server & SQLite Initialization Measurement
     t_start0 = time.perf_counter()
-    server = create_server(host=host, port=port, db_path=target_db_str)
-    cold_startup_ms = (time.perf_counter() - t_start0) * 1000.0
+    server = create_server(
+        host=host,
+        port=port,
+        db_path=db_config,
+        backend="sqlite",
+        database_url=None,
+    )
+    startup_inprocess_ms = (time.perf_counter() - t_start0) * 1000.0
 
     actual_port = server.server_address[1]
     base_url = f"http://{host}:{actual_port}"
@@ -128,7 +154,8 @@ def run_spike(
         "platform": sys.platform,
         "database_backend": "sqlite",
         "database_path": target_db_str,
-        "cold_startup_ms": round(cold_startup_ms, 2),
+        "startup_inprocess_ms": round(startup_inprocess_ms, 2),
+        "cold_startup_ms": round(startup_inprocess_ms, 2),  # backward compatibility alias
         "idle_rss_mb": round(idle_rss_kb / 1024.0, 2),
         "iterations": iterations,
         "step_latencies_ms": {},
@@ -281,7 +308,8 @@ def run_spike(
         results["database_size_kb"] = round(db_size_kb, 2)
         results["summary"] = {
             "total_flow_latency_mean_ms": round(total_mean_latency, 2),
-            "cold_startup_ms": round(cold_startup_ms, 2),
+            "startup_inprocess_ms": round(startup_inprocess_ms, 2),
+            "cold_startup_ms": round(startup_inprocess_ms, 2),
             "idle_rss_mb": round(idle_rss_kb / 1024.0, 2),
             "loaded_rss_mb": round(loaded_rss_kb / 1024.0, 2),
             "database_size_kb": round(db_size_kb, 2),
@@ -293,6 +321,15 @@ def run_spike(
         server_thread.join(timeout=2.0)
         if temp_dir is not None:
             temp_dir.cleanup()
+        # Restore ambient environment variables
+        if prev_backend is not None:
+            os.environ["MARKETSTUDIO_DB_BACKEND"] = prev_backend
+        else:
+            os.environ.pop("MARKETSTUDIO_DB_BACKEND", None)
+        if prev_db_url is not None:
+            os.environ["DATABASE_URL"] = prev_db_url
+        if prev_ms_db_url is not None:
+            os.environ["MARKETSTUDIO_DATABASE_URL"] = prev_ms_db_url
 
     if not quiet:
         _print_report(results)
@@ -305,15 +342,15 @@ def _print_report(results: dict[str, Any]) -> None:
     print("=" * 68)
     print("MarketStudio MVP Stack Benchmark Spike — Alur #1")
     print("=" * 68)
-    print(f"Timestamp (UTC)    : {results['timestamp_utc']}")
-    print(f"Python Runtime     : {results['python_version']} ({results['platform']})")
-    print(f"Database Backend   : {results['database_backend']}")
-    print(f"Iterations         : {results['iterations']}")
+    print(f"Timestamp (UTC)           : {results['timestamp_utc']}")
+    print(f"Python Runtime            : {results['python_version']} ({results['platform']})")
+    print(f"Database Backend          : {results['database_backend']}")
+    print(f"Iterations                : {results['iterations']}")
     print("-" * 68)
-    print(f"Cold Startup Time  : {results['cold_startup_ms']} ms")
-    print(f"Idle Memory RSS    : {results['idle_rss_mb']} MB")
-    print(f"Loaded Memory RSS  : {results['loaded_rss_mb']} MB (Peak: {results['peak_rss_mb']} MB)")
-    print(f"Database File Size : {results['database_size_kb']} KB")
+    print(f"In-process Init Time      : {results['startup_inprocess_ms']} ms (server + SQLite)")
+    print(f"Idle Memory RSS           : {results['idle_rss_mb']} MB")
+    print(f"Loaded Memory RSS         : {results['loaded_rss_mb']} MB (Peak: {results['peak_rss_mb']} MB)")
+    print(f"Database File Size        : {results['database_size_kb']} KB")
     print("-" * 68)
     print("Per-Request Latency Breakdown (Alur #1):")
     print(f"  {'Step':<28} | {'Mean (ms)':<10} | {'Min (ms)':<10} | {'Max (ms)':<10}")
@@ -321,19 +358,19 @@ def _print_report(results: dict[str, Any]) -> None:
     for step, metrics in results["step_latencies_ms"].items():
         print(f"  {step:<28} | {metrics['mean_ms']:<10.2f} | {metrics['min_ms']:<10.2f} | {metrics['max_ms']:<10.2f}")
     print("-" * 68)
-    print(f"Total Flow Mean Latency: {results['summary']['total_flow_latency_mean_ms']} ms")
+    print(f"Total Flow Mean Latency   : {results['summary']['total_flow_latency_mean_ms']} ms")
     print("=" * 68)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Benchmark and verify MarketStudio MVP stack metrics (startup, latency, memory RSS, disk size)."
+        description="Benchmark and verify MarketStudio MVP stack metrics (in-process init, latency, memory RSS, disk size)."
     )
     parser.add_argument(
         "--db-path",
         type=str,
         default=None,
-        help="Path to SQLite database file. Defaults to an isolated temporary file.",
+        help="Path to new SQLite database file (rejects existing files). Defaults to an isolated temporary file.",
     )
     parser.add_argument(
         "--iterations",
@@ -385,6 +422,9 @@ def main() -> int:
         if args.json_output:
             print(json.dumps(data, indent=2))
         return 0
+    except ValueError as exc:
+        sys.stderr.write(f"ERROR: {exc}\n")
+        return 2
     except Exception as exc:
         sys.stderr.write(f"ERROR: Spike execution failed: {exc}\n")
         return 1
