@@ -15,6 +15,9 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from app.ai_copy import TONES, generate_copy
+from app.ai_image import (
+    STYLES, ImageProvider, configured_provider, normalize_image, provider_error, synthetic_prompt,
+)
 from app.catalog import render_catalog
 from app.creative import (
     BUILTIN_ASSET_MAP,
@@ -1553,6 +1556,115 @@ class BaselineService:
                 "Creative Studio tersedia pada penyimpanan SQLite lokal.",
             )
 
+    @staticmethod
+    def _generated_asset_record(row: Any) -> dict[str, Any]:
+        provenance = json.loads(row["provenance_json"])
+        stub = provenance["provider"] == "stub_test"
+        return {
+            "asset_id": row["asset_id"],
+            "title": "Simulasi gambar AI (stub)" if stub else "Gambar AI",
+            "mime_type": "image/png",
+            "asset_source": "ai_generated",
+            "asset_license": "internal_use_only",
+            "license_status": "verified",
+            "attribution_text": "Simulasi AI (stub)" if stub else "Gambar dari penyedia AI",
+            "asset_provenance": provenance,
+            "sha256": provenance["sha256"],
+            "is_builtin": False,
+            "created_at": row["created_at"],
+        }
+
+    def generate_creative_image(
+        self, workspace_id: str, actor_id: str, asset_id: str, payload: dict[str, Any],
+        *, provider: ImageProvider | None = None,
+    ) -> dict[str, Any]:
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            if not isinstance(payload, dict) or set(payload) != {"offering_id", "style"}:
+                raise DomainError(422, "invalid_image_brief", "Pilih produk atau jasa dan gaya gambar sintetis.")
+            offering_id, style = payload["offering_id"], payload["style"]
+            if not isinstance(offering_id, str) or not isinstance(style, str) or style not in STYLES:
+                raise DomainError(422, "invalid_image_brief", "Pilih produk atau jasa dan gaya gambar sintetis.")
+            offering = conn.execute(
+                "SELECT offering_type FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                (workspace_id, offering_id),
+            ).fetchone()
+            if not offering:
+                raise DomainError(404, "offering_not_found", "Offering tidak ditemukan pada workspace ini.")
+            now = _utc_now()
+            inserted = conn.execute(
+                """INSERT INTO creative_image_attempts (workspace_id, asset_id, actor_id, status, created_at)
+                   VALUES (?, ?, ?, 'pending', ?) ON CONFLICT (workspace_id, asset_id) DO NOTHING""",
+                (workspace_id, asset_id, actor_id, now),
+            )
+            if not inserted.rowcount:
+                raise DomainError(409, "image_attempt_exists", "Permintaan sudah digunakan. Mulai percobaan baru.")
+
+        prompt = synthetic_prompt(offering["offering_type"], style)
+        error = None
+        try:
+            provider = provider if provider is not None else configured_provider()
+            png, width, height = normalize_image(provider.generate(prompt))
+        except DomainError as exc:
+            error = exc
+        except TimeoutError:
+            error = provider_error("image_provider_timeout")
+        except Exception:
+            error = provider_error()
+
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            attempt = conn.execute(
+                "SELECT status FROM creative_image_attempts WHERE workspace_id = ? AND asset_id = ?",
+                (workspace_id, asset_id),
+            ).fetchone()
+            if attempt["status"] == "cancelled":
+                raise DomainError(409, "image_cancelled", "Pembuatan gambar dibatalkan.")
+            if error is not None:
+                conn.execute(
+                    "UPDATE creative_image_attempts SET status = 'failed' WHERE workspace_id = ? AND asset_id = ?",
+                    (workspace_id, asset_id),
+                )
+            else:
+                generated_at = _utc_now()
+                provenance = {
+                    "type": "generated",
+                    "rights": "internal_use_only",
+                    "offering_id": offering_id,
+                    "brief": {"offering_type": offering["offering_type"], "style": style},
+                    "prompt": prompt,
+                    "provider": provider.name,
+                    "generated_at": generated_at,
+                    "sha256": hashlib.sha256(png).hexdigest(),
+                    "width": width,
+                    "height": height,
+                }
+                row = {"asset_id": asset_id, "created_at": generated_at, "provenance_json": json.dumps(provenance)}
+                conn.execute(
+                    """UPDATE creative_image_attempts SET status = 'ready', provenance_json = ?, png = ?,
+                       created_at = ? WHERE workspace_id = ? AND asset_id = ?""",
+                    (row["provenance_json"], png, generated_at, workspace_id, asset_id),
+                )
+                _record_audit(conn, workspace_id, actor_id, "creative_image.generated", "creative_asset",
+                              asset_id, {"provider": provider.name, "offering_id": offering_id})
+        if error is not None:
+            raise error
+        return {**self._generated_asset_record(row),
+                "preview_data_url": "data:image/png;base64," + base64.b64encode(png).decode("ascii")}
+
+    def cancel_creative_image(self, workspace_id: str, actor_id: str, asset_id: str) -> None:
+        with self._tx(immediate=True) as conn:
+            self._assert_poster_access(conn, workspace_id, actor_id)
+            result = conn.execute(
+                """INSERT INTO creative_image_attempts (workspace_id, asset_id, actor_id, status, created_at)
+                   VALUES (?, ?, ?, 'cancelled', ?)
+                   ON CONFLICT (workspace_id, asset_id) DO UPDATE SET status = 'cancelled'
+                   WHERE actor_id = excluded.actor_id AND status IN ('pending', 'cancelled')""",
+                (workspace_id, asset_id, actor_id, _utc_now()),
+            )
+            if not result.rowcount:
+                raise DomainError(409, "image_cancel_conflict", "Permintaan gambar sudah selesai atau tidak tersedia.")
+
     def _resolve_asset_record(
         self,
         conn: Any,
@@ -1561,6 +1673,13 @@ class BaselineService:
     ) -> dict[str, Any]:
         if asset_id in BUILTIN_ASSET_MAP:
             return dict(BUILTIN_ASSET_MAP[asset_id])
+        generated = conn.execute(
+            """SELECT asset_id, provenance_json, png, created_at FROM creative_image_attempts
+               WHERE workspace_id = ? AND asset_id = ? AND status = 'ready'""",
+            (workspace_id, asset_id),
+        ).fetchone()
+        if generated:
+            return {**self._generated_asset_record(generated), "png": generated["png"]}
         row = conn.execute(
             "SELECT * FROM creative_assets WHERE workspace_id = ? AND asset_id = ?",
             (workspace_id, asset_id),
@@ -1668,6 +1787,12 @@ class BaselineService:
             ).fetchall()
             for r in rows:
                 items.append(self._resolve_asset_record(conn, workspace_id, r["asset_id"]))
+            generated = conn.execute(
+                """SELECT asset_id, provenance_json, created_at FROM creative_image_attempts
+                   WHERE workspace_id = ? AND status = 'ready' ORDER BY created_at DESC""",
+                (workspace_id,),
+            )
+            items.extend(self._generated_asset_record(row) for row in generated.fetchall())
             return items
 
     def list_poster_drafts(
@@ -2477,6 +2602,8 @@ class BaselineService:
             asset = None
             if asset_id:
                 record = self._resolve_asset_record(conn, workspace_id, asset_id)
+                if record["asset_source"] == "ai_generated":
+                    raise DomainError(422, "asset_internal_only", "Gambar AI hanya berizin untuk penggunaan internal.")
                 image = load_and_verify_asset(record, self.creative_assets_dir)
                 # Re-encode pixels so source file metadata cannot become public.
                 png = encode_png_rgb(image.width, image.height, image.rgb_bytes)

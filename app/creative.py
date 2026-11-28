@@ -667,26 +667,27 @@ def load_and_verify_asset(
             {"asset_id": "Aset harus memiliki lisensi terverifikasi sebelum pratinjau/ekspor."},
         )
 
-    rel_path = str(asset_record.get("file_path") or asset_record.get("filename") or "").strip()
-    if not rel_path or Path(rel_path).is_absolute():
-        raise DomainError(
-            503,
-            "asset_load_failed",
-            "Gagal memuat aset poster: path berkas aset tidak valid.",
-        )
-
-    root_resolved = Path(assets_root).resolve()
-    candidate = (root_resolved / rel_path).resolve()
-    if not candidate.is_relative_to(root_resolved) or not candidate.is_file():
-        raise DomainError(
-            503,
-            "asset_load_failed",
-            f"Gagal memuat aset poster: berkas '{rel_path}' tidak ditemukan atau tidak dapat diakses.",
-        )
-
     try:
-        with candidate.open("rb") as file:
-            raw_bytes = file.read(_MAX_ASSET_BYTES + 1)
+        raw_bytes = asset_record.get("png")
+        if raw_bytes is None:
+            rel_path = str(asset_record.get("file_path") or asset_record.get("filename") or "").strip()
+            if not rel_path or Path(rel_path).is_absolute():
+                raise DomainError(
+                    503,
+                    "asset_load_failed",
+                    "Gagal memuat aset poster: path berkas aset tidak valid.",
+                )
+
+            root_resolved = Path(assets_root).resolve()
+            candidate = (root_resolved / rel_path).resolve()
+            if not candidate.is_relative_to(root_resolved) or not candidate.is_file():
+                raise DomainError(
+                    503,
+                    "asset_load_failed",
+                    f"Gagal memuat aset poster: berkas '{rel_path}' tidak ditemukan atau tidak dapat diakses.",
+                )
+            with candidate.open("rb") as file:
+                raw_bytes = file.read(_MAX_ASSET_BYTES + 1)
         if len(raw_bytes) > _MAX_ASSET_BYTES:
             raise ValueError("Ukuran PNG melebihi 8 MiB.")
         digest = hashlib.sha256(raw_bytes).hexdigest()

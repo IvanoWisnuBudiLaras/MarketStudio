@@ -197,6 +197,18 @@ CREATE TABLE IF NOT EXISTS creative_assets (
 CREATE INDEX IF NOT EXISTS idx_creative_assets_workspace
     ON creative_assets (workspace_id, created_at);
 
+CREATE TABLE IF NOT EXISTS creative_image_attempts (
+    workspace_id TEXT NOT NULL,
+    asset_id TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'ready', 'failed', 'cancelled')),
+    provenance_json TEXT,
+    png BLOB,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, asset_id),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS poster_drafts (
     draft_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
