@@ -25,6 +25,7 @@ import urllib.request
 import uuid
 from contextlib import closing
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -511,8 +512,14 @@ def verify_business_reports(
                 ).fetchone()
                 target_actor = m_row[0] if m_row else "usr_owner"
 
-        # Determine reference date from purchases/sales
+        # Determine reference date from purchases/sales in workspace timezone
         with closing(sqlite3.connect(str(restored_db), timeout=10.0)) as conn:
+            conn.row_factory = sqlite3.Row
+            ws_meta = conn.execute(
+                "SELECT timezone FROM workspaces WHERE workspace_id = ?",
+                (wid,),
+            ).fetchone()
+            tz_name = ws_meta["timezone"] if ws_meta and ws_meta["timezone"] else "Asia/Jakarta"
             p_row = conn.execute(
                 "SELECT MIN(occurred_at) FROM purchases WHERE workspace_id = ?",
                 (wid,),
@@ -521,7 +528,13 @@ def verify_business_reports(
 
         ref_date: str | None = None
         if ref_ts:
-            ref_date = str(ref_ts)[:10]
+            dt = datetime.fromisoformat(str(ref_ts).replace("Z", "+00:00"))
+            try:
+                from zoneinfo import ZoneInfo
+                tz = ZoneInfo(tz_name)
+            except Exception:
+                tz = timezone(timedelta(hours=7))
+            ref_date = dt.astimezone(tz).date().isoformat()
 
         src_rep = src_service.get_daily_report(wid, target_actor, date_str=ref_date)
         dst_rep = dst_service.get_daily_report(wid, target_actor, date_str=ref_date)

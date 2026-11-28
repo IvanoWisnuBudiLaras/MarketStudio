@@ -46,6 +46,19 @@ Rollback lokal memakai commit `2966d968852b1079e688e3596a51bea21b6f944b` di chec
 - Pilihan ruang kerja mengikuti sesi tab dan identitas. Kedua rute memvalidasi pilihan terhadap daftar workspace dari API. Saat berpindah ruang kerja, simpan edit lembar kerja terlebih dahulu. Referensi omzet worksheet memakai tanggal hari ini menurut zona waktu workspace.
 - Alur lokal memakai perintah V3 di atas. Jalankan `npm run build && npm run typecheck && npx playwright test` dari `web/` setelah menyiapkan runtime dan browser uji. Screenshot tersimpan di `web/test-results/` dan diunggah oleh job CI V3. Rollback shell secara lokal dapat memakai base PR #84 `bc72fd962db64ea8631fcd35588bfa568085cbef` dengan database V3 yang sama.
 
+### V3 P3 · AI Business Review via 9Router (Refs #14)
+
+- Menghubungkan jalur AI Business Review read-only pada Business Studio V3 via adapter OpenAI-compatible 9Router lokal (`http://127.0.0.1:20128/v1/chat/completions`) yang opt-in via env server-only `MARKETSTUDIO_9ROUTER_URL` dan `MARKETSTUDIO_9ROUTER_MODEL` (default model: `ag/gemini-3.8-flash`).
+- Origin privat terkendali (loopback only) untuk mencegah SSRF, validasi angka ketat terhadap snapshot finansial, pelabelan provenance transparan (AI Terhubung vs Fallback Deterministik Lokal vs Simulasi Stub Test), anti-enumeration 404 bagi non-anggota, dan zero ledger mutation.
+- Status D08/V3: Next.js App Router + FastAPI modular monolith transport + SQLite lokal (siap PostgreSQL/Supabase), D21 baseline dan rollback dipertahankan.
+- Perintah verifikasi:
+  ```sh
+  python3 scripts/check_repository.py
+  python3 -W error::ResourceWarning -m unittest discover -s tests
+  uv run --locked --extra v3 python -m unittest discover -s tests -p test_v3_transport.py
+  cd web && npm run build && npm run typecheck && npx playwright test
+  ```
+
 ## 1. Cara Menjalankan Aplikasi
 
 MarketStudio dirancang sebagai runnable baseline modular monolith tanpa dependensi eksternal wajib untuk eksekusi lokal standar.
@@ -343,7 +356,11 @@ Mengikuti Product Alignment Matrix:
 
 ## 17. Current Commit & Checkpoint
 
-- **Branch Aktif:** `IvanoWisnuBudiLaras/shared-shell-76`
-- **Tujuan Merge:** `origin/main` (Issue #76 Closes #76)
-- **Base Commit:** `88009ad86650b751c3347c15788e3ec0a659110d`
-- **Pekerjaan Terkini:** P1 Shared Shell (Navy Collapsible Sidebar 240px/64px + Topbar) dan P2 Business Studio Overview (4 KPIs, Cash Summary, Critical Stock, Recent Transactions, AI Review Spotlight).
+- **Branch Aktif:** `IvanoWisnuBudiLaras/v3-ai-review-14`
+- **Worktree:** `/mnt/windows/dev/workspace/MarketStudio/v3-ai-review-14`
+- **Tujuan Merge:** `origin/main` (Refs #14)
+- **Base Commit:** `73c8f2958d78dcc954f0cefb48e36f5d31280315`
+- **Head Commit (Refs #14):** `bb9fbc75cbbb36474bdaad4fe7b3c42286d794a6`
+- **Pekerjaan Terkini:** V3 AI Business Review via opt-in 9Router adapter (OpenAI-compatible `127.0.0.1:20128`), FastAPI transport `/reports/daily/ai-review`, Next.js proxy allowlist, UI AIReviewPanel dengan provenance badges, strict snapshot citation validation, zero ledger mutation, dan 404 anti-enumeration.
+- **Blocker:** Nihil. Semua contract tests, transport parity, dan e2e Playwright lulus. Live smoke live aplikasi akan divalidasi oleh Atlas secara terisolasi.
+- **Next Executable Step:** Buka Draft PR Refs #14, jalankan review independen bot Nexus pada exact HEAD SHA.

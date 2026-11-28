@@ -3,9 +3,9 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChartNoAxesColumnIncreasing, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Sheet } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChartNoAxesColumnIncreasing, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, Sheet, Sparkles } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
-import { api, ApiError, type DailyReport, type Offering, type Workspace } from "./client";
+import { api, ApiError, type AIReviewItem, type DailyReport, type Offering, type Workspace } from "./client";
 import { Panel } from "./panel";
 
 const Worksheet = dynamic(() => import("./worksheet/editor"), { ssr: false, loading: () => <p role="status">Memuat editor…</p> });
@@ -228,9 +228,14 @@ function WorkspaceView({ workspace, token, write, isWorksheet }: {
   const [report, setReport] = useState<DailyReport>();
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  const [aiReview, setAiReview] = useState<AIReviewItem>();
+  const [loadingReview, setLoadingReview] = useState(false);
+  const [reviewError, setReviewError] = useState("");
 
   useEffect(() => {
     let active = true;
+    setAiReview(undefined);
+    setReviewError("");
     Promise.all([
       isWorksheet ? undefined : api<{items: Offering[]}>(`${path}/offerings?status=active`, token),
       api<{report: DailyReport}>(`${path}/reports/daily?date=${encodeURIComponent(date)}`, token),
@@ -244,6 +249,23 @@ function WorkspaceView({ workspace, token, write, isWorksheet }: {
     });
     return () => { active = false; };
   }, [date, path, token, revision, isWorksheet]);
+
+  async function runAiReview() {
+    setLoadingReview(true);
+    setReviewError("");
+    try {
+      const { item } = await api<{ item: AIReviewItem }>(
+        `${path}/reports/daily/ai-review`,
+        token,
+        { date }
+      );
+      setAiReview(item);
+    } catch (failure) {
+      setReviewError(failure instanceof ApiError ? failure.message : "AI Review gagal dijalankan.");
+    } finally {
+      setLoadingReview(false);
+    }
+  }
 
   async function save(endpoint: string, body: object) {
     await write(`${path}/${endpoint}`, body);
@@ -265,6 +287,13 @@ function WorkspaceView({ workspace, token, write, isWorksheet }: {
       }} /></label>
       {report ? <ReportView report={report} /> : !error && <p role="status">Memuat laporan…</p>}
     </Panel>
+    <AIReviewPanel
+      review={aiReview}
+      loading={loadingReview}
+      error={reviewError}
+      onRun={runAiReview}
+      disabled={!report}
+    />
     <div id="transaksi" tabIndex={-1} className="transaction-grid">
       <Panel title="Tambah produk">
         <Form label="Simpan produk" onSubmit={data => save("offerings", {
@@ -343,4 +372,114 @@ function ReportView({ report }: { report: DailyReport }) {
       </div>
     </div>
   </>;
+}
+
+function AIReviewPanel({
+  review,
+  loading,
+  error,
+  onRun,
+  disabled,
+}: {
+  review?: AIReviewItem;
+  loading: boolean;
+  error: string;
+  onRun: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <Panel title="AI Business Review">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <p className="text-sm text-slate-700 max-w-xl">
+          Analisis otomatis terhadap snapshot laporan harian aktif dengan verifikasi rujukan angka riil.
+        </p>
+        <button
+          type="button"
+          onClick={onRun}
+          disabled={disabled || loading}
+          aria-busy={loading}
+          className="review-action-btn"
+        >
+          <Sparkles size={16} aria-hidden />
+          {loading ? "Menganalisis laporan…" : review ? "Perbarui AI Review" : "Jalankan AI Review"}
+        </button>
+      </div>
+
+      {loading && <p role="status" className="text-slate-600">Menghubungkan analisis AI ke snapshot laporan…</p>}
+      {error && <p role="alert">{error}</p>}
+
+      {!loading && !error && !review && (
+        <p className="text-slate-600 text-sm">
+          Klik &quot;Jalankan AI Review&quot; untuk menganalisis metrik omzet, HPP, arus kas, dan stok akhir periode ini dengan rujukan angka riil.
+        </p>
+      )}
+
+      {!loading && review && (
+        <article className="ai-review-content grid gap-4" aria-label="Hasil AI Business Review">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`provenance-badge ${
+                review.provider_mode === "live_provider"
+                  ? "live"
+                  : review.provider_mode === "stub_test"
+                  ? "stub"
+                  : "fallback"
+              }`}
+            >
+              {review.provider_mode === "live_provider"
+                ? `AI Terhubung (${review.config_status.provider ?? "9Router"}: ${review.config_status.model ?? "ag/gemini-3.8-flash"})`
+                : review.provider_mode === "stub_test"
+                ? "Simulasi AI (Stub Test)"
+                : `Fallback Deterministik (Lokal${review.fallback_reason ? `: ${review.fallback_reason}` : ""})`}
+            </span>
+            {review.status === "fallback" && (
+              <span className="fallback-note text-xs text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                Mode fallback aktif: interpretasi berbasis fakta lokal.
+              </span>
+            )}
+          </div>
+
+          <div className="review-summary">
+            <h3 className="font-semibold text-base mb-1">Ringkasan Analisis</h3>
+            <p className="leading-relaxed">{review.review.summary}</p>
+          </div>
+
+          {review.review.highlights.length > 0 && (
+            <div className="review-highlights">
+              <h3 className="font-semibold text-base mb-1">Temuan Kunci</h3>
+              <ul className="list-disc pl-5 space-y-1">
+                {review.review.highlights.map((h, i) => (
+                  <li key={i}>{h}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {review.review.missing_data.length > 0 && (
+            <div className="review-limitations text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded p-3">
+              <h4 className="font-semibold text-slate-800 mb-1">Catatan Data &amp; Batasan:</h4>
+              <ul className="list-disc pl-5 space-y-0.5">
+                {review.review.missing_data.map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="review-citations text-xs text-slate-600 border-t border-slate-200 pt-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <span>
+                Rujukan snapshot: <code>{review.review.citations.snapshot_id}</code>
+              </span>
+              <span>Periode: {review.review.citations.period_date}</span>
+              <span>{review.review.citations.source_ids.length} transaksi diverifikasi</span>
+            </div>
+            <p className="mt-1.5 italic text-slate-500">
+              AI Review bersifat read-only dan tidak mengubah transaksi atau pembukuan keuangan.
+            </p>
+          </div>
+        </article>
+      )}
+    </Panel>
+  );
 }

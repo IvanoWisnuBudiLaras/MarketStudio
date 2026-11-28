@@ -79,10 +79,41 @@ class TransportParity(unittest.TestCase):
             inv = report["ending_inventory"]["items"][0]
             self.assertEqual((inv["qty_remaining"], inv["value_idr"]), ("8", 96000))
             self.assertEqual(len(report["drill_down"]["sales"]), 1)
+            ai_rev = check(client.post(f"{path}/reports/daily/ai-review", json={}, headers=headers), 200)["item"]
+            self.assertTrue(ai_rev["read_only"])
+            self.assertEqual(ai_rev["status"], "fallback")
+            cfg = check(client.get(f"{path}/ai-review/config", headers=headers), 200)["item"]
+            self.assertIn("configured", cfg)
             return cases, metrics
 
         legacy_actor, legacy_password = next(iter(SYNTHETIC_PRINCIPALS.items()))
         self.assertEqual(run(self.old, legacy_actor, legacy_password), run(self.new, "authorized", self.credentials["authorized"]))
+
+    def test_ai_review_tenant_isolation_and_auth(self):
+        def headers_for(identity):
+            session = self.new.post("/v1/sessions", json={
+                "actor_id": identity, "passcode": self.credentials[identity],
+            }).json()["item"]
+            return {"X-Session-Token": session["token"]}
+
+        headers = headers_for("authorized")
+        workspace = self.new.post("/v1/workspaces", headers=headers, json={"name": "Warung Padi"}).json()["item"]
+        path = f"/v1/workspaces/{workspace['workspace_id']}"
+
+        # 401 unauthenticated
+        self.assertEqual(self.new.post(f"{path}/reports/daily/ai-review", json={}).status_code, 401)
+        self.assertEqual(self.new.get(f"{path}/ai-review/config").status_code, 401)
+
+        # 404 non-member (anti-enumeration)
+        other = headers_for("other")
+        self.assertEqual(self.new.post(f"{path}/reports/daily/ai-review", json={}, headers=other).status_code, 404)
+        self.assertEqual(self.new.get(f"{path}/ai-review/config", headers=other).status_code, 404)
+
+        # 200 authorized
+        res = self.new.post(f"{path}/reports/daily/ai-review", json={}, headers=headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()["item"]["read_only"])
+        self.assertTrue(res.json()["item"]["ledger_unchanged"])
 
     def test_worksheet_validation_and_revisions(self):
         def headers_for(identity):

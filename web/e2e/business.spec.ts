@@ -161,6 +161,18 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
     expect(sql(db, "SELECT total_revenue_idr,total_cogs_idr FROM sales")).toBe("[(29000, 24000)]");
     expect(sql(db, "SELECT amount_idr FROM cash_movements ORDER BY direction")).toBe("[(29000,), (120000,)]");
 
+    const aiReviewPanel = page.getByRole("heading", { name: "AI Business Review" }).locator("..");
+    await expect(aiReviewPanel.getByRole("button", { name: "Jalankan AI Review" })).toBeVisible();
+    await aiReviewPanel.getByRole("button", { name: "Jalankan AI Review" }).click();
+    await expect(aiReviewPanel.getByLabel("Hasil AI Business Review")).toBeVisible();
+    await expect(aiReviewPanel.getByText("Ringkasan Analisis")).toBeVisible();
+    await expect(aiReviewPanel.getByText(/Omzet Rp\s?29[,.]000/)).toBeVisible();
+    await expect(aiReviewPanel.getByText(/Fallback Deterministik|AI Terhubung/)).toBeVisible();
+    await expect(aiReviewPanel.getByText(/read-only dan tidak mengubah transaksi/)).toBeVisible();
+    const aiScreenshot = testInfo.outputPath("business-ai-review-1440.png");
+    await page.screenshot({ path: aiScreenshot, fullPage: true });
+    await testInfo.attach("Hasil AI Business Review", { path: aiScreenshot, contentType: "image/png" });
+
     const ledger = () => ["sales", "purchases", "cash_movements", "stock_movements"]
       .map(table => sql(db, `SELECT * FROM ${table} ORDER BY rowid`));
     const before = ledger();
@@ -260,9 +272,18 @@ test("schema-only business journey, replay, rollback, restart and tenant isolati
         const worksheetSave = await fetch(`/api/workspaces/${id}/worksheet`, {
           method: "PUT", headers, body: JSON.stringify({ cells: {}, revision: 1 }),
         });
-        return { worksheet: worksheet.status, worksheetSave: worksheetSave.status, status: report.status, cache: report.headers.get("cache-control"), body: await report.json(), write: write.status, blocked: blocked.status };
+        const aiReview = await fetch(`/api/workspaces/${id}/reports/daily/ai-review`, { method: "POST", headers, body: "{}" });
+        const aiConfig = await fetch(`/api/workspaces/${id}/ai-review/config`, { headers });
+        return {
+          worksheet: worksheet.status, worksheetSave: worksheetSave.status, status: report.status,
+          cache: report.headers.get("cache-control"), body: await report.json(), write: write.status,
+          blocked: blocked.status, aiReview: aiReview.status, aiConfig: aiConfig.status,
+        };
       }, workspace);
-      expect(result).toMatchObject({ status: 404, cache: "no-store", body: { code: "workspace_not_found" }, write: 404, blocked: 404, worksheet: 404, worksheetSave: 404 });
+      expect(result).toMatchObject({
+        status: 404, cache: "no-store", body: { code: "workspace_not_found" }, write: 404, blocked: 404,
+        worksheet: 404, worksheetSave: 404, aiReview: 404, aiConfig: 404,
+      });
     } finally {
       await other.close();
     }

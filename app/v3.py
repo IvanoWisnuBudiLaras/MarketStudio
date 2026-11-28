@@ -224,6 +224,23 @@ def daily_report(request: Request, workspace_id: str, principal: str = Depends(a
     return reply(request, 200, report=result)
 
 
+@app.post("/v1/workspaces/{workspace_id}/reports/daily/ai-review", response_model=Item, status_code=200,
+          openapi_extra=body_schema("date", "stub_mode", "timeout_seconds"))
+def daily_ai_review(request: Request, workspace_id: str, principal: str = Depends(actor), data: dict = Depends(payload)):
+    result = request.app.state.service.run_daily_ai_review(
+        workspace_id, actor_id=principal, payload=data
+    )
+    return reply(request, 200, item=result)
+
+
+@app.get("/v1/workspaces/{workspace_id}/ai-review/config", response_model=Item)
+def ai_review_config(request: Request, workspace_id: str, principal: str = Depends(actor)):
+    result = request.app.state.service.get_ai_review_config(
+        workspace_id, actor_id=principal
+    )
+    return reply(request, 200, item=result)
+
+
 def validate_worksheet(data: dict) -> tuple[int, str]:
     def invalid():
         return DomainError(422, "invalid_worksheet", "Isi lembar kerja tidak valid.")
