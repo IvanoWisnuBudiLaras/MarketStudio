@@ -34,3 +34,8 @@ Jangan menjalankan semua roadmap sekaligus. Baca ticket yang disetujui dan depen
   python3 -W error::ResourceWarning -m unittest discover -s tests -v
   python3 scripts/check_repository.py
   ```
+- **Smoke Check (Issue #43):**
+  ```sh
+  python3 scripts/smoke_check.py http://127.0.0.1:8000 --timeout 5.0
+  ```
+  Lihat [docs/engineering/SMOKE_CHECK.md](docs/engineering/SMOKE_CHECK.md) untuk dokumentasi lengkap dan bukti pengujian.
