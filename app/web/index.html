@@ -1080,6 +1080,36 @@
       font-weight: 600;
     }
 
+    .status-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status-text {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .status .btn-retry {
+      flex: 0 0 auto;
+      min-height: 44px;
+      min-width: 44px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--surface);
+      color: var(--err);
+      border: 1px solid var(--err-border);
+      cursor: pointer;
+    }
+
+    .status .btn-retry:hover {
+      background: var(--surface-elevated);
+    }
+
     /* KPI Cards */
     .kpi-grid {
       display: grid;
@@ -2728,9 +2758,9 @@
       }, 20);
     }
 
-    function setStatus(el, msg, variant = "ok") {
+    function setStatus(el, msg, variant = "ok", action = null) {
       if (!el) return;
-      el.textContent = msg;
+      el.replaceChildren();
       if (!msg) {
         el.className = "status";
         el.removeAttribute("role");
@@ -2738,6 +2768,23 @@
       }
       const cls = variant === true || variant === "err" ? "err" : (variant === "info" ? "info" : "ok");
       el.className = "status " + cls;
+      if (action && action.label && typeof action.onClick === "function") {
+        const wrap = document.createElement("div");
+        wrap.className = "status-content";
+        const textSpan = document.createElement("span");
+        textSpan.className = "status-text";
+        textSpan.textContent = msg;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        if (action.id) btn.id = action.id;
+        btn.className = "btn btn-secondary btn-retry";
+        btn.textContent = action.label;
+        btn.addEventListener("click", action.onClick);
+        wrap.append(textSpan, btn);
+        el.appendChild(wrap);
+      } else {
+        el.textContent = msg;
+      }
       if (cls === "err") {
         el.closest("form")?.querySelector('[aria-invalid="true"]')?.focus();
         el.setAttribute("role", "alert");
@@ -4422,10 +4469,19 @@
     });
 
     // Purchase Form
-    purOffering.addEventListener("change", updatePurchaseContextHints);
+    purOffering.addEventListener("change", () => {
+      updatePurchaseContextHints();
+      const retryBtn = document.getElementById("purRetryBtn");
+      if (retryBtn) retryBtn.remove();
+      pendingPurKey = "";
+      localStorage.removeItem(PUR_KEY_STORAGE);
+    });
     document.getElementById("purQty").addEventListener("input", updatePurchaseContextHints);
     document.getElementById("purCost").addEventListener("input", updatePurchaseContextHints);
-    document.getElementById("purchaseForm").addEventListener("input", () => {
+    document.getElementById("purchaseForm").addEventListener("input", (e) => {
+      if (e && e.target && e.target.id === "purRetryBtn") return;
+      const retryBtn = document.getElementById("purRetryBtn");
+      if (retryBtn) retryBtn.remove();
       pendingPurKey = "";
       localStorage.removeItem(PUR_KEY_STORAGE);
     });
@@ -4459,6 +4515,12 @@
       const btn = document.getElementById("purSubmitBtn");
       if (btn.disabled) return;
       btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      const origBtnText = btn.textContent;
+      btn.textContent = "Sedang menyimpan...";
+      const purForm = document.getElementById("purchaseForm");
+      purForm.setAttribute("aria-busy", "true");
+
       const payload = {
         offering_id: offId,
         qty: rawQty,
@@ -4467,7 +4529,7 @@
       pendingPurKey = getScopedKey(PUR_KEY_STORAGE, activeWorkspaceId, payload);
       const reqWsId = activeWorkspaceId;
       const workspaceVersion = workspaceUiVersion;
-      setStatus(purStatus, "Menyimpan pembelian tunai...", "info");
+      setStatus(purStatus, "Sedang menyimpan pembelian...", "info");
       try {
         const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/purchases`, {
           method: "POST",
@@ -4485,7 +4547,15 @@
           if (fe.total_cost_idr) setFieldError("purCost", "purCostErr", fe.total_cost_idr);
           return setStatus(purStatus, data.message || "Data pembelian tidak valid.", "err");
         }
-        if (!res.ok) return setStatus(purStatus, data.message || "Gagal mencatat pembelian.", "err");
+        if (!res.ok) {
+          return setStatus(purStatus, data.message || "Gagal mencatat pembelian. Periksa koneksi lalu coba lagi.", "err", {
+            id: "purRetryBtn",
+            label: "Coba Lagi",
+            onClick: () => {
+              purForm.requestSubmit();
+            }
+          });
+        }
         pendingPurKey = "";
         localStorage.removeItem(PUR_KEY_STORAGE);
         setStatus(purStatus, `Pembelian tersimpan (${data.item.purchase_id}). Stok dan kas diperbarui.`, "ok");
@@ -4493,10 +4563,19 @@
         await Promise.all([loadOfferings(), loadReport()]);
       } catch {
         if (reqWsId === activeWorkspaceId && workspaceVersion === workspaceUiVersion) {
-          setStatus(purStatus, "Koneksi terganggu. Kirim ulang isian yang sama untuk mencoba lagi.", "err");
+          setStatus(purStatus, "Koneksi terganggu. Isian formulir tetap tersimpan. Periksa jaringan Anda lalu klik Coba Lagi untuk mencoba lagi.", "err", {
+            id: "purRetryBtn",
+            label: "Coba Lagi",
+            onClick: () => {
+              purForm.requestSubmit();
+            }
+          });
         }
       } finally {
         btn.disabled = false;
+        btn.removeAttribute("aria-busy");
+        btn.textContent = origBtnText;
+        purForm.removeAttribute("aria-busy");
       }
     });
 
@@ -4504,6 +4583,10 @@
     saleOffering.addEventListener("change", () => {
       salePriceManualEdited = false;
       updateSaleContextHints(true);
+      const retryBtn = document.getElementById("saleRetryBtn");
+      if (retryBtn) retryBtn.remove();
+      pendingSaleKey = "";
+      localStorage.removeItem(SALE_KEY_STORAGE);
     });
     document.getElementById("saleQty").addEventListener("input", () => updateSaleContextHints(false));
     document.getElementById("salePrice").addEventListener("input", () => {
@@ -4512,8 +4595,15 @@
     document.getElementById("saleSuggestResetBtn").addEventListener("click", () => {
       salePriceManualEdited = false;
       updateSaleContextHints(true);
+      const retryBtn = document.getElementById("saleRetryBtn");
+      if (retryBtn) retryBtn.remove();
+      pendingSaleKey = "";
+      localStorage.removeItem(SALE_KEY_STORAGE);
     });
-    document.getElementById("saleForm").addEventListener("input", () => {
+    document.getElementById("saleForm").addEventListener("input", (e) => {
+      if (e && e.target && e.target.id === "saleRetryBtn") return;
+      const retryBtn = document.getElementById("saleRetryBtn");
+      if (retryBtn) retryBtn.remove();
       pendingSaleKey = "";
       localStorage.removeItem(SALE_KEY_STORAGE);
     });
@@ -4547,6 +4637,14 @@
       const btn = document.getElementById("saleSubmitBtn");
       if (btn.disabled) return;
       btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      const origBtnText = btn.textContent;
+      btn.textContent = "Sedang menyimpan...";
+      const saleForm = document.getElementById("saleForm");
+      saleForm.setAttribute("aria-busy", "true");
+      const resetBtn = document.getElementById("saleSuggestResetBtn");
+      if (resetBtn) resetBtn.disabled = true;
+
       const payload = {
         lines: [{
           offering_id: offId,
@@ -4557,7 +4655,7 @@
       pendingSaleKey = getScopedKey(SALE_KEY_STORAGE, activeWorkspaceId, payload);
       const reqWsId = activeWorkspaceId;
       const workspaceVersion = workspaceUiVersion;
-      setStatus(saleStatus, "Menyimpan penjualan tunai...", "info");
+      setStatus(saleStatus, "Sedang menyimpan penjualan...", "info");
       try {
         const res = await apiFetch(`/v1/workspaces/${encodeURIComponent(activeWorkspaceId)}/sales`, {
           method: "POST",
@@ -4575,7 +4673,15 @@
           if (data.code === "insufficient_stock") setFieldError("saleQty", "saleQtyErr", "Kurangi jumlah hingga sesuai stok tersedia, atau catat pembelian stok terlebih dahulu.");
           return setStatus(saleStatus, data.message || "Data penjualan ditolak.", "err");
         }
-        if (!res.ok) return setStatus(saleStatus, data.message || "Gagal mencatat penjualan.", "err");
+        if (!res.ok) {
+          return setStatus(saleStatus, data.message || "Gagal mencatat penjualan. Periksa koneksi lalu coba lagi.", "err", {
+            id: "saleRetryBtn",
+            label: "Coba Lagi",
+            onClick: () => {
+              saleForm.requestSubmit();
+            }
+          });
+        }
         pendingSaleKey = "";
         localStorage.removeItem(SALE_KEY_STORAGE);
         const hppInfo = data.item.total_cogs_idr !== null
@@ -4586,10 +4692,20 @@
         await Promise.all([loadOfferings(), loadReport()]);
       } catch {
         if (reqWsId === activeWorkspaceId && workspaceVersion === workspaceUiVersion) {
-          setStatus(saleStatus, "Koneksi terganggu. Kirim ulang isian yang sama untuk mencoba lagi.", "err");
+          setStatus(saleStatus, "Koneksi terganggu. Isian formulir tetap tersimpan. Periksa jaringan Anda lalu klik Coba Lagi untuk mencoba lagi.", "err", {
+            id: "saleRetryBtn",
+            label: "Coba Lagi",
+            onClick: () => {
+              saleForm.requestSubmit();
+            }
+          });
         }
       } finally {
         btn.disabled = false;
+        btn.removeAttribute("aria-busy");
+        btn.textContent = origBtnText;
+        if (resetBtn) resetBtn.disabled = false;
+        saleForm.removeAttribute("aria-busy");
       }
     });
 
