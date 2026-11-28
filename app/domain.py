@@ -103,6 +103,7 @@ class OfferingInput:
     tax_status: str = "not_assessed"
     tax_reason: str = DEFAULT_TAX_REASON
     description: str = ""
+    service_cost_idr: int | None = None
 
 
 @dataclass(frozen=True)
@@ -200,6 +201,16 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
     elif raw_val_method is not None and raw_val_method != "WA":
         errors["valuation_method"] = "Metode valuasi terkunci pada 'WA' (Weighted Average) untuk baseline ini."
 
+    raw_service_cost = payload.get("service_cost_idr")
+    service_cost_idr: int | None = None
+    if raw_service_cost is not None and raw_service_cost != "":
+        if offering_type == "goods":
+            errors["service_cost_idr"] = "Offering tipe 'goods' tidak dapat memiliki service_cost_idr (biaya barang berasal dari persediaan WA)."
+        elif isinstance(raw_service_cost, bool) or not isinstance(raw_service_cost, int) or raw_service_cost < 0 or raw_service_cost > 10**15:
+            errors["service_cost_idr"] = "Biaya dasar jasa (IDR) harus berupa bilangan bulat 0..10^15."
+        else:
+            service_cost_idr = raw_service_cost
+
     if errors:
         raise DomainError(422, "validation_error", "Data produk/jasa tidak valid.", errors)
 
@@ -221,6 +232,48 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
         tax_status=tax_status,
         tax_reason=tax_reason,
         description=description.strip(),
+        service_cost_idr=service_cost_idr,
+    )
+
+
+@dataclass(frozen=True)
+class PricingDecisionInput:
+    new_price_idr: int
+    service_cost_idr: int | None = None
+    strategy_notes: str = ""
+
+
+def validate_pricing_decision_input(payload: dict[str, Any], offering_type: str = "goods") -> PricingDecisionInput:
+    """Validate pricing decision payload."""
+    errors: dict[str, str] = {}
+    raw_price = payload.get("new_price_idr")
+    if raw_price is None and "unit_price_idr" in payload:
+        raw_price = payload.get("unit_price_idr")
+    if isinstance(raw_price, bool) or not isinstance(raw_price, int) or raw_price < 0 or raw_price > 10**15:
+        errors["new_price_idr"] = "Harga baru (IDR) harus bilangan bulat 0..10^15."
+
+    raw_service_cost = payload.get("service_cost_idr")
+    service_cost_idr: int | None = None
+    if raw_service_cost is not None and raw_service_cost != "":
+        if offering_type == "goods":
+            errors["service_cost_idr"] = "Offering tipe 'goods' tidak dapat memiliki service_cost_idr (biaya barang berasal dari persediaan WA)."
+        elif isinstance(raw_service_cost, bool) or not isinstance(raw_service_cost, int) or raw_service_cost < 0 or raw_service_cost > 10**15:
+            errors["service_cost_idr"] = "Biaya dasar jasa (IDR) harus berupa bilangan bulat 0..10^15."
+        else:
+            service_cost_idr = raw_service_cost
+
+    raw_notes = payload.get("strategy_notes", payload.get("notes", ""))
+    notes = raw_notes.strip() if isinstance(raw_notes, str) else ""
+    if len(notes) > 500:
+        errors["strategy_notes"] = "Catatan strategi harga maksimal 500 karakter."
+
+    if errors or raw_price is None:
+        raise DomainError(422, "validation_error", "Data keputusan harga tidak valid.", errors)
+
+    return PricingDecisionInput(
+        new_price_idr=raw_price,
+        service_cost_idr=service_cost_idr,
+        strategy_notes=notes,
     )
 
 

@@ -50,6 +50,7 @@ from app.domain import (
     round_idr,
     validate_benchmark_input,
     validate_offering_input,
+    validate_pricing_decision_input,
     validate_purchase_input,
     validate_sale_input,
     validate_simulation_input,
@@ -135,13 +136,70 @@ def _row_to_offering(row: Any) -> dict[str, Any]:
         qty_on_hand = None
         inventory_value_idr = None
         wa_unit_cost_idr = None
+
+    service_cost_idr: int | None = (
+        int(row["service_cost_idr"])
+        if "service_cost_idr" in keys and row["service_cost_idr"] is not None
+        else None
+    )
+    is_archived: bool = bool(row["is_archived"]) if "is_archived" in keys else False
+    archived_at: str | None = row["archived_at"] if "archived_at" in keys else None
+
+    offering_type = row["offering_type"]
+    unit_price_idr = int(row["unit_price_idr"])
+
+    unit_cost_idr: int | None = None
+    cost_status: str = "unknown"
+    cost_source: str = "unknown"
+    cost_source_label: str = "Belum diketahui"
+
+    if offering_type == "goods":
+        if wa_unit_cost_idr is not None:
+            unit_cost_idr = wa_unit_cost_idr
+            cost_status = "known"
+            cost_source = "inventory_wa"
+            cost_source_label = "Saldo Persediaan (WA)"
+    elif offering_type == "service":
+        if service_cost_idr is not None:
+            unit_cost_idr = service_cost_idr
+            cost_status = "known"
+            cost_source = "service_input"
+            cost_source_label = "Biaya Dasar Jasa"
+    elif offering_type == "hybrid":
+        if wa_unit_cost_idr is not None and service_cost_idr is not None:
+            unit_cost_idr = wa_unit_cost_idr + service_cost_idr
+            cost_status = "known"
+            cost_source = "hybrid"
+            cost_source_label = "Kombinasi (WA + Jasa)"
+        elif wa_unit_cost_idr is not None:
+            unit_cost_idr = wa_unit_cost_idr
+            cost_status = "known"
+            cost_source = "inventory_wa"
+            cost_source_label = "Saldo Persediaan (WA)"
+        elif service_cost_idr is not None:
+            unit_cost_idr = service_cost_idr
+            cost_status = "known"
+            cost_source = "service_input"
+            cost_source_label = "Biaya Dasar Jasa"
+
+    if unit_cost_idr is not None:
+        margin_idr: int | None = unit_price_idr - unit_cost_idr
+        margin_pct: float | None = (
+            round(((unit_price_idr - unit_cost_idr) / unit_price_idr) * 100, 2)
+            if unit_price_idr > 0
+            else 0.0
+        )
+    else:
+        margin_idr = None
+        margin_pct = None
+
     return {
         "offering_id": row["offering_id"],
         "workspace_id": row["workspace_id"],
         "name": row["name"],
         "description": row["description"],
         "offering_type": row["offering_type"],
-        "unit_price_idr": row["unit_price_idr"],
+        "unit_price_idr": unit_price_idr,
         "currency": "IDR",
         "unit": row["unit"],
         "requires_stock_movement": req_stock,
@@ -149,6 +207,16 @@ def _row_to_offering(row: Any) -> dict[str, Any]:
         "qty_on_hand": qty_on_hand,
         "inventory_value_idr": inventory_value_idr,
         "wa_unit_cost_idr": wa_unit_cost_idr,
+        "service_cost_idr": service_cost_idr,
+        "unit_cost_idr": unit_cost_idr,
+        "cost_status": cost_status,
+        "cost_source": cost_source,
+        "cost_source_label": cost_source_label,
+        "margin_idr": margin_idr,
+        "margin_pct": margin_pct,
+        "is_archived": is_archived,
+        "archived_at": archived_at,
+        "status": "archived" if is_archived else "active",
         "tax_status": row["tax_status"],
         "tax_reason": row["tax_reason"],
         "created_at": row["created_at"],
@@ -405,21 +473,25 @@ class BaselineService:
         self,
         workspace_id: str,
         actor_id: str | None,
+        status: str | None = None,
         actor_status: str | None = None,
     ) -> list[dict[str, Any]]:
         with self._tx() as conn:
             self._assert_workspace_access(conn, workspace_id, actor_id)
-            rows = conn.execute(
-                """
+            query = """
                 SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
                 FROM offerings o
                 LEFT JOIN inventory_pools p
                     ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
                 WHERE o.workspace_id = ?
-                ORDER BY o.created_at ASC
-                """,
-                (workspace_id,),
-            ).fetchall()
+            """
+            params: list[Any] = [workspace_id]
+            if status == "active":
+                query += " AND o.is_archived = 0"
+            elif status == "archived":
+                query += " AND o.is_archived = 1"
+            query += " ORDER BY o.created_at ASC"
+            rows = conn.execute(query, tuple(params)).fetchall()
             return [_row_to_offering(r) for r in rows]
 
     def get_offering(
@@ -471,8 +543,9 @@ class BaselineService:
                 INSERT INTO offerings (
                     offering_id, workspace_id, name, offering_type, unit_price_idr,
                     unit, requires_stock_movement, valuation_method,
-                    tax_status, tax_reason, tax_amount, created_at, description
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+                    tax_status, tax_reason, tax_amount, created_at, description,
+                    service_cost_idr, is_archived, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 0, NULL)
                 """,
                 (
                     offering_id,
@@ -487,31 +560,236 @@ class BaselineService:
                     validated.tax_reason,
                     created_at,
                     validated.description,
+                    validated.service_cost_idr,
                 ),
             )
-            result = {
-                "offering_id": offering_id,
-                "workspace_id": workspace_id,
-                "name": validated.name,
-                "description": validated.description,
-                "offering_type": validated.offering_type,
-                "unit_price_idr": validated.unit_price_idr,
-                "currency": "IDR",
-                "unit": validated.unit,
-                "requires_stock_movement": bool(validated.requires_stock_movement),
-                "valuation_method": validated.valuation_method,
-                "qty_on_hand": "0" if validated.requires_stock_movement else None,
-                "inventory_value_idr": 0 if validated.requires_stock_movement else None,
-                "wa_unit_cost_idr": None,
-                "tax_status": validated.tax_status,
-                "tax_reason": validated.tax_reason,
-                "created_at": created_at,
-            }
+            row = conn.execute(
+                """
+                SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
+                FROM offerings o
+                LEFT JOIN inventory_pools p
+                    ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
+                WHERE o.workspace_id = ? AND o.offering_id = ?
+                """,
+                (workspace_id, offering_id),
+            ).fetchone()
+            result = _row_to_offering(row)
             _record_audit(conn, workspace_id, actor, "offering.created", "offering", offering_id, result)
             self._save_idempotency(
                 conn, workspace_id, "create_offering", idempotency_key, req_hash, 201, result, created_at
             )
             return 201, result
+
+    def archive_offering(
+        self,
+        workspace_id: str,
+        offering_id: str,
+        actor_id: str | None,
+        actor: str = "synthetic_owner",
+        actor_status: str | None = None,
+    ) -> dict[str, Any]:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+            row = conn.execute(
+                "SELECT * FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                (workspace_id, offering_id),
+            ).fetchone()
+            if not row:
+                raise DomainError(404, "offering_not_found", "Offering tidak ditemukan pada workspace ini.")
+            archived_at = _utc_now()
+            conn.execute(
+                "UPDATE offerings SET is_archived = 1, archived_at = ? WHERE workspace_id = ? AND offering_id = ?",
+                (archived_at, workspace_id, offering_id),
+            )
+            updated_row = conn.execute(
+                """
+                SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
+                FROM offerings o
+                LEFT JOIN inventory_pools p
+                    ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
+                WHERE o.workspace_id = ? AND o.offering_id = ?
+                """,
+                (workspace_id, offering_id),
+            ).fetchone()
+            result = _row_to_offering(updated_row)
+            _record_audit(conn, workspace_id, actor, "offering.archived", "offering", offering_id, result)
+            return result
+
+    def unarchive_offering(
+        self,
+        workspace_id: str,
+        offering_id: str,
+        actor_id: str | None,
+        actor: str = "synthetic_owner",
+        actor_status: str | None = None,
+    ) -> dict[str, Any]:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+            row = conn.execute(
+                "SELECT * FROM offerings WHERE workspace_id = ? AND offering_id = ?",
+                (workspace_id, offering_id),
+            ).fetchone()
+            if not row:
+                raise DomainError(404, "offering_not_found", "Offering tidak ditemukan pada workspace ini.")
+            conn.execute(
+                "UPDATE offerings SET is_archived = 0, archived_at = NULL WHERE workspace_id = ? AND offering_id = ?",
+                (workspace_id, offering_id),
+            )
+            updated_row = conn.execute(
+                """
+                SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
+                FROM offerings o
+                LEFT JOIN inventory_pools p
+                    ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
+                WHERE o.workspace_id = ? AND o.offering_id = ?
+                """,
+                (workspace_id, offering_id),
+            ).fetchone()
+            result = _row_to_offering(updated_row)
+            _record_audit(conn, workspace_id, actor, "offering.unarchived", "offering", offering_id, result)
+            return result
+
+    def save_pricing_decision(
+        self,
+        workspace_id: str,
+        offering_id: str,
+        actor_id: str | None,
+        payload: dict[str, Any],
+        idempotency_key: str | None = None,
+        actor: str = "synthetic_owner",
+        actor_status: str | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        with self._tx(immediate=True) as conn:
+            conn.acquire_write_lock(f"workspace:{workspace_id}")
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+            req_hash = _hash_payload(payload)
+            replay = self._check_idempotency(conn, workspace_id, f"pricing_{offering_id}", idempotency_key, req_hash)
+            if replay:
+                return replay
+
+            row = conn.execute(
+                """
+                SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
+                FROM offerings o
+                LEFT JOIN inventory_pools p
+                    ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
+                WHERE o.workspace_id = ? AND o.offering_id = ?
+                """,
+                (workspace_id, offering_id),
+            ).fetchone()
+            if not row:
+                raise DomainError(404, "offering_not_found", "Offering tidak ditemukan pada workspace ini.")
+
+            validated = validate_pricing_decision_input(payload, offering_type=row["offering_type"])
+            previous_price = int(row["unit_price_idr"])
+            new_price = validated.new_price_idr
+
+            if validated.service_cost_idr is not None:
+                conn.execute(
+                    "UPDATE offerings SET unit_price_idr = ?, service_cost_idr = ? WHERE workspace_id = ? AND offering_id = ?",
+                    (new_price, validated.service_cost_idr, workspace_id, offering_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE offerings SET unit_price_idr = ? WHERE workspace_id = ? AND offering_id = ?",
+                    (new_price, workspace_id, offering_id),
+                )
+
+            updated_row = conn.execute(
+                """
+                SELECT o.*, p.qty_on_hand AS pool_qty_on_hand, p.total_value_idr AS pool_total_value_idr
+                FROM offerings o
+                LEFT JOIN inventory_pools p
+                    ON p.workspace_id = o.workspace_id AND p.offering_id = o.offering_id
+                WHERE o.workspace_id = ? AND o.offering_id = ?
+                """,
+                (workspace_id, offering_id),
+            ).fetchone()
+            offering_dict = _row_to_offering(updated_row)
+
+            decision_id = f"prc_{uuid.uuid4().hex[:12]}"
+            created_at = _utc_now()
+            conn.execute(
+                """
+                INSERT INTO pricing_decisions (
+                    decision_id, workspace_id, offering_id, previous_price_idr,
+                    new_price_idr, unit_cost_idr, cost_status, margin_idr,
+                    margin_pct, strategy_notes, actor_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    decision_id,
+                    workspace_id,
+                    offering_id,
+                    previous_price,
+                    new_price,
+                    offering_dict["unit_cost_idr"],
+                    offering_dict["cost_status"],
+                    offering_dict["margin_idr"],
+                    offering_dict["margin_pct"],
+                    validated.strategy_notes,
+                    actor_id or actor,
+                    created_at,
+                ),
+            )
+
+            decision_dict = {
+                "decision_id": decision_id,
+                "workspace_id": workspace_id,
+                "offering_id": offering_id,
+                "previous_price_idr": previous_price,
+                "new_price_idr": new_price,
+                "unit_cost_idr": offering_dict["unit_cost_idr"],
+                "cost_status": offering_dict["cost_status"],
+                "margin_idr": offering_dict["margin_idr"],
+                "margin_pct": offering_dict["margin_pct"],
+                "strategy_notes": validated.strategy_notes,
+                "actor_id": actor_id or actor,
+                "created_at": created_at,
+            }
+
+            audit_payload = {
+                "decision_id": decision_id,
+                "offering_id": offering_id,
+                "previous_price_idr": previous_price,
+                "new_price_idr": new_price,
+                "strategy_notes": validated.strategy_notes,
+                "unit_cost_idr": offering_dict["unit_cost_idr"],
+                "cost_status": offering_dict["cost_status"],
+                "margin_idr": offering_dict["margin_idr"],
+                "margin_pct": offering_dict["margin_pct"],
+            }
+            _record_audit(conn, workspace_id, actor, "offering.pricing_updated", "offering", offering_id, audit_payload)
+
+            result = {
+                "decision": decision_dict,
+                "offering": offering_dict,
+            }
+            self._save_idempotency(
+                conn, workspace_id, f"pricing_{offering_id}", idempotency_key, req_hash, 200, result, created_at
+            )
+            return 200, result
+
+    def list_pricing_decisions(
+        self,
+        workspace_id: str,
+        offering_id: str,
+        actor_id: str | None,
+        actor_status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with self._tx() as conn:
+            self._assert_workspace_access(conn, workspace_id, actor_id)
+            rows = conn.execute(
+                """
+                SELECT * FROM pricing_decisions
+                WHERE workspace_id = ? AND offering_id = ?
+                ORDER BY created_at DESC
+                """,
+                (workspace_id, offering_id),
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def create_purchase(
         self,
@@ -538,6 +816,13 @@ class BaselineService:
             ).fetchone()
             if not off:
                 raise DomainError(404, "offering_not_found", "Offering tidak ditemukan pada workspace ini.")
+            if bool(off["is_archived"]):
+                raise DomainError(
+                    422,
+                    "offering_archived",
+                    f"Offering '{off['name']}' telah diarsipkan dan tidak dapat digunakan untuk transaksi baru.",
+                    {"offering_id": f"Offering '{off['name']}' telah diarsipkan."},
+                )
             if not off["requires_stock_movement"]:
                 raise DomainError(
                     422,
@@ -679,6 +964,13 @@ class BaselineService:
                 ).fetchone()
                 if not off:
                     raise DomainError(404, "offering_not_found", f"Offering {line.offering_id} tidak ditemukan.")
+                if bool(off["is_archived"]):
+                    raise DomainError(
+                        422,
+                        "offering_archived",
+                        f"Offering '{off['name']}' telah diarsipkan dan tidak dapat digunakan untuk transaksi baru.",
+                        {"lines": f"Offering '{off['name']}' telah diarsipkan."},
+                    )
 
                 revenue_idr = (
                     line.total_price_idr
