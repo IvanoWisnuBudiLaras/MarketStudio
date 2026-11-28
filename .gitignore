@@ -45,6 +45,10 @@ secrets/
 # Dependensi dan hasil build lokal
 node_modules/
 .next/
+next-env.d.ts
+*.tsbuildinfo
+playwright-report/
+test-results/
 .vercel/
 .venv/
 __pycache__/

@@ -252,10 +252,12 @@ class BaselineService:
         backend: str | None = None,
         pool: PostgresPoolManager | None = None,
         creative_assets_dir: str | Path | None = None,
+        session_principals: dict[str, str] | None = None,
     ) -> None:
         self.db_config = resolve_db_config(db_path=db_path, database_url=database_url, backend=backend)
         self.backend = self.db_config.backend
         self.db_path = self.db_config.target if self.backend == "sqlite" else self.db_config.display_target
+        self._session_principals = SYNTHETIC_PRINCIPALS if session_principals is None else session_principals
         self._pool = pool
         self._owns_pool = False
         self.creative_assets_dir = Path(creative_assets_dir) if creative_assets_dir is not None else DEFAULT_ASSETS_DIR
@@ -271,8 +273,8 @@ class BaselineService:
 
     def create_session(self, actor_id: str, passcode: str = "") -> dict[str, Any]:
         clean_actor = actor_id.strip() if isinstance(actor_id, str) else ""
-        expected = SYNTHETIC_PRINCIPALS.get(clean_actor)
-        if not expected or not isinstance(passcode, str) or not hmac.compare_digest(passcode, expected):
+        expected = self._session_principals.get(clean_actor)
+        if not expected or not isinstance(passcode, str) or not hmac.compare_digest(passcode.encode(), expected.encode()):
             raise DomainError(401, "unauthenticated", "Kredensial principal tidak valid.")
         token = f"sess_{uuid.uuid4().hex}"
         created_at = _utc_now()
