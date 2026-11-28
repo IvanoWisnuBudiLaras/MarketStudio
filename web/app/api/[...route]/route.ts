@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 
 const routes = {
-  GET: /^workspaces(?:\/ws_[a-f0-9]{12}\/(?:offerings|reports\/daily))?$/,
+  GET: /^workspaces(?:\/ws_[a-f0-9]{12}\/(?:offerings|worksheet|reports\/daily))?$/,
+  PUT: /^workspaces\/ws_[a-f0-9]{12}\/worksheet$/,
   POST: /^(?:sessions|workspaces(?:\/ws_[a-f0-9]{12}\/(?:offerings|purchases|sales))?)$/,
 };
 const noStore = { "Cache-Control": "no-store" };
@@ -28,7 +29,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ route: s
   }
 
   let body: Uint8Array<ArrayBuffer> | undefined;
-  if (method === "POST" && request.body) {
+  if (method !== "GET" && request.body) {
     const reader = request.body.getReader();
     const limit = 1048576;
     const buffer = new Uint8Array(limit);
@@ -62,3 +63,4 @@ async function proxy(request: NextRequest, context: { params: Promise<{ route: s
 
 export const GET = proxy;
 export const POST = proxy;
+export const PUT = proxy;

@@ -14,13 +14,13 @@ export class ApiError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
 }
 
-export async function api<T>(path: string, token = "", body?: object, key?: string): Promise<T> {
+export async function api<T>(path: string, token = "", body?: object, key?: string, method = body ? "POST" : "GET"): Promise<T> {
   const headers = new Headers();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (key) headers.set("Idempotency-Key", key);
   if (body) headers.set("Content-Type", "application/json");
   const response = await fetch(`/api/${path}`, {
-    method: body ? "POST" : "GET", headers, cache: "no-store",
+    method, headers, cache: "no-store",
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json();
