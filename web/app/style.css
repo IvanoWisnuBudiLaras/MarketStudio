@@ -59,6 +59,12 @@ dd { font-variant-numeric: tabular-nums; font-size: 1.25rem; font-weight: 650; }
 .skip-link:focus { transform: none; }
 .report-metrics { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
 .report-metrics > div { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--background); }
+.ai-review-content { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--background); }
+.provenance-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-size: 0.78rem; font-weight: 600; }
+.provenance-badge.live { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.provenance-badge.fallback { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.provenance-badge.stub { background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+.review-action-btn { font-size: 0.88rem; }
 @media (min-width: 1024px) {
   .app-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); }
   .app-shell[data-collapsed="true"] { grid-template-columns: 64px minmax(0, 1fr); }

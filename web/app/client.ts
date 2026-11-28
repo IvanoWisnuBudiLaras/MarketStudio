@@ -12,6 +12,48 @@ export type DailyReport = {
   drill_down: { purchases: { purchase_id: string; total_cost_idr: number }[]; sales: { sale_id: string; total_revenue_idr: number }[] };
 };
 
+export type AIReviewItem = {
+  workspace_id: string;
+  read_only: boolean;
+  ledger_unchanged: boolean;
+  status: "succeeded" | "fallback";
+  provider_mode: "live_provider" | "deterministic_fallback" | "stub_test";
+  fallback_reason: string | null;
+  config_status: {
+    configured: boolean;
+    provider: string | null;
+    model: string | null;
+  };
+  snapshot: {
+    snapshot_id: string;
+    period: { date: string; timezone: string };
+    metrics: {
+      revenue_idr: number;
+      cogs_idr: number | null;
+      cogs_status: string;
+      gross_profit_idr: number | null;
+      gross_profit_status: string;
+      cash_in_idr: number;
+      cash_out_idr: number;
+      net_cash_flow_idr: number;
+      ending_inventory_value_idr: number;
+      sales_count: number;
+      purchases_count: number;
+    };
+    source_ids: string[];
+  };
+  review: {
+    summary: string;
+    highlights: string[];
+    missing_data: string[];
+    citations: {
+      snapshot_id: string;
+      period_date: string;
+      source_ids: string[];
+    };
+  };
+};
+
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
 }

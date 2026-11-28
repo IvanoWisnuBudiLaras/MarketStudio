@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server";
 
 const routes = {
-  GET: /^workspaces(?:\/ws_[a-f0-9]{12}\/(?:offerings|worksheet|reports\/daily))?$/,
+  GET: /^workspaces(?:\/ws_[a-f0-9]{12}\/(?:offerings|worksheet|reports\/daily|ai-review\/config))?$/,
   PUT: /^workspaces\/ws_[a-f0-9]{12}\/worksheet$/,
-  POST: /^(?:sessions|workspaces(?:\/ws_[a-f0-9]{12}\/(?:offerings|purchases|sales))?)$/,
+  POST: /^(?:sessions|workspaces(?:\/ws_[a-f0-9]{12}\/(?:offerings|purchases|sales|reports\/daily\/ai-review))?)$/,
 };
 const noStore = { "Cache-Control": "no-store" };
 
