@@ -429,6 +429,30 @@
       border: 1px solid #A5F3FC;
     }
 
+    main .pill-active {
+      background: #F0FDF4;
+      color: #166534;
+      border: 1px solid #BBF7D0;
+    }
+
+    main .pill-roadmap {
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid #CBD5E1;
+    }
+
+    main .pill-sim {
+      background: #FAF5FF;
+      color: #6B21A8;
+      border: 1px solid #E9D5FF;
+    }
+
+    main .pill-demo {
+      background: #FFF7ED;
+      color: #9A3412;
+      border: 1px solid #FED7AA;
+    }
+
     /* Workspace Card in Sidebar */
     .sidebar-workspace-card {
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1780,6 +1804,646 @@
       display: none !important;
     }
 
+    /* ==========================================================================
+       P3: Intelligence Studio & Spreadsheet Studio Styles
+       ========================================================================== */
+
+    /* Intelligence Studio */
+    .intel-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .intel-context-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .intel-context-items {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .intel-context-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .intel-context-item strong {
+      color: var(--brand-navy);
+      font-weight: 600;
+    }
+
+    .intel-hero-card {
+      background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+      border: 1px solid #BFDBFE;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .intel-hero-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .intel-hero-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1E3A8A;
+      margin: 0 0 6px;
+      line-height: 1.3;
+    }
+
+    .intel-hero-desc {
+      font-size: 14px;
+      color: #1E40AF;
+      max-width: 680px;
+      margin: 0 0 18px;
+      line-height: 1.5;
+    }
+
+    .intel-hero-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .intel-metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      width: 100%;
+    }
+
+    .intel-metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .intel-metric-card:hover {
+      box-shadow: var(--shadow-sm);
+    }
+
+    .intel-metric-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .intel-metric-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.25;
+    }
+
+    .intel-metric-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .intel-editorial-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .intel-editorial-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .intel-summary-box {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+    }
+
+    .intel-highlights-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .intel-highlight-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .intel-highlight-icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+
+    .intel-provenance-box {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      font-family: "Geist Mono", monospace;
+    }
+
+    .intel-recommendations-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .intel-recommendation-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .intel-recommendation-item:hover {
+      border-color: #BFDBFE;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .intel-rec-main {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .intel-rec-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #EFF6FF;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .intel-rec-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .intel-rec-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--brand-navy);
+      line-height: 1.35;
+    }
+
+    .intel-rec-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .intel-rec-action {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+    }
+
+    .intel-benchmark-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .intel-benchmark-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .intel-benchmark-table th,
+    .intel-benchmark-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .intel-benchmark-table th {
+      background: #F8FAFC;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* Spreadsheet Studio */
+    .spreadsheet-container {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .spreadsheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .spreadsheet-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+      gap: 18px;
+      align-items: start;
+      width: 100%;
+    }
+
+    .sheet-doc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .sheet-meta-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #F8FAFC;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-workbook-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--brand-navy);
+    }
+
+    .sheet-toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 4px;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+      scrollbar-width: thin;
+    }
+
+    .sheet-tool-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      min-width: 36px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.1s ease, border-color 0.1s ease;
+    }
+
+    .sheet-tool-btn:hover {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+    }
+
+    .sheet-tool-btn.active {
+      background: #E2E8F0;
+      border-color: #94A3B8;
+    }
+
+    .sheet-tool-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+
+    .sheet-formula-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #FAFAFA;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .sheet-cell-ref {
+      min-width: 44px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-weight: 600;
+      color: var(--brand-navy);
+      font-size: 12px;
+      font-family: "Geist Mono", monospace;
+    }
+
+    .sheet-fx-symbol {
+      font-style: italic;
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 13px;
+      user-select: none;
+    }
+
+    .sheet-formula-input {
+      flex: 1;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      font-family: "Geist Mono", monospace;
+      font-size: 13px;
+      color: var(--brand-navy);
+      outline: none;
+    }
+
+    .sheet-formula-input:focus {
+      background: var(--surface);
+      border-color: var(--accent);
+    }
+
+    .sheet-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      max-width: 100%;
+      background: var(--surface);
+    }
+
+    .sheet-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sheet-table th,
+    .sheet-table td {
+      border: 1px solid #E2E8F0;
+      padding: 8px 10px;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+
+    .sheet-table th {
+      background: #F8FAFC;
+      color: #475569;
+      font-weight: 600;
+      font-size: 12px;
+      text-align: center;
+      user-select: none;
+    }
+
+    .sheet-col-header {
+      background: #F1F5F9 !important;
+      color: #64748B !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      text-align: center;
+      padding: 4px 8px !important;
+    }
+
+    .sheet-row-header {
+      width: 32px;
+      background: #F8FAFC;
+      color: #94A3B8;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      user-select: none;
+      padding: 6px 8px !important;
+    }
+
+    .sheet-cell-active {
+      outline: 2px solid var(--accent) !important;
+      outline-offset: -2px;
+      background: #EFF6FF !important;
+      position: relative;
+    }
+
+    .sheet-cell-total-row {
+      background: #F8FAFC;
+      font-weight: 700;
+      color: var(--brand-navy);
+      border-top: 2px solid #CBD5E1 !important;
+    }
+
+    .sheet-kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px 16px;
+      background: #F8FAFC;
+      border-top: 1px solid var(--border);
+    }
+
+    .sheet-kpi-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sheet-kpi-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .sheet-kpi-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sheet-tabs-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 12px;
+      background: #F1F5F9;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      user-select: none;
+    }
+
+    .sheet-tab-list {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sheet-tab-btn {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px 4px 0 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.1s ease, color 0.1s ease;
+      min-height: 36px;
+    }
+
+    .sheet-tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .sheet-tab-btn.active {
+      background: var(--surface);
+      color: var(--accent);
+      font-weight: 600;
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+    }
+
+    .scenario-panel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .scenario-compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .scenario-compare-table th,
+    .scenario-compare-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: right;
+    }
+
+    .scenario-compare-table th:first-child,
+    .scenario-compare-table td:first-child {
+      text-align: left;
+    }
+
+    .scenario-compare-table th {
+      background: #F8FAFC;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .scenario-compare-row.active {
+      background: #EFF6FF;
+      font-weight: 600;
+    }
+
     @media (max-width: 900px) {
       .app-shell,
       .app-shell.sidebar-collapsed {
@@ -1833,6 +2497,42 @@
       .card {
         padding: 14px;
       }
+
+      .intel-metric-grid,
+      .sheet-kpi-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .spreadsheet-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .intel-recommendation-item {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .intel-rec-action {
+        width: 100%;
+      }
+
+      .intel-rec-action .btn {
+        width: 100%;
+      }
+
+      .sheet-toolbar {
+        overflow-x: auto;
+      }
+
+      .sheet-tool-btn {
+        min-height: 44px;
+        min-width: 44px;
+      }
+
+      .sheet-tab-btn {
+        min-height: 44px;
+        min-width: 44px;
+      }
     }
   </style>
 </head>
@@ -1856,6 +2556,12 @@
     <symbol id="icon-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
     <symbol id="icon-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></symbol>
     <symbol id="icon-coins" viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14 M12 5l7 7-7 7"/></symbol>
+    <symbol id="icon-table" viewBox="0 0 24 24"><path d="M3 3h18v18H3z M3 9h18 M3 15h18 M9 3v18 M15 3v18"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M21.5 2v6h-6 M2.5 22v-6h6 M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8 M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/></symbol>
+    <symbol id="icon-trending-up" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
   </svg>
   <a class="skip-link" href="#main-content">Langsung ke konten utama</a>
   <div id="globalLiveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -2025,7 +2731,7 @@
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-calculator"/></svg>
                 <span class="nav-link-text">
                   <span>Spreadsheet Studio</span>
-                  <span class="nav-link-sub">Analisis &amp; Harga</span>
+                  <span class="nav-link-sub">Costing &amp; Simulasi</span>
                 </span>
               </span>
               <span class="pill pill-active">Aktif</span>
@@ -2600,11 +3306,11 @@
           </div>
         </section>
 
-        <!-- VIEW 4: ANALISIS & HARGA -->
-        <section id="view-analisis" class="view-section hidden" aria-label="Simulasi Harga dan Benchmark Pasar">
+        <!-- VIEW 4: SPREADSHEET STUDIO (DOCUMENT-ORIENTED PLANNING WORKSPACE) -->
+        <section id="view-analisis" class="view-section hidden" aria-label="Spreadsheet Studio — Costing dan Simulasi Harga">
           <div id="analisisNoWorkspace" class="empty-state hidden">
             <h3>Belum Ada Profil Usaha Aktif</h3>
-            <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu agar analisis dapat merujuk produk/jasa di katalog Anda.</p>
+            <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu agar Spreadsheet Studio dapat merujuk produk/jasa di katalog Anda.</p>
             <div class="form-actions" style="margin-top:0;">
               <a href="#profil" class="btn btn-primary">Buat Profil Usaha</a>
               <button type="button" class="btn btn-soft js-load-demo">Coba data demo</button>
@@ -2612,143 +3318,328 @@
             <div class="status js-demo-status" aria-live="polite"></div>
           </div>
 
-          <div id="analisisMain" class="card hidden">
-            <p class="muted">Hasil simulasi dan perbandingan harga hanya untuk analisis.</p>
-            <div class="subtabs" role="tablist" aria-label="Alat analisis harga">
-              <button id="tabSimBtn" type="button" class="subtab-btn" role="tab" aria-selected="true" aria-controls="simPanel">Simulasi Harga &amp; Diskon</button>
-              <button id="tabBenchBtn" type="button" class="subtab-btn" role="tab" aria-selected="false" aria-controls="benchPanel">Benchmark Harga Pasar</button>
-            </div>
-
-            <!-- SIMULASI PANEL -->
-            <div id="simPanel" role="tabpanel" aria-labelledby="tabSimBtn">
-              <details class="optional-controls">
-                <summary>Gunakan contoh simulasi</summary>
-                <div class="chip-row">
-                <button type="button" class="chip-btn" id="simPresetManualBtn">Contoh Manual (Rp 5.000 · Biaya Rp 3.000 · Diskon 20%)</button>
-                <button type="button" class="chip-btn" id="simPresetCatalogBtn">Pakai Produk Katalog Pertama</button>
-                </div>
-              </details>
-              <form id="simForm" novalidate>
-                <div class="form-grid">
-                  <div class="field">
-                    <label class="field-label" for="simOffering">Referensi Produk/Jasa (Opsional)</label>
-                    <select id="simOffering" aria-describedby="simOfferingHelper">
-                      <option value="">-- Input Manual --</option>
-                    </select>
-                    <div id="simOfferingHelper" class="field-helper">Jika barang punya stok WA, biaya pokok otomatis diisi bila kolom biaya dikosongkan.</div>
-                  </div>
-                  <div class="field">
-                    <label class="field-label" for="simPrice">Harga Jual Simulasi (IDR)</label>
-                    <input id="simPrice" type="number" min="0" step="1" placeholder="Contoh: 5000" aria-describedby="simPriceErr" />
-                    <div id="simPriceErr" class="field-error"></div>
-                  </div>
-                  <div class="field">
-                    <label class="field-label" for="simCost">Estimasi Biaya Unit (IDR, opsional)</label>
-                    <input id="simCost" type="number" min="0" step="1" placeholder="Kosongkan untuk WA otomatis" aria-describedby="simCostHelper simCostErr" />
-                    <div id="simCostHelper" class="field-helper">Untuk jasa atau stok 0, isi estimasi biaya manual agar margin dapat dihitung.</div>
-                    <div id="simCostErr" class="field-error"></div>
-                  </div>
-                  <div class="field">
-                    <label class="field-label" for="simDiscount">Diskon (%)</label>
-                    <input id="simDiscount" type="text" inputmode="decimal" placeholder="0 - 100" aria-describedby="simDiscountErr" />
-                    <div id="simDiscountErr" class="field-error"></div>
-                  </div>
-                </div>
-                <div class="form-actions">
-                  <button id="simSubmitBtn" type="submit" class="btn btn-primary">Hitung Simulasi</button>
-                </div>
-                <div id="simStatus" class="status" aria-live="polite"></div>
-                <div id="simResultGrid" class="kpi-grid"></div>
-              </form>
-            </div>
-
-            <!-- BENCHMARK PANEL -->
-            <div id="benchPanel" class="hidden" role="tabpanel" aria-labelledby="tabBenchBtn">
-              <div id="benchNoOfferingEmpty" class="empty-state hidden">
-                <h3>Katalog Produk Masih Kosong</h3>
-                <p class="muted">Tambahkan minimal satu produk (mis. Beras Medium ber-satuan kg) di Katalog sebelum menjalankan perbandingan harga pasar.</p>
-                <a href="#katalog" class="btn btn-primary">Tambah Produk di Katalog</a>
+          <div id="analisisMain" class="spreadsheet-container hidden">
+            <!-- Header Dokumen & Actions -->
+            <div class="spreadsheet-header">
+              <div>
+                <h2 style="font-size:20px; margin:0 0 4px;">Spreadsheet Studio</h2>
+                <p class="muted">Kelola costing, tentukan harga jual, dan simulasi skenario bisnis dengan spreadsheet interaktif.</p>
               </div>
-              <div id="benchFormWrap">
-                <details class="optional-controls">
-                  <summary>Gunakan contoh perbandingan</summary>
+              <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+                <button type="button" id="sheetExportBtn" class="btn btn-secondary" style="min-height:44px;">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-download"/></svg>
+                  <span>Ekspor CSV</span>
+                </button>
+                <button type="button" id="sheetResetBtn" class="btn btn-secondary" style="min-height:44px;">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-refresh"/></svg>
+                  <span>Reset Draf</span>
+                </button>
+                <span class="pill pill-sim">Simulasi Perencanaan Harga &amp; Diskon (Draf)</span>
+              </div>
+            </div>
+
+            <!-- Honest Limitation Banner -->
+            <div class="banner banner-readonly" role="note">
+              <div>
+                <strong>Batasan Fitur Terbuka:</strong> Spreadsheet Studio berorientasi lembar kerja perencanaan harga &amp; diskon (Draf). Bukan authoritative financial ledger. Seluruh perubahan asumsi skenario terisolasi murni dan tidak memutasi transaksi kas atau buku besar (zero ledger mutation).
+              </div>
+            </div>
+
+            <!-- Main Layout: 2 Columns on Desktop (Worksheet Document on Left, Scenario Simulator on Right) -->
+            <div class="spreadsheet-layout">
+              <!-- Column 1: Worksheet Document -->
+              <div class="sheet-doc-card">
+                <!-- Meta Bar -->
+                <div class="sheet-meta-bar">
+                  <div class="sheet-workbook-title">
+                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-table"/></svg>
+                    <span id="sheetWorkbookTitle">Costing Produk: Beras Medium (kg)</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label for="sheetOfferingSelect" class="sr-only">Pilih produk katalog untuk costing</label>
+                    <select id="sheetOfferingSelect" style="font-size:12px; height:32px; padding:0 8px;">
+                      <option value="">-- Input Manual / Bebas --</option>
+                    </select>
+                    <span class="pill pill-active" style="background:#F0FDF4; color:#15803D; border-color:#BBF7D0;">Tersimpan Otomatis (Draf)</span>
+                  </div>
+                </div>
+
+                <!-- Spreadsheet Toolbar -->
+                <div class="sheet-toolbar" role="toolbar" aria-label="Spreadsheet formatting toolbar">
+                  <button type="button" class="sheet-tool-btn" id="sheetToolUndo" title="Undo (↶)" aria-label="Undo">↶</button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolRedo" title="Redo (↷)" aria-label="Redo">↷</button>
+                  <div class="sheet-tool-sep"></div>
+                  <select id="sheetFontSelect" class="sheet-tool-btn" style="font-size:12px; padding:0 6px; width:90px; max-width:90px;" aria-label="Font family">
+                    <option value="Geist">Geist</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="sans-serif">Sans-Serif</option>
+                  </select>
+                  <select id="sheetSizeSelect" class="sheet-tool-btn" style="font-size:12px; width:48px;" aria-label="Font size">
+                    <option value="11">11</option>
+                    <option value="12" selected>12</option>
+                    <option value="14">14</option>
+                  </select>
+                  <div class="sheet-tool-sep"></div>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolBold" title="Bold (B)" aria-label="Bold"><strong>B</strong></button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolItalic" title="Italic (I)" aria-label="Italic"><em>I</em></button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolUnderline" title="Underline (U)" aria-label="Underline"><u>U</u></button>
+                  <div class="sheet-tool-sep"></div>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolAlignLeft" title="Align Left" aria-label="Align Left">≡</button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolBorder" title="Borders" aria-label="Borders">⊞</button>
+                  <div class="sheet-tool-sep"></div>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolPct" title="Format Persen (%)" aria-label="Format Persen">%</button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolRp" title="Format Rupiah (Rp)" aria-label="Format Rupiah">Rp</button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolDec0" title="Format .0" aria-label="Format .0">.0</button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolDec00" title="Format .00" aria-label="Format .00">.00</button>
+                  <button type="button" class="sheet-tool-btn" id="sheetToolFx" title="Functions" aria-label="Functions"><em>fx</em></button>
+                </div>
+
+                <!-- Formula Bar -->
+                <div class="sheet-formula-bar">
+                  <span id="sheetActiveCellBox" class="sheet-cell-ref">E7</span>
+                  <span class="sheet-fx-symbol">fx</span>
+                  <input id="sheetFormulaInput" class="sheet-formula-input" type="text" value="=C7*D7" readonly aria-label="Formula input" />
+                </div>
+
+                <!-- Spreadsheet Grid Table -->
+                <div class="sheet-table-wrap">
+                  <table class="sheet-table" id="sheetTable" aria-label="Lembar kerja costing dan struktur biaya">
+                    <thead>
+                      <tr>
+                        <th class="sheet-row-header" scope="col"> </th>
+                        <th class="sheet-col-header" scope="col">A</th>
+                        <th class="sheet-col-header" scope="col">B</th>
+                        <th class="sheet-col-header" scope="col">C</th>
+                        <th class="sheet-col-header" scope="col">D</th>
+                        <th class="sheet-col-header" scope="col">E</th>
+                        <th class="sheet-col-header" scope="col">F</th>
+                      </tr>
+                      <tr>
+                        <th class="sheet-row-header" scope="row">1</th>
+                        <th style="text-align:left;">Komponen Biaya</th>
+                        <th>Satuan</th>
+                        <th style="text-align:right;">Harga Satuan (Rp)</th>
+                        <th style="text-align:right;">Kebutuhan</th>
+                        <th style="text-align:right;">Total (Rp)</th>
+                        <th style="text-align:left;">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody id="sheetTableBody">
+                      <tr data-row="2">
+                        <td class="sheet-row-header">2</td>
+                        <td class="sheet-cell" data-cell="A2">Bahan Baku Utama (Beras / Kopi)</td>
+                        <td class="sheet-cell" data-cell="B2" style="text-align:center;">kg</td>
+                        <td class="sheet-cell" data-cell="C2" style="text-align:right;">10.000</td>
+                        <td class="sheet-cell" data-cell="D2" style="text-align:right;">1</td>
+                        <td class="sheet-cell" data-cell="E2" style="text-align:right;" data-formula="=C2*D2">10.000</td>
+                        <td class="sheet-cell" data-cell="F2">Bahan pokok</td>
+                      </tr>
+                      <tr data-row="3">
+                        <td class="sheet-row-header">3</td>
+                        <td class="sheet-cell" data-cell="A3">Bahan Penolong / Sortir</td>
+                        <td class="sheet-cell" data-cell="B3" style="text-align:center;">pcs</td>
+                        <td class="sheet-cell" data-cell="C3" style="text-align:right;">500</td>
+                        <td class="sheet-cell" data-cell="D3" style="text-align:right;">1</td>
+                        <td class="sheet-cell" data-cell="E3" style="text-align:right;" data-formula="=C3*D3">500</td>
+                        <td class="sheet-cell" data-cell="F3">Pembersihan &amp; sortir</td>
+                      </tr>
+                      <tr data-row="4">
+                        <td class="sheet-row-header">4</td>
+                        <td class="sheet-cell" data-cell="A4">Bahan Pelengkap</td>
+                        <td class="sheet-cell" data-cell="B4" style="text-align:center;">pcs</td>
+                        <td class="sheet-cell" data-cell="C4" style="text-align:right;">500</td>
+                        <td class="sheet-cell" data-cell="D4" style="text-align:right;">1</td>
+                        <td class="sheet-cell" data-cell="E4" style="text-align:right;" data-formula="=C4*D4">500</td>
+                        <td class="sheet-cell" data-cell="F4">Pelengkap standar</td>
+                      </tr>
+                      <tr data-row="5">
+                        <td class="sheet-row-header">5</td>
+                        <td class="sheet-cell" data-cell="A5">Kemasan &amp; Label Produk</td>
+                        <td class="sheet-cell" data-cell="B5" style="text-align:center;">set</td>
+                        <td class="sheet-cell" data-cell="C5" style="text-align:right;">500</td>
+                        <td class="sheet-cell" data-cell="D5" style="text-align:right;">1</td>
+                        <td class="sheet-cell" data-cell="E5" style="text-align:right;" data-formula="=C5*D5">500</td>
+                        <td class="sheet-cell" data-cell="F5">Kemasan kantong &amp; seal</td>
+                      </tr>
+                      <tr data-row="6">
+                        <td class="sheet-row-header">6</td>
+                        <td class="sheet-cell" data-cell="A6">Biaya Langsung Tenaga / Sortir</td>
+                        <td class="sheet-cell" data-cell="B6" style="text-align:center;">unit</td>
+                        <td class="sheet-cell" data-cell="C6" style="text-align:right;">500</td>
+                        <td class="sheet-cell" data-cell="D6" style="text-align:right;">1</td>
+                        <td class="sheet-cell" data-cell="E6" style="text-align:right;" data-formula="=C6*D6">500</td>
+                        <td class="sheet-cell" data-cell="F6">Penanganan langsung</td>
+                      </tr>
+                      <tr data-row="7" style="background:#F8FAFC; font-weight:600;">
+                        <td class="sheet-row-header">7</td>
+                        <td class="sheet-cell" data-cell="A7">Biaya Langsung per Unit</td>
+                        <td class="sheet-cell" data-cell="B7" style="text-align:center;">—</td>
+                        <td class="sheet-cell" data-cell="C7" style="text-align:right;">—</td>
+                        <td class="sheet-cell" data-cell="D7" style="text-align:right;">—</td>
+                        <td class="sheet-cell sheet-cell-active" data-cell="E7" style="text-align:right;" data-formula="=SUM(E2:E6)">12.000</td>
+                        <td class="sheet-cell" data-cell="F7">Total bahan + kemasan</td>
+                      </tr>
+                      <tr data-row="8">
+                        <td class="sheet-row-header">8</td>
+                        <td class="sheet-cell" data-cell="A8">Alokasi Biaya Operasional (Overhead)</td>
+                        <td class="sheet-cell" data-cell="B8" style="text-align:center;">%</td>
+                        <td class="sheet-cell" data-cell="C8" style="text-align:right;">10%</td>
+                        <td class="sheet-cell" data-cell="D8" style="text-align:right;">—</td>
+                        <td class="sheet-cell" data-cell="E8" style="text-align:right;" data-formula="=E7*10%">1.200</td>
+                        <td class="sheet-cell" data-cell="F8">Listrik, sewa, gas (10%)</td>
+                      </tr>
+                      <tr data-row="9" class="sheet-cell-total-row">
+                        <td class="sheet-row-header">9</td>
+                        <td class="sheet-cell" data-cell="A9">Total Biaya Pokok (HPP per Unit)</td>
+                        <td class="sheet-cell" data-cell="B9" style="text-align:center;">Unit</td>
+                        <td class="sheet-cell" data-cell="C9" style="text-align:right;">—</td>
+                        <td class="sheet-cell" data-cell="D9" style="text-align:right;">1</td>
+                        <td class="sheet-cell" data-cell="E9" style="text-align:right; color:var(--accent);" data-formula="=E7+E8">13.200</td>
+                        <td class="sheet-cell" data-cell="F9">Dasar kalkulasi margin</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- KPI Strip Below Grid -->
+                <div class="sheet-kpi-strip">
+                  <div class="sheet-kpi-item">
+                    <span class="sheet-kpi-label">HPP per Unit</span>
+                    <span class="sheet-kpi-val" id="sheetHppVal">Rp 13.200</span>
+                  </div>
+                  <div class="sheet-kpi-item">
+                    <span class="sheet-kpi-label">Harga Jual Saat Ini</span>
+                    <span class="sheet-kpi-val" id="sheetCurrentPriceVal">Rp 15.000</span>
+                  </div>
+                  <div class="sheet-kpi-item">
+                    <span class="sheet-kpi-label">Laba Kotor per Unit</span>
+                    <span class="sheet-kpi-val" id="sheetProfitVal">Rp 1.800</span>
+                  </div>
+                  <div class="sheet-kpi-item">
+                    <span class="sheet-kpi-label">Margin Kontribusi</span>
+                    <span class="sheet-kpi-val" id="sheetMarginVal" style="color:var(--ok);">12,0%</span>
+                  </div>
+                </div>
+
+                <!-- Sheet Tabs Bar -->
+                <div class="sheet-tabs-bar">
+                  <div class="sheet-tab-list">
+                    <button type="button" class="sheet-tab-btn" id="sheetTabAdd" title="Tambah Sheet Baru">+</button>
+                    <button type="button" class="sheet-tab-btn active" id="sheetTabCosting">Costing Produk</button>
+                    <button type="button" class="sheet-tab-btn" id="sheetTabPricing">Simulasi Harga &amp; Diskon</button>
+                    <button type="button" class="sheet-tab-btn" id="sheetTabBreakEven">Break Even</button>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="muted" style="font-size:11px;">Zoom: 100%</span>
+                    <span class="muted" style="font-size:11px;">Grid: Aktif</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 2: Simulation Inspector (Simulasi Skenario Harga & Diskon) -->
+              <div class="scenario-panel-card">
+                <div>
+                  <h3 style="margin:0; font-size:17px; display:flex; align-items:center; gap:8px;">
+                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-calculator"/></svg>
+                    <span>Simulasi Skenario Harga &amp; Diskon</span>
+                  </h3>
+                  <p class="muted" style="margin-top:4px;">Uji berbagai skenario harga dan diskon serta lihat dampaknya terhadap laba kontribusi secara realtime.</p>
+                </div>
+
+                <!-- Skenario Preset Selector -->
+                <div>
+                  <label class="field-label" style="margin-bottom:6px;">Pilih Skenario Perencanaan</label>
                   <div class="chip-row">
-                  <button type="button" class="chip-btn" id="benchPresetOfficialBtn">Contoh Cocok: Beras Medium (kg) vs Bapanas (Historis)</button>
-                  <button type="button" class="chip-btn" id="benchPresetManualBtn">Contoh Survei Manual Pasar Baru</button>
+                    <button type="button" class="chip-btn" id="scenPresetA" style="min-height:44px;">Skenario A · Kompetitif</button>
+                    <button type="button" class="chip-btn" id="scenPresetB" style="min-height:44px;">Skenario B · Promo Diskon</button>
+                    <button type="button" class="chip-btn" id="scenPresetC" style="min-height:44px;">Skenario C · Premium</button>
                   </div>
-                </details>
-                <form id="benchForm" novalidate>
-                  <div class="form-grid">
-                    <div class="field">
-                      <label class="field-label" for="benchOfferingId">Produk / Jasa di Katalog</label>
-                      <select id="benchOfferingId" aria-describedby="benchOfferingErr"></select>
-                      <div id="benchOfferingErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchSourceKind">Sumber Data Benchmark</label>
-                      <select id="benchSourceKind">
-                        <option value="transcribed_official">Data Resmi · Historis (Bapanas Maret 2026)</option>
-                        <option value="synthetic_demo">Demo Sintetis (Bukan Observasi Nyata)</option>
-                        <option value="manual_fallback">Survei Manual Operator (dengan Bukti)</option>
-                      </select>
-                    </div>
-                    <div id="benchSnapshotWrap" class="field field-full">
-                      <label class="field-label" for="benchSnapshotId">Snapshot Komoditas</label>
-                      <select id="benchSnapshotId"></select>
-                    </div>
-                  </div>
+                </div>
 
-                  <div id="benchManualWrap" class="form-grid hidden" style="margin-top:12px;">
-                    <div class="field">
-                      <label class="field-label" for="benchSourceLabel">Label Sumber Survei (wajib)</label>
-                      <input id="benchSourceLabel" type="text" placeholder="Contoh: Survei Pasar Tradisional" aria-describedby="benchSourceLabelErr" />
-                      <div id="benchSourceLabelErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchEvidenceNote">Catatan Bukti / Evidence (wajib)</label>
-                      <input id="benchEvidenceNote" type="text" placeholder="Contoh: Foto papan harga kios #12" aria-describedby="benchEvidenceNoteErr" />
-                      <div id="benchEvidenceNoteErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchSourceUrl">URL Referensi (opsional)</label>
-                      <input id="benchSourceUrl" type="url" placeholder="https://contoh.go.id/publikasi-harga..." aria-describedby="benchSourceUrlErr" />
-                      <div id="benchSourceUrlErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchObservedAt">Tanggal Observasi (ISO)</label>
-                      <input id="benchObservedAt" type="text" value="2026-11-27" aria-describedby="benchObservedAtErr" />
-                      <div id="benchObservedAtErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchLocationMarket">Lokasi / Pasar</label>
-                      <input id="benchLocationMarket" type="text" placeholder="Contoh: Pasar Baru, Bandung" aria-describedby="benchLocationMarketErr" />
-                      <div id="benchLocationMarketErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchUnit">Satuan Benchmark</label>
-                      <input id="benchUnit" type="text" value="kg" aria-describedby="benchUnitErr" />
-                      <div id="benchUnitErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchQuantity">Kuantitas Referensi</label>
-                      <input id="benchQuantity" type="text" inputmode="decimal" value="1" aria-describedby="benchQuantityErr" />
-                      <div id="benchQuantityErr" class="field-error"></div>
-                    </div>
-                    <div class="field">
-                      <label class="field-label" for="benchObservedPrice">Harga Observasi (IDR)</label>
-                      <input id="benchObservedPrice" type="number" min="0" step="1" value="14000" aria-describedby="benchObservedPriceErr" />
-                      <div id="benchObservedPriceErr" class="field-error"></div>
-                    </div>
-                  </div>
+                <!-- Hidden subtabs for backwards compatibility with tests and links -->
+                <div class="subtabs hidden" role="tablist" aria-label="Alat analisis harga">
+                  <button id="tabSimBtn" type="button" class="subtab-btn" role="tab" aria-selected="true" aria-controls="simPanel">Simulasi</button>
+                  <button id="tabBenchBtn" type="button" class="subtab-btn" role="tab" aria-selected="false" aria-controls="benchPanel">Benchmark</button>
+                </div>
 
-                  <div id="benchUnitCompat" class="banner banner-info" style="margin-top:12px;"></div>
+                <!-- Simulation Form -->
+                <div id="simPanel" role="tabpanel" aria-labelledby="tabSimBtn">
+                  <form id="simForm" novalidate>
+                    <div class="form-grid" style="grid-template-columns:1fr; gap:12px;">
+                      <div class="field">
+                        <label class="field-label" for="simOffering">Referensi Produk/Jasa Katalog</label>
+                        <select id="simOffering" aria-describedby="simOfferingHelper">
+                          <option value="">-- Input Manual --</option>
+                        </select>
+                        <div id="simOfferingHelper" class="field-helper">Biaya pokok otomatis diisi dari nilai persediaan jika memiliki stok.</div>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="simPrice">Harga Jual Baru (IDR)</label>
+                        <input id="simPrice" type="number" min="0" step="1" placeholder="Contoh: 15000" aria-describedby="simPriceErr" />
+                        <div id="simPriceErr" class="field-error"></div>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="simCost">Estimasi Biaya Pokok Unit (IDR)</label>
+                        <input id="simCost" type="number" min="0" step="1" placeholder="Kosongkan untuk otomatis dari costing" aria-describedby="simCostHelper simCostErr" />
+                        <div id="simCostHelper" class="field-helper">Biaya pokok per unit untuk menghitung margin kontribusi.</div>
+                        <div id="simCostErr" class="field-error"></div>
+                      </div>
+                      <div class="field">
+                        <label class="field-label" for="simDiscount">Diskon (%)</label>
+                        <input id="simDiscount" type="text" inputmode="decimal" placeholder="0 - 100" value="0" aria-describedby="simDiscountErr" />
+                        <div id="simDiscountErr" class="field-error"></div>
+                      </div>
+                    </div>
 
-                  <div class="form-actions">
-                    <button id="benchSubmitBtn" type="submit" class="btn btn-primary">Bandingkan Harga</button>
+                    <div class="form-actions" style="margin-top:14px;">
+                      <button id="simSubmitBtn" type="submit" class="btn btn-primary" style="min-height:44px; width:100%;">Hitung Simulasi Skenario</button>
+                    </div>
+                    <div id="simStatus" class="status" aria-live="polite"></div>
+                    <div id="simResultGrid" class="kpi-grid" style="margin-top:12px;"></div>
+                  </form>
+                </div>
+
+                <!-- Skenario Comparison Table -->
+                <div>
+                  <h4 style="margin:0 0 8px; font-size:14px; color:var(--brand-navy);">Perbandingan Skenario Harga</h4>
+                  <div style="overflow-x:auto;">
+                    <table class="scenario-compare-table" id="scenarioCompareTable" aria-label="Tabel perbandingan skenario harga">
+                      <thead>
+                        <tr>
+                          <th>Skenario</th>
+                          <th>Harga Jual</th>
+                          <th>Laba/Unit</th>
+                          <th>Margin</th>
+                        </tr>
+                      </thead>
+                      <tbody id="scenarioCompareBody">
+                        <tr class="scenario-compare-row active" id="scenRowA">
+                          <td><strong>A. Kompetitif</strong></td>
+                          <td id="scenPriceA">Rp 15.000</td>
+                          <td id="scenProfitA">Rp 1.800</td>
+                          <td id="scenMarginA" style="color:var(--ok);">12,0%</td>
+                        </tr>
+                        <tr class="scenario-compare-row" id="scenRowB">
+                          <td><strong>B. Promo Diskon</strong></td>
+                          <td id="scenPriceB">Rp 13.500</td>
+                          <td id="scenProfitB">Rp 300</td>
+                          <td id="scenMarginB" style="color:var(--warn);">2,2%</td>
+                        </tr>
+                        <tr class="scenario-compare-row" id="scenRowC">
+                          <td><strong>C. Premium</strong></td>
+                          <td id="scenPriceC">Rp 18.000</td>
+                          <td id="scenProfitC">Rp 4.800</td>
+                          <td id="scenMarginC" style="color:var(--ok);">26,7%</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                  <div id="benchStatus" class="status" aria-live="polite"></div>
-                  <div id="benchResultGrid" class="kpi-grid"></div>
-                </form>
+                </div>
+
+                <!-- Rekomendasi Skenario Box -->
+                <div id="scenarioAdviceBox" class="banner banner-info" style="font-size:13px; line-height:1.5;">
+                  <strong>Analisis Skenario:</strong> Skenario A mencapai margin sehat dengan harga kompetitif di pasar. Pastikan margin kontribusi tetap positif setelah memperhitungkan biaya operasional.
+                </div>
               </div>
             </div>
           </div>
@@ -2937,15 +3828,8 @@
           </div>
         </section>
 
-        <!-- VIEW 6: INTELLIGENCE STUDIO (AI BUSINESS REVIEW #14/#40/#41) -->
+        <!-- VIEW 6: INTELLIGENCE STUDIO (AI BUSINESS REVIEW & ACTIONABLE INSIGHTS) -->
         <section id="view-intelligence" class="view-section hidden" aria-label="Intelligence Studio dan AI Business Review">
-          <div class="banner banner-readonly" role="note">
-            <div>
-              <strong>Mode Preview Read-Only (Tanpa Mutasi Ledger):</strong> AI Business Review hanya membaca <code>MetricSnapshot</code> harian teranonimisasi (tanpa nama usaha, aktor, PII, atau secret). Jika provider AI live belum dikonfigurasi, sistem menjalankan <strong>fallback deterministik</strong> secara aman.
-            </div>
-            <span class="pill pill-sim">Preview</span>
-          </div>
-
           <div id="intelligenceNoWorkspace" class="empty-state hidden">
             <h3>Belum Ada Profil Usaha Aktif</h3>
             <p class="muted">Buat profil usaha atau muat demo terisolasi terlebih dahulu agar Intelligence Studio dapat menganalisis snapshot laporan harian.</p>
@@ -2956,23 +3840,58 @@
             <div class="status js-demo-status" aria-live="polite"></div>
           </div>
 
-          <div id="intelligenceMain" class="hidden" style="display:flex; flex-direction:column; gap:16px; min-width:0;">
-            <section class="card" id="aiReviewCard">
-              <div class="card-header">
-                <div>
-                  <h2>AI Business Review (#14/#40/#41)</h2>
-                  <p class="muted" style="margin-top:4px;">Read-only AI review berdasarkan snapshot laporan harian (tanpa mutasi ledger).</p>
+          <div id="intelligenceMain" class="intel-container hidden">
+            <!-- 1. Context Header: Periode laporan, tanggal audit (WIB), cakupan data, dan sumber data yang jelas -->
+            <div class="intel-context-bar" role="note">
+              <div class="intel-context-items">
+                <div class="intel-context-item">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-chart"/></svg>
+                  <span>Periode: <strong id="intelPeriodText">Laporan Harian</strong></span>
                 </div>
+                <div class="intel-context-item">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-info"/></svg>
+                  <span>Audit WIB: <strong id="intelAuditText">Asia/Jakarta</strong></span>
+                </div>
+                <div class="intel-context-item">
+                  <span>Cakupan: <strong id="intelScopeText">1 Hari Transaksional</strong></span>
+                </div>
+                <div class="intel-context-item">
+                  <span>Sumber: <strong id="intelSourceText">Server MetricSnapshot</strong></span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="pill pill-sim">Mode Preview Read-Only</span>
                 <span id="aiProviderBadge" class="pill pill-roadmap">Cek Provider...</span>
               </div>
+            </div>
 
-              <div id="aiConfigHint" class="banner banner-info" style="margin-bottom:12px;">
+            <!-- Insufficient Data State Banner (when no transactions exist for the period) -->
+            <div id="intelInsufficientBanner" class="banner banner-info hidden">
+              <div>
+                <strong>Data Belum Cukup untuk Analisis Mendalam:</strong> Belum ada transaksi penjualan atau pembelian yang tercatat pada periode ini. Catat transaksi penjualan atau muat data demo untuk mengaktifkan AI Business Review dan insight pasar.
+              </div>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button type="button" class="btn btn-soft js-load-demo">Coba Data Demo</button>
+                <a href="#transaksi" class="btn btn-secondary">Catat Transaksi</a>
+              </div>
+            </div>
+
+            <!-- 2. AI Business Review Hero Card -->
+            <section class="intel-hero-card" id="aiReviewCard">
+              <div class="intel-hero-badge-row">
+                <span class="pill pill-active" style="background:#DBEAFE; color:#1E40AF; border-color:#93C5FD;">AI Business Review</span>
+                <span id="aiConfigHintBadge" class="pill pill-sim">Analisis Kinerja &amp; Rekomendasi</span>
+              </div>
+              <h2 class="intel-hero-title">Review Bisnismu Bersama AI Copilot</h2>
+              <p class="intel-hero-desc">Dapatkan analisis kinerja, temukan peluang, dan rekomendasi praktis untuk mengembangkan bisnis secara lebih cerdas berdasarkan data riil laporan harian tanpa mutasi buku besar.</p>
+
+              <div id="aiConfigHint" class="banner banner-info" style="margin-bottom:14px; background:rgba(255,255,255,0.85); border-color:#BFDBFE;">
                 Memeriksa status konfigurasi provider AI...
               </div>
 
-              <div class="form-grid">
+              <div class="form-grid" style="margin-bottom:16px;">
                 <div class="field">
-                  <label class="field-label" for="aiStubMode">Mode Eksekusi</label>
+                  <label class="field-label" for="aiStubMode">Mode Eksekusi AI</label>
                   <select id="aiStubMode" aria-describedby="aiStubModeHelper">
                     <option value="">Provider Terkonfigurasi / Fallback Deterministik</option>
                     <option value="stub_valid">Simulasi Stub (Test Fixture: Valid)</option>
@@ -2983,13 +3902,269 @@
                 </div>
               </div>
 
-              <div class="form-actions">
-                <button id="runAiReviewBtn" type="button" class="btn btn-primary">Jalankan AI Business Review</button>
-                <a href="#ringkasan" class="btn btn-secondary">Lihat Laporan Harian</a>
+              <div class="intel-hero-actions">
+                <button id="runAiReviewBtn" type="button" class="btn btn-primary" style="min-height:44px;">Jalankan Review Sekarang</button>
+                <a href="#ringkasan" class="btn btn-secondary" style="min-height:44px;">Lihat Laporan Harian</a>
+                <a href="#analisis" class="btn btn-secondary" style="min-height:44px;">Buka Spreadsheet Studio</a>
               </div>
-              <div id="aiReviewStatus" class="status" aria-live="polite"></div>
-              <div id="aiReviewGrid" class="kpi-grid"></div>
+              <div id="aiReviewStatus" class="status" aria-live="polite" style="margin-top:10px;"></div>
+              <!-- Hidden grid for test compatibility if any query references it -->
+              <div id="aiReviewGrid" class="kpi-grid hidden"></div>
             </section>
+
+            <!-- 3. Verified Financial Metrics from MetricSnapshot -->
+            <section class="intel-metric-grid" id="intelMetricGrid" aria-label="Metrik Terverifikasi MetricSnapshot">
+              <div class="intel-metric-card">
+                <span class="intel-metric-label">Omzet Penjualan</span>
+                <span class="intel-metric-val" id="intelRevenueVal">Rp 0</span>
+                <span class="intel-metric-sub" id="intelRevenueCount">0 transaksi penjualan</span>
+              </div>
+              <div class="intel-metric-card">
+                <span class="intel-metric-label">Laba Kotor</span>
+                <span class="intel-metric-val" id="intelProfitVal">Rp 0</span>
+                <span class="intel-metric-sub" id="intelProfitStatus">Status HPP: dinilai</span>
+              </div>
+              <div class="intel-metric-card">
+                <span class="intel-metric-label">Arus Kas Bersih</span>
+                <span class="intel-metric-val" id="intelCashVal">Rp 0</span>
+                <span class="intel-metric-sub" id="intelCashInOut">Kas Masuk vs Keluar</span>
+              </div>
+              <div class="intel-metric-card">
+                <span class="intel-metric-label">Nilai Persediaan</span>
+                <span class="intel-metric-val" id="intelInventoryVal">Rp 0</span>
+                <span class="intel-metric-sub" id="intelInventoryUnits">Posisi stok akhir</span>
+              </div>
+            </section>
+
+            <!-- 4. Editorial Report & Key Findings -->
+            <section class="intel-editorial-card" id="intelEditorialCard" aria-label="Editorial Report dan Temuan Kunci">
+              <div class="intel-editorial-header">
+                <div>
+                  <h3 style="margin:0; font-size:18px;">Ringkasan Eksekutif &amp; Analisis Kinerja</h3>
+                  <p class="muted" style="margin-top:4px;">Interpretasi analitis berdasarkan data riil laporan harian terverifikasi.</p>
+                </div>
+                <span id="intelReviewModeBadge" class="pill pill-sim">Menunggu Eksekusi</span>
+              </div>
+
+              <div id="intelExecutiveSummary" class="intel-summary-box">
+                Tekan tombol <strong>'Jalankan Review Sekarang'</strong> di atas untuk memproses data snapshot laporan harian secara aman. Ringkasan performa dan temuan bisnis akan ditampilkan di sini.
+              </div>
+
+              <div>
+                <h4 style="margin:0 0 10px; font-size:15px; color:var(--brand-navy);">Sorotan Analisis Utama (Key Findings)</h4>
+                <ul id="intelHighlightsList" class="intel-highlights-list">
+                  <li class="intel-highlight-item">
+                    <svg class="intel-highlight-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-spark"/></svg>
+                    <span>Penjualan dan arus kas dicatat secara terpisah dari HPP operasional.</span>
+                  </li>
+                  <li class="intel-highlight-item">
+                    <svg class="intel-highlight-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-spark"/></svg>
+                    <span>Snapshot data terverifikasi server-side tanpa mengizinkan mutasi sepihak dari model AI.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Provenance & Evidence Box -->
+              <div>
+                <h4 style="margin:0 0 8px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em;">Bukti Audit &amp; Sitasi (Provenance)</h4>
+                <div id="intelProvenanceBox" class="intel-provenance-box">
+                  <span>Snapshot: <strong id="intelSnapIdText">-</strong></span>
+                  <span>Tanggal: <strong id="intelSnapDateText">-</strong></span>
+                  <span>Sitasi Sumber: <strong id="intelCitationsText">-</strong></span>
+                </div>
+              </div>
+
+              <div id="intelMissingData" class="banner banner-demo hidden"></div>
+            </section>
+
+            <!-- 5. Actionable Strategic Recommendations -->
+            <section class="intel-editorial-card" id="intelRecommendationsSection" aria-label="Daftar Rekomendasi Strategis Actionable">
+              <div class="intel-editorial-header">
+                <div>
+                  <h3 style="margin:0; font-size:18px;">Rekomendasi Strategis Terarah</h3>
+                  <p class="muted" style="margin-top:4px;">Langkah tindak lanjut konkret berdasarkan temuan laporan harian yang dapat diuji langsung.</p>
+                </div>
+                <span class="pill pill-active">3 Rekomendasi</span>
+              </div>
+
+              <div class="intel-recommendations-list" id="intelRecommendationsList">
+                <!-- Recommendation 1: Pricing & Margin -->
+                <div class="intel-recommendation-item">
+                  <div class="intel-rec-main">
+                    <div class="intel-rec-num">1</div>
+                    <div class="intel-rec-content">
+                      <span class="pill pill-active" style="width:fit-content; margin-bottom:4px;">Strategi Harga &amp; Margin</span>
+                      <div class="intel-rec-title">Optimalkan Harga Jual &amp; Margin Kontribusi</div>
+                      <p class="intel-rec-desc">Lakukan simulasi penyesuaian harga jual dan diskon promosi untuk menguji batas ketahanan margin kontribusi sebelum diterapkan di katalog.</p>
+                    </div>
+                  </div>
+                  <div class="intel-rec-action">
+                    <a href="#analisis" class="btn btn-primary" style="min-height:44px;">Uji Skenario di Spreadsheet Studio &rarr;</a>
+                  </div>
+                </div>
+
+                <!-- Recommendation 2: Costing & Overhead -->
+                <div class="intel-recommendation-item">
+                  <div class="intel-rec-main">
+                    <div class="intel-rec-num">2</div>
+                    <div class="intel-rec-content">
+                      <span class="pill pill-sim" style="width:fit-content; margin-bottom:4px;">Struktur Costing</span>
+                      <div class="intel-rec-title">Evaluasi Struktur Biaya Pokok (HPP)</div>
+                      <p class="intel-rec-desc">Periksa rincian biaya bahan baku, kemasan, dan alokasi operasional di lembar kerja costing untuk mengidentifikasi komponen yang dapat diefisienkan.</p>
+                    </div>
+                  </div>
+                  <div class="intel-rec-action">
+                    <a href="#analisis" class="btn btn-secondary" style="min-height:44px;">Buka Lembar Costing &rarr;</a>
+                  </div>
+                </div>
+
+                <!-- Recommendation 3: Benchmark Daya Saing -->
+                <div class="intel-recommendation-item">
+                  <div class="intel-rec-main">
+                    <div class="intel-rec-num">3</div>
+                    <div class="intel-rec-content">
+                      <span class="pill pill-roadmap" style="width:fit-content; margin-bottom:4px;">Daya Saing Pasar</span>
+                      <div class="intel-rec-title">Pantau Posisi Harga terhadap Pasar Resmi Bapanas</div>
+                      <p class="intel-rec-desc">Bandingkan harga komoditas produk kamu dengan data historis resmi Badan Pangan Nasional (Bapanas) untuk memastikan harga tidak terlalu tinggi atau di bawah pasar.</p>
+                    </div>
+                  </div>
+                  <div class="intel-rec-action">
+                    <a href="#intelBenchmarkSection" class="btn btn-soft" style="min-height:44px;">Lihat Benchmark Pasar &darr;</a>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 6. Market Price Benchmark Module -->
+            <section class="intel-benchmark-card" id="intelBenchmarkSection" aria-label="Modul Benchmark Harga Pasar">
+              <div class="card-header">
+                <div>
+                  <h3 style="margin:0; font-size:18px;">Benchmark Harga Pasar (Bapanas &amp; Survei Manual)</h3>
+                  <p class="muted" style="margin-top:4px;">Bandingkan harga jual produk katalog dengan data acuan pasar resmi Bapanas (snapshot Maret 2026 Rp13.378/kg) atau survei manual dengan bukti.</p>
+                </div>
+                <span class="pill pill-sim">Data Beratribusi</span>
+              </div>
+
+              <!-- Official Snapshot Preview Table -->
+              <div style="overflow-x:auto;">
+                <table class="intel-benchmark-table" aria-label="Tabel snapshot acuan pasar">
+                  <thead>
+                    <tr>
+                      <th>Komoditas</th>
+                      <th>Harga Acuan</th>
+                      <th>Sumber &amp; Periode</th>
+                      <th>Cakupan Wilayah</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Beras Medium</strong></td>
+                      <td>Rp 13.378 / kg</td>
+                      <td><span class="pill pill-active">Data Resmi Bapanas</span> · Maret 2026</td>
+                      <td>Nasional (Tingkat Konsumen)</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Beras Medium (Demo)</strong></td>
+                      <td>Rp 13.500 / kg</td>
+                      <td><span class="pill pill-sim">Demo Sintetis</span> · Nov 2026</td>
+                      <td>Pasar Induk Kramat Jati, DKI Jakarta</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Interactive Benchmark Comparison Form -->
+              <div id="benchPanel" role="tabpanel" aria-labelledby="tabBenchBtn">
+                <div id="benchNoOfferingEmpty" class="empty-state hidden">
+                  <h3>Katalog Produk Masih Kosong</h3>
+                  <p class="muted">Tambahkan minimal satu produk (mis. Beras Medium ber-satuan kg) di Katalog sebelum menjalankan perbandingan harga pasar.</p>
+                  <a href="#katalog" class="btn btn-primary" style="margin-top:8px;">Tambah Produk di Katalog</a>
+                </div>
+                <div id="benchFormWrap" style="margin-top:12px;">
+                  <details class="optional-controls">
+                  <summary>Gunakan contoh perbandingan</summary>
+                  <div class="chip-row">
+                    <button type="button" class="chip-btn" id="benchPresetOfficialBtn" style="min-height:44px;">Contoh Cocok: Beras Medium (kg) vs Bapanas (Historis)</button>
+                    <button type="button" class="chip-btn" id="benchPresetManualBtn" style="min-height:44px;">Contoh Survei Manual Pasar Baru</button>
+                  </div>
+                </details>
+
+                <form id="benchForm" novalidate style="margin-top:12px;">
+                  <div class="form-grid">
+                    <div class="field">
+                      <label class="field-label" for="benchOfferingId">Produk / Jasa di Katalog</label>
+                      <select id="benchOfferingId" aria-describedby="benchOfferingErr"></select>
+                      <div id="benchOfferingErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchSourceKind">Sumber Data Benchmark</label>
+                      <select id="benchSourceKind">
+                        <option value="transcribed_official">Data Resmi · Historis (Bapanas Maret 2026)</option>
+                        <option value="synthetic_demo">Demo Sintetis (Bukan Observasi Nyata)</option>
+                        <option value="manual_fallback">Survei Manual Operator (dengan Bukti)</option>
+                      </select>
+                    </div>
+                    <div id="benchSnapshotWrap" class="field field-full">
+                      <label class="field-label" for="benchSnapshotId">Snapshot Komoditas</label>
+                      <select id="benchSnapshotId"></select>
+                    </div>
+                  </div>
+
+                  <div id="benchManualWrap" class="form-grid hidden" style="margin-top:12px;">
+                    <div class="field">
+                      <label class="field-label" for="benchSourceLabel">Label Sumber Survei (wajib)</label>
+                      <input id="benchSourceLabel" type="text" placeholder="Contoh: Survei Pasar Tradisional" aria-describedby="benchSourceLabelErr" />
+                      <div id="benchSourceLabelErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchEvidenceNote">Catatan Bukti / Evidence (wajib)</label>
+                      <input id="benchEvidenceNote" type="text" placeholder="Contoh: Foto papan harga kios #12" aria-describedby="benchEvidenceNoteErr" />
+                      <div id="benchEvidenceNoteErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchSourceUrl">URL Referensi (opsional)</label>
+                      <input id="benchSourceUrl" type="url" placeholder="https://contoh.go.id/publikasi-harga..." aria-describedby="benchSourceUrlErr" />
+                      <div id="benchSourceUrlErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchObservedAt">Tanggal Observasi (ISO)</label>
+                      <input id="benchObservedAt" type="text" value="2026-11-27" aria-describedby="benchObservedAtErr" />
+                      <div id="benchObservedAtErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchLocationMarket">Lokasi / Pasar</label>
+                      <input id="benchLocationMarket" type="text" placeholder="Contoh: Pasar Baru, Bandung" aria-describedby="benchLocationMarketErr" />
+                      <div id="benchLocationMarketErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchUnit">Satuan Benchmark</label>
+                      <input id="benchUnit" type="text" value="kg" aria-describedby="benchUnitErr" />
+                      <div id="benchUnitErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchQuantity">Kuantitas Referensi</label>
+                      <input id="benchQuantity" type="text" inputmode="decimal" value="1" aria-describedby="benchQuantityErr" />
+                      <div id="benchQuantityErr" class="field-error"></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="benchObservedPrice">Harga Observasi (IDR)</label>
+                      <input id="benchObservedPrice" type="number" min="0" step="1" value="14000" aria-describedby="benchObservedPriceErr" />
+                      <div id="benchObservedPriceErr" class="field-error"></div>
+                    </div>
+                  </div>
+
+                  <div id="benchUnitCompat" class="banner banner-info" style="margin-top:12px;"></div>
+
+                  <div class="form-actions" style="margin-top:16px;">
+                    <button id="benchSubmitBtn" type="submit" class="btn btn-primary" style="min-height:44px;">Bandingkan Harga</button>
+                    <a href="#analisis" class="btn btn-secondary" style="min-height:44px;">Uji di Spreadsheet Studio</a>
+                  </div>
+                  <div id="benchStatus" class="status" aria-live="polite"></div>
+                  <div id="benchResultGrid" class="kpi-grid"></div>
+                </form>
+              </div>
+            </div>
+          </section>
           </div>
         </section>
 
@@ -3212,6 +4387,7 @@
     let reportReqSeq = 0;
     let simReqSeq = 0;
     let benchReqSeq = 0;
+    let aiReviewReqSeq = 0;
     let workspaceUiVersion = 0;
 
     let pendingPurKey = localStorage.getItem(PUR_KEY_STORAGE) || "";
@@ -3238,8 +4414,9 @@
       ringkasan: "Beranda",
       transaksi: "Transaksi",
       katalog: "Katalog & Stok",
-      analisis: "Analisis & Harga",
-      "studio-intelligence": "Intelligence Studio — AI Business Review",
+      analisis: "Spreadsheet Studio",
+      "studio-spreadsheet": "Spreadsheet Studio",
+      "studio-intelligence": "Intelligence Studio",
       profil: "Profil & Demo"
     };
 
@@ -3428,6 +4605,20 @@
       return n < 0 ? `-Rp ${abs}` : `Rp ${abs}`;
     }
 
+    function fmtProfit(val, status) {
+      if (val === null || val === undefined || status === "open") return "Belum dinilai";
+      return fmtIdr(val);
+    }
+
+    function fmtSignedIdr(val) {
+      if (val === null || val === undefined) return "Rp 0";
+      const n = Number(val);
+      const abs = Math.abs(n).toLocaleString("id-ID");
+      if (n > 0) return `+Rp ${abs}`;
+      if (n < 0) return `-Rp ${abs}`;
+      return `Rp 0`;
+    }
+
     function fmtBusinessType(code) {
       if (code === "goods_retail") return "Barang / Retail";
       if (code === "service_studio") return "Jasa / Layanan";
@@ -3582,8 +4773,10 @@
       const clean = (rawHash || "").replace(/^#/, "").trim().toLowerCase();
       if (clean === "transaksi-pembelian") return { route: "transaksi", subtab: "purchase" };
       if (clean === "transaksi" || clean === "transaksi-penjualan") return { route: "transaksi", subtab: "sale" };
-      if (clean === "analisis-benchmark") return { route: "analisis", subtab: "benchmark" };
-      if (clean === "analisis" || clean === "analisis-simulasi") return { route: "analisis", subtab: "sim" };
+      if (clean === "analisis-benchmark") return { route: "studio-intelligence", subtab: "benchmark" };
+      if (clean === "analisis" || clean === "analisis-simulasi" || clean === "studio-spreadsheet" || clean === "spreadsheet") {
+        return { route: "analisis", subtab: "sim", raw: clean };
+      }
       if (clean === "studio-intelligence" || clean === "intelligence") return { route: "studio-intelligence", subtab: null };
       if (["ringkasan", "katalog", "profil", "studio-creative"].includes(clean)) return { route: clean, subtab: null };
       if (ROADMAP_INFO[clean]) return { route: clean, subtab: null };
@@ -3591,12 +4784,16 @@
     }
 
     function selectSubtab(activeId) {
-      const tablist = document.getElementById(activeId).closest('[role="tablist"]');
+      const activeBtn = document.getElementById(activeId);
+      if (!activeBtn) return;
+      const tablist = activeBtn.closest('[role="tablist"]');
+      if (!tablist) return;
       for (const tab of tablist.querySelectorAll('[role="tab"]')) {
         const selected = tab.id === activeId;
         tab.setAttribute("aria-selected", String(selected));
         tab.tabIndex = selected ? 0 : -1;
-        document.getElementById(tab.getAttribute("aria-controls")).classList.toggle("hidden", !selected);
+        const panel = document.getElementById(tab.getAttribute("aria-controls"));
+        if (panel) panel.classList.toggle("hidden", !selected);
       }
     }
 
@@ -3682,7 +4879,8 @@
       if (updateHash) {
         let targetHash = "#" + route;
         if (route === "transaksi" && routeInfo && routeInfo.subtab === "purchase") targetHash = "#transaksi-pembelian";
-        if (route === "analisis" && routeInfo && routeInfo.subtab === "benchmark") targetHash = "#analisis-benchmark";
+        if (route === "studio-intelligence" && routeInfo && routeInfo.subtab === "benchmark") targetHash = "#analisis-benchmark";
+        if (route === "analisis" && routeInfo && routeInfo.raw === "studio-spreadsheet") targetHash = "#studio-spreadsheet";
         if (window.location.hash !== targetHash) {
           window.location.hash = targetHash;
         }
@@ -3708,6 +4906,7 @@
         katalog: "Business Studio",
         "studio-intelligence": "Intelligence Studio",
         analisis: "Spreadsheet Studio",
+        "studio-spreadsheet": "Spreadsheet Studio",
         "studio-creative": "Creative Studio",
         "studio-commerce": "Commerce Studio",
         "studio-social": "Social Studio",
@@ -3720,6 +4919,17 @@
 
       if (route === "studio-intelligence" && activeWorkspaceId) {
         loadAiReviewConfig();
+        updateIntelligenceView();
+        if (routeInfo && routeInfo.subtab === "benchmark") {
+          setTimeout(() => {
+            const benchEl = document.getElementById("intelBenchmarkSection");
+            if (benchEl) benchEl.scrollIntoView({ behavior: "smooth" });
+          }, 60);
+        }
+      }
+
+      if (route === "analisis" && activeWorkspaceId) {
+        updateWorksheetData();
       }
 
       if (route === "transaksi" && routeInfo && routeInfo.subtab) {
@@ -3730,7 +4940,8 @@
       }
 
       document.querySelectorAll("[data-route]").forEach((link) => {
-        if (link.dataset.route === route) {
+        const matches = link.dataset.route === route || (route === "analisis" && link.dataset.route === "studio-spreadsheet");
+        if (matches) {
           link.setAttribute("aria-current", "page");
         } else {
           link.removeAttribute("aria-current");
@@ -3893,6 +5104,8 @@
       simReqSeq++;
       benchReqSeq++;
       clearAiReviewResults();
+      updateIntelligenceView();
+      updateWorksheetData();
       document.getElementById("simResultGrid").textContent = "";
       setStatus(simStatus, "");
       document.getElementById("benchResultGrid").textContent = "";
@@ -4566,6 +5779,30 @@
         }
       });
 
+      const sheetSelect = document.getElementById("sheetOfferingSelect");
+      if (sheetSelect) {
+        const prevSheet = sheetSelect.value;
+        sheetSelect.textContent = "";
+        const optDef = document.createElement("option");
+        optDef.value = "";
+        optDef.textContent = "-- Input Manual / Bebas --";
+        sheetSelect.appendChild(optDef);
+        offeringsCache.forEach((item) => {
+          if (item.is_archived) return;
+          const opt = document.createElement("option");
+          opt.value = item.offering_id;
+          opt.textContent = `${item.name} (${item.unit} · ${fmtIdr(item.unit_price_idr)})`;
+          sheetSelect.appendChild(opt);
+        });
+        if (prevSheet && Array.from(sheetSelect.options).some((o) => o.value === prevSheet)) {
+          sheetSelect.value = prevSheet;
+        } else {
+          const first = offeringsCache.find((o) => !o.is_archived);
+          if (first) sheetSelect.value = first.offering_id;
+        }
+      }
+      updateWorksheetData();
+
       const activeOfferings = offeringsCache.filter(o => !o.is_archived);
       const hasActiveOfferings = activeOfferings.length > 0;
       document.getElementById("saleNoOfferingEmpty").classList.toggle("hidden", hasActiveOfferings);
@@ -4574,8 +5811,8 @@
       document.getElementById("purNoOfferingEmpty").classList.toggle("hidden", stockTrackedCount > 0);
       document.getElementById("purchaseForm").classList.toggle("hidden", stockTrackedCount === 0);
 
-      document.getElementById("benchNoOfferingEmpty").classList.toggle("hidden", hasActiveOfferings);
-      document.getElementById("benchFormWrap").classList.toggle("hidden", !hasActiveOfferings);
+      document.getElementById("benchNoOfferingEmpty")?.classList.toggle("hidden", hasActiveOfferings);
+      document.getElementById("benchFormWrap")?.classList.toggle("hidden", !hasActiveOfferings);
 
       [saleOffering, purOffering, simOffering, benchOffering].forEach((select, index) => {
         const previous = previousSelections[index];
@@ -4826,6 +6063,7 @@
         if (reqWsId !== activeWorkspaceId || reqSeq !== reportReqSeq) return;
 
         activeReportCache = report;
+        updateIntelligenceView();
         const period = `Laporan ${fmtJakartaDateLabel(report.period.date)}`;
         dateInput.value = report.period.date;
         document.getElementById("reportPeriodLabel").textContent = period;
@@ -5382,6 +6620,186 @@
       }
     });
 
+    // Intelligence Studio & Spreadsheet Studio Interactive Logic
+    function updateIntelligenceView() {
+      const report = activeReportCache;
+      const pText = document.getElementById("intelPeriodText");
+      const aText = document.getElementById("intelAuditText");
+      const sText = document.getElementById("intelScopeText");
+      const srcText = document.getElementById("intelSourceText");
+      const revVal = document.getElementById("intelRevenueVal");
+      const revCount = document.getElementById("intelRevenueCount");
+      const profVal = document.getElementById("intelProfitVal");
+      const profStatus = document.getElementById("intelProfitStatus");
+      const cashVal = document.getElementById("intelCashVal");
+      const cashInOut = document.getElementById("intelCashInOut");
+      const invVal = document.getElementById("intelInventoryVal");
+      const invUnits = document.getElementById("intelInventoryUnits");
+      const banner = document.getElementById("intelInsufficientBanner");
+
+      if (!report) {
+        if (banner) banner.classList.remove("hidden");
+        return;
+      }
+
+      const salesCount = (report.drill_down?.sales || []).length;
+      const purCount = (report.drill_down?.purchases || []).length;
+      const isInsufficient = salesCount === 0 && purCount === 0;
+      if (banner) banner.classList.toggle("hidden", !isInsufficient);
+
+      if (pText) pText.textContent = `Laporan Harian · ${report.period.date}`;
+      if (aText) aText.textContent = `${report.period.date} 10:00 WIB`;
+      if (sText) sText.textContent = `${salesCount} Penjualan · ${purCount} Pembelian`;
+      if (srcText) srcText.textContent = "Server MetricSnapshot (Idempoten)";
+
+      if (revVal) revVal.textContent = fmtIdr(report.revenue_idr);
+      if (revCount) revCount.textContent = `${salesCount} transaksi penjualan`;
+      if (profVal) profVal.textContent = fmtProfit(report.gross_profit_idr, report.gross_profit_status);
+      if (profStatus) profStatus.textContent = `Status HPP: ${report.cogs_status}`;
+      if (cashVal) cashVal.textContent = fmtSignedIdr(report.net_cash_flow_idr);
+      if (cashInOut) cashInOut.textContent = `Masuk ${fmtIdr(report.cash_in_idr)} • Keluar ${fmtIdr(report.cash_out_idr)}`;
+      if (invVal) invVal.textContent = fmtIdr(report.ending_inventory.total_value_idr);
+      if (invUnits) invUnits.textContent = `${report.ending_inventory.items_count || 0} unit tercatat`;
+    }
+
+    function updateScenarioTable(price, hpp) {
+      const safePrice = Number.isFinite(price) ? price : 15000;
+      const safeHpp = Number.isFinite(hpp) ? hpp : 12000;
+
+      // Skenario A: Kompetitif
+      const profitA = safePrice - safeHpp;
+      const marginA = safePrice > 0 ? ((profitA * 100) / safePrice).toFixed(1) : "0.0";
+      const pA = document.getElementById("scenPriceA");
+      const prA = document.getElementById("scenProfitA");
+      const mA = document.getElementById("scenMarginA");
+      if (pA) pA.textContent = fmtIdr(safePrice);
+      if (prA) prA.textContent = fmtIdr(profitA);
+      if (mA) {
+        mA.textContent = `${marginA}%`;
+        mA.style.color = profitA > 0 ? "var(--ok)" : "var(--warn)";
+      }
+
+      // Skenario B: Promo Diskon 10%
+      const priceB = Math.round(safePrice * 0.9);
+      const profitB = priceB - safeHpp;
+      const marginB = priceB > 0 ? ((profitB * 100) / priceB).toFixed(1) : "0.0";
+      const pB = document.getElementById("scenPriceB");
+      const prB = document.getElementById("scenProfitB");
+      const mB = document.getElementById("scenMarginB");
+      if (pB) pB.textContent = fmtIdr(priceB);
+      if (prB) prB.textContent = fmtIdr(profitB);
+      if (mB) {
+        mB.textContent = `${marginB}%`;
+        mB.style.color = profitB > 0 ? "var(--ok)" : "var(--warn)";
+      }
+
+      // Skenario C: Premium +20%
+      const priceC = Math.round(safePrice * 1.2);
+      const profitC = priceC - safeHpp;
+      const marginC = priceC > 0 ? ((profitC * 100) / priceC).toFixed(1) : "0.0";
+      const pC = document.getElementById("scenPriceC");
+      const prC = document.getElementById("scenProfitC");
+      const mC = document.getElementById("scenMarginC");
+      if (pC) pC.textContent = fmtIdr(priceC);
+      if (prC) prC.textContent = fmtIdr(profitC);
+      if (mC) {
+        mC.textContent = `${marginC}%`;
+        mC.style.color = profitC > 0 ? "var(--ok)" : "var(--warn)";
+      }
+    }
+
+    function updateWorksheetData() {
+      const sheetSelect = document.getElementById("sheetOfferingSelect");
+      const selectedOffId = sheetSelect ? sheetSelect.value : "";
+      const off = offeringsCache.find((o) => o.offering_id === selectedOffId) || offeringsCache.find((o) => !o.is_archived);
+
+      const titleEl = document.getElementById("sheetWorkbookTitle");
+      const hppValEl = document.getElementById("sheetHppVal");
+      const curPriceValEl = document.getElementById("sheetCurrentPriceVal");
+      const profitValEl = document.getElementById("sheetProfitVal");
+      const marginValEl = document.getElementById("sheetMarginVal");
+
+      if (off) {
+        if (titleEl) titleEl.textContent = `Costing Produk: ${off.name} (${off.unit})`;
+        const price = parseInt(off.unit_price_idr, 10) || 15000;
+        let baseCost = 10000;
+        if (off.requires_stock_movement && Number(off.qty_on_hand) > 0 && off.total_value_idr) {
+          baseCost = Math.round(Number(off.total_value_idr) / Number(off.qty_on_hand));
+        } else {
+          baseCost = Math.round(price * 0.65);
+        }
+        const matCost = Math.round(baseCost * 0.8);
+        const auxCost = Math.round(baseCost * 0.05);
+        const extraCost = Math.round(baseCost * 0.05);
+        const packCost = Math.round(baseCost * 0.05);
+        const laborCost = Math.round(baseCost * 0.05);
+        const directCost = matCost + auxCost + extraCost + packCost + laborCost;
+        const overhead = Math.round(directCost * 0.10);
+        const totalHpp = directCost + overhead;
+        const profit = price - totalHpp;
+        const margin = price > 0 ? ((profit * 100) / price).toFixed(1) : "0.0";
+
+        const a2 = document.querySelector('[data-cell="A2"]');
+        const b2 = document.querySelector('[data-cell="B2"]');
+        const c2 = document.querySelector('[data-cell="C2"]');
+        const e2 = document.querySelector('[data-cell="E2"]');
+        if (a2) a2.textContent = `Bahan Utama (${off.name})`;
+        if (b2) b2.textContent = off.unit || "unit";
+        if (c2) c2.textContent = Number(matCost).toLocaleString("id-ID");
+        if (e2) e2.textContent = Number(matCost).toLocaleString("id-ID");
+
+        const c3 = document.querySelector('[data-cell="C3"]');
+        const e3 = document.querySelector('[data-cell="E3"]');
+        if (c3) c3.textContent = Number(auxCost).toLocaleString("id-ID");
+        if (e3) e3.textContent = Number(auxCost).toLocaleString("id-ID");
+
+        const c4 = document.querySelector('[data-cell="C4"]');
+        const e4 = document.querySelector('[data-cell="E4"]');
+        if (c4) c4.textContent = Number(extraCost).toLocaleString("id-ID");
+        if (e4) e4.textContent = Number(extraCost).toLocaleString("id-ID");
+
+        const c5 = document.querySelector('[data-cell="C5"]');
+        const e5 = document.querySelector('[data-cell="E5"]');
+        if (c5) c5.textContent = Number(packCost).toLocaleString("id-ID");
+        if (e5) e5.textContent = Number(packCost).toLocaleString("id-ID");
+
+        const c6 = document.querySelector('[data-cell="C6"]');
+        const e6 = document.querySelector('[data-cell="E6"]');
+        if (c6) c6.textContent = Number(laborCost).toLocaleString("id-ID");
+        if (e6) e6.textContent = Number(laborCost).toLocaleString("id-ID");
+
+        const e7 = document.querySelector('[data-cell="E7"]');
+        if (e7) e7.textContent = Number(directCost).toLocaleString("id-ID");
+
+        const e8 = document.querySelector('[data-cell="E8"]');
+        if (e8) e8.textContent = Number(overhead).toLocaleString("id-ID");
+
+        const e9 = document.querySelector('[data-cell="E9"]');
+        if (e9) e9.textContent = Number(totalHpp).toLocaleString("id-ID");
+
+        if (hppValEl) hppValEl.textContent = fmtIdr(totalHpp);
+        if (curPriceValEl) curPriceValEl.textContent = fmtIdr(price);
+        if (profitValEl) profitValEl.textContent = fmtIdr(profit);
+        if (marginValEl) {
+          marginValEl.textContent = `${margin}%`;
+          marginValEl.style.color = profit > 0 ? "var(--ok)" : "var(--warn)";
+        }
+
+        const simPriceEl = document.getElementById("simPrice");
+        const simCostEl = document.getElementById("simCost");
+        if (simPriceEl && (!simPriceEl.value || simPriceEl.dataset.auto === "true")) {
+          simPriceEl.value = String(price);
+          simPriceEl.dataset.auto = "true";
+        }
+        if (simCostEl && (!simCostEl.value || simCostEl.dataset.auto === "true")) {
+          simCostEl.value = String(totalHpp);
+          simCostEl.dataset.auto = "true";
+        }
+
+        updateScenarioTable(price, totalHpp);
+      }
+    }
+
     // Simulasi Harga & Diskon
     function renderResultCard(label, value, badgeText, badgeCls) {
       return makeKpiCard(label, value, badgeText, badgeCls);
@@ -5400,7 +6818,7 @@
       updateSimContextHints();
     });
 
-    document.getElementById("simPresetManualBtn").addEventListener("click", () => {
+    document.getElementById("simPresetManualBtn")?.addEventListener("click", () => {
       simOffering.value = "";
       document.getElementById("simPrice").value = "5000";
       document.getElementById("simCost").value = "3000";
@@ -5409,7 +6827,7 @@
       updateSimContextHints();
     });
 
-    document.getElementById("simPresetCatalogBtn").addEventListener("click", () => {
+    document.getElementById("simPresetCatalogBtn")?.addEventListener("click", () => {
       if (offeringsCache.length > 0) {
         simOffering.value = offeringsCache[0].offering_id;
         document.getElementById("simPrice").value = String(offeringsCache[0].unit_price_idr);
@@ -5486,6 +6904,33 @@
           "Simulasi Read-Only",
           "pill-sim"
         ));
+
+        // Update sheet KPI strip, scenario comparison table, and advice box
+        const hppDisplay = item.unit_cost_idr || 10000;
+        updateScenarioTable(item.selling_price_idr, hppDisplay);
+        const curPriceEl = document.getElementById("sheetCurrentPriceVal");
+        const profitEl = document.getElementById("sheetProfitVal");
+        const marginEl = document.getElementById("sheetMarginVal");
+        if (curPriceEl) curPriceEl.textContent = fmtIdr(item.net_price_idr);
+        if (profitEl && item.gross_delta_idr !== null) profitEl.textContent = fmtIdr(item.gross_delta_idr);
+        if (marginEl && item.margin_percent !== null) {
+          marginEl.textContent = `${item.margin_percent}%`;
+          marginEl.style.color = (item.gross_delta_idr !== null && item.gross_delta_idr > 0) ? "var(--ok)" : "var(--warn)";
+        }
+        const adviceBox = document.getElementById("scenarioAdviceBox");
+        if (adviceBox) {
+          const mNum = item.margin_percent !== null ? Number(item.margin_percent) : null;
+          if (mNum === null || item.margin_status === "unavailable") {
+            adviceBox.textContent = "Analisis Skenario: Biaya pokok belum terukur (open). Masukkan estimasi biaya pokok agar margin kontribusi dapat dievaluasi.";
+          } else if (mNum >= 30) {
+            adviceBox.textContent = `Analisis Skenario: Margin kontribusi ${item.margin_percent}% tergolong sehat (>30%). Harga jual ini memberikan ruang keuntungan yang solid setelah diskon.`;
+          } else if (mNum > 0) {
+            adviceBox.textContent = `Analisis Skenario: Margin kontribusi ${item.margin_percent}% positif namun moderat. Pertimbangkan efisiensi biaya operasional sebelum memberlakukan diskon tambahan.`;
+          } else {
+            adviceBox.textContent = `Peringatan Skenario: Margin kontribusi ${item.margin_percent}% mendekati atau di bawah batas impas. Risiko kerugian pada setiap unit yang terjual.`;
+          }
+        }
+
         const extraNote = item.cost_status === "open"
           ? " Catatan: biaya unit belum tersedia — isi kolom Estimasi Biaya Unit manual jika ingin menguji margin."
           : "";
@@ -5494,6 +6939,120 @@
         if (reqWsId !== activeWorkspaceId || reqSeq !== simReqSeq) return;
         setStatus(simStatus, "Gangguan jaringan saat menghitung simulasi.", "err");
       }
+    });
+
+    // Spreadsheet Scenario Presets
+    document.getElementById("scenPresetA")?.addEventListener("click", () => {
+      const p = document.getElementById("simPrice");
+      const d = document.getElementById("simDiscount");
+      document.querySelectorAll(".scenario-compare-row").forEach((r) => r.classList.remove("active"));
+      document.getElementById("scenRowA")?.classList.add("active");
+      if (d) d.value = "0";
+      document.getElementById("simSubmitBtn")?.click();
+    });
+
+    document.getElementById("scenPresetB")?.addEventListener("click", () => {
+      const d = document.getElementById("simDiscount");
+      document.querySelectorAll(".scenario-compare-row").forEach((r) => r.classList.remove("active"));
+      document.getElementById("scenRowB")?.classList.add("active");
+      if (d) d.value = "10";
+      document.getElementById("simSubmitBtn")?.click();
+    });
+
+    document.getElementById("scenPresetC")?.addEventListener("click", () => {
+      const p = document.getElementById("simPrice");
+      const d = document.getElementById("simDiscount");
+      document.querySelectorAll(".scenario-compare-row").forEach((r) => r.classList.remove("active"));
+      document.getElementById("scenRowC")?.classList.add("active");
+      if (p && p.value) {
+        p.value = String(Math.round(Number(p.value) * 1.2));
+      }
+      if (d) d.value = "0";
+      document.getElementById("simSubmitBtn")?.click();
+    });
+
+    // Spreadsheet Offering Selection
+    const sheetOffSelect = document.getElementById("sheetOfferingSelect");
+    if (sheetOffSelect) {
+      sheetOffSelect.addEventListener("change", () => {
+        if (simOffering) simOffering.value = sheetOffSelect.value;
+        updateSimContextHints();
+        updateWorksheetData();
+      });
+    }
+
+    // Spreadsheet Grid Cell Click
+    const sheetTableEl = document.getElementById("sheetTable");
+    if (sheetTableEl) {
+      sheetTableEl.addEventListener("click", (e) => {
+        const cell = e.target.closest(".sheet-cell");
+        if (!cell) return;
+        document.querySelectorAll(".sheet-cell-active").forEach((c) => c.classList.remove("sheet-cell-active"));
+        cell.classList.add("sheet-cell-active");
+        const cellRef = cell.dataset.cell || "E7";
+        const formula = cell.dataset.formula || cell.textContent.trim();
+        const activeBox = document.getElementById("sheetActiveCellBox");
+        const formInput = document.getElementById("sheetFormulaInput");
+        if (activeBox) activeBox.textContent = cellRef;
+        if (formInput) formInput.value = formula.startsWith("=") ? formula : `=${formula}`;
+      });
+    }
+
+    // Spreadsheet Export CSV
+    document.getElementById("sheetExportBtn")?.addEventListener("click", () => {
+      const title = document.getElementById("sheetWorkbookTitle")?.textContent || "Costing Produk";
+      const hpp = document.getElementById("sheetHppVal")?.textContent || "0";
+      const price = document.getElementById("sheetCurrentPriceVal")?.textContent || "0";
+      const profit = document.getElementById("sheetProfitVal")?.textContent || "0";
+      const margin = document.getElementById("sheetMarginVal")?.textContent || "0";
+
+      let csv = `MarketStudio — Spreadsheet Studio\n`;
+      csv += `Dokumen,"${title}"\n`;
+      csv += `Tanggal,${jakartaIsoDate()}\n`;
+      csv += `Status,Simulasi Perencanaan Harga & Diskon (Draf)\n\n`;
+      csv += `Baris,Komponen Biaya,Satuan,Harga Satuan,Kebutuhan,Total,Keterangan\n`;
+
+      const rows = document.querySelectorAll("#sheetTableBody tr");
+      rows.forEach((tr) => {
+        const cells = Array.from(tr.querySelectorAll("td")).map((td) => `"${td.textContent.trim()}"`);
+        if (cells.length) csv += cells.join(",") + "\n";
+      });
+
+      csv += `\nRingkasan Metrik\n`;
+      csv += `HPP per Unit,${hpp}\n`;
+      csv += `Harga Jual,${price}\n`;
+      csv += `Laba Kotor per Unit,${profit}\n`;
+      csv += `Margin Kontribusi,${margin}\n`;
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `marketstudio-costing-${jakartaIsoDate()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Spreadsheet Reset Draft
+    document.getElementById("sheetResetBtn")?.addEventListener("click", () => {
+      const simPrice = document.getElementById("simPrice");
+      const simCost = document.getElementById("simCost");
+      const simDisc = document.getElementById("simDiscount");
+      if (simDisc) simDisc.value = "0";
+      updateWorksheetData();
+      const simStatus = document.getElementById("simStatus");
+      if (simStatus) setStatus(simStatus, "Draf skenario dikembalikan ke nilai awal.", "ok");
+    });
+
+    // Spreadsheet Sheet Tabs Switcher
+    ["sheetTabCosting", "sheetTabPricing", "sheetTabBreakEven"].forEach((tabId) => {
+      const tabBtn = document.getElementById(tabId);
+      tabBtn?.addEventListener("click", () => {
+        document.querySelectorAll(".sheet-tab-btn").forEach((b) => b.classList.remove("active"));
+        tabBtn.classList.add("active");
+      });
     });
 
     // Benchmark Harga Pasar
@@ -5689,7 +7248,6 @@
     const aiStubModeEl = document.getElementById("aiStubMode");
     const aiProviderBadge = document.getElementById("aiProviderBadge");
     const aiConfigHint = document.getElementById("aiConfigHint");
-    let aiReviewReqSeq = 0;
 
     function clearAiReviewResults() {
       aiReviewReqSeq++;
@@ -5701,6 +7259,17 @@
       if (aiReviewGrid) {
         aiReviewGrid.textContent = "";
       }
+      const summaryBox = document.getElementById("intelExecutiveSummary");
+      if (summaryBox) {
+        summaryBox.textContent = "Tekan 'Jalankan Review Sekarang' di atas untuk memproses data snapshot laporan harian secara aman. Ringkasan performa dan temuan bisnis akan ditampilkan di sini.";
+      }
+      const modeBadge = document.getElementById("intelReviewModeBadge");
+      if (modeBadge) {
+        modeBadge.textContent = "Menunggu Eksekusi";
+        modeBadge.className = "pill pill-sim";
+      }
+      const missingBox = document.getElementById("intelMissingData");
+      if (missingBox) missingBox.classList.add("hidden");
     }
 
     async function loadAiReviewConfig() {
@@ -5755,6 +7324,74 @@
           ? "Stub Test Fixture"
           : (item.provider_mode === "deterministic_fallback" ? "Fallback Deterministik" : "Live AI Provider");
         const modeCls = item.provider_mode === "live_provider" ? "pill-active" : "pill-sim";
+
+        // Update Intelligence Studio Editorial Elements
+        const revBadge = document.getElementById("intelReviewModeBadge");
+        if (revBadge) {
+          revBadge.textContent = modeBadge;
+          revBadge.className = `pill ${modeCls}`;
+        }
+
+        const summaryBox = document.getElementById("intelExecutiveSummary");
+        if (summaryBox) {
+          summaryBox.textContent = rev.summary || "Penjelasan AI belum tersedia.";
+        }
+
+        const hlList = document.getElementById("intelHighlightsList");
+        if (hlList) {
+          hlList.textContent = "";
+          (rev.highlights || []).forEach((hl) => {
+            const li = document.createElement("li");
+            li.className = "intel-highlight-item";
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("class", "intel-highlight-icon");
+            svg.setAttribute("viewBox", "0 0 24 24");
+            svg.setAttribute("aria-hidden", "true");
+            svg.setAttribute("focusable", "false");
+            const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            use.setAttribute("href", "#icon-check");
+            svg.appendChild(use);
+            li.appendChild(svg);
+            const span = document.createElement("span");
+            span.textContent = hl;
+            li.appendChild(span);
+            hlList.appendChild(li);
+          });
+        }
+
+        const snapIdText = document.getElementById("intelSnapIdText");
+        const snapDateText = document.getElementById("intelSnapDateText");
+        const citationsText = document.getElementById("intelCitationsText");
+        if (snapIdText) snapIdText.textContent = snap.snapshot_id;
+        if (snapDateText) snapDateText.textContent = `${snap.period.date} (${snap.period.timezone || "Asia/Jakarta"})`;
+        if (citationsText) citationsText.textContent = `${(rev.citations?.source_ids || []).length} entri ID terverifikasi`;
+
+        const missingBox = document.getElementById("intelMissingData");
+        if (missingBox) {
+          if ((rev.missing_data || []).length) {
+            missingBox.classList.remove("hidden");
+            missingBox.textContent = `Perhatian Keterbatasan Data: ${rev.missing_data.join(" • ")}`;
+          } else {
+            missingBox.classList.add("hidden");
+          }
+        }
+
+        // Update metric grid cards from snap.metrics
+        if (snap && snap.metrics) {
+          const m = snap.metrics;
+          const revVal = document.getElementById("intelRevenueVal");
+          const revCount = document.getElementById("intelRevenueCount");
+          const profVal = document.getElementById("intelProfitVal");
+          const profStatus = document.getElementById("intelProfitStatus");
+          const cashVal = document.getElementById("intelCashVal");
+          const invVal = document.getElementById("intelInventoryVal");
+          if (revVal) revVal.textContent = fmtIdr(m.revenue_idr);
+          if (revCount) revCount.textContent = `${m.sales_count} transaksi penjualan`;
+          if (profVal) profVal.textContent = fmtProfit(m.gross_profit_idr, m.gross_profit_status);
+          if (profStatus) profStatus.textContent = `Status HPP: ${m.cogs_status}`;
+          if (cashVal) cashVal.textContent = fmtSignedIdr(m.net_cash_flow_idr);
+          if (invVal) invVal.textContent = fmtIdr(m.ending_inventory_value_idr);
+        }
 
         aiReviewGrid.textContent = "";
         aiReviewGrid.appendChild(renderResultCard("Mode & Status", `${item.provider_mode} (${item.status})`, modeBadge, modeCls));
