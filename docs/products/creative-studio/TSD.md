@@ -28,3 +28,15 @@ Di Creative Studio, pilih profil usaha, buat atau pilih draft contoh, pilih aset
 `POST /v1/workspaces/{workspace_id}/creative-drafts/{draft_id}/preview` mengembalikan gambar, versi, dan SHA-256 untuk format yang dipilih. Kirim kembali `format`, `expected_version`, dan `preview_sha256` ke `POST .../export` untuk mengunduh byte yang sama. Perubahan versi, format, atau hasil render memerlukan pratinjau ulang. Preview dan export tercatat di audit, dengan status poster tetap `draft` dan ledger tetap sama.
 
 Inisialisasi SQLite membuat tabel `creative_assets` dan `poster_drafts` secara aditif. Pada konfigurasi PostgreSQL, endpoint poster memeriksa akses workspace dan mengembalikan `poster_backend_unavailable` kepada anggota. Untuk rollback lokal, jalankan kembali versi aplikasi sebelumnya dengan basis data yang sama. Kedua tabel dapat dipertahankan agar pekerjaan poster tersedia saat fitur dipulihkan.
+
+## Draft caption Issue #16
+
+Di Creative Studio, pilih produk atau jasa, gaya bahasa, serta aset berizin untuk draft baru. **Buat draft dengan AI** menyimpan draft awal dan membuka editor. **Tulis manual** membuka draft kosong untuk caption. Perubahan copy singkat dan caption dapat langsung dilihat di pratinjau teks. **Simpan draft** menyimpan versi baru. **Salin caption** menyalin teks yang terlihat pada editor.
+
+`POST /v1/workspaces/{workspace_id}/creative-drafts/caption` menerima `offering_id`, `asset_id`, `tone` (`friendly` atau `direct`), dan `mode` (`ai` atau `manual`). Klien mengirim `Idempotency-Key` saat membuat draft. Nama, kategori offering, deskripsi opsional, satuan dan harga jual diambil dari katalog workspace. Provider Gemini memakai konfigurasi dan transport JSON Business Review. Permintaan provider hanya membawa kategori, gaya bahasa, dan pilihan ID pola kalimat. Aplikasi menyisipkan fakta katalog secara lokal setelah memvalidasi ID tersebut. Jika provider gagal atau mengirim keluaran di luar pilihan, pembuatan draft AI tidak mengubah data dan editor tetap tersedia.
+
+Provenance draft menyimpan fakta sumber, versi prompt, gaya bahasa, waktu pembuatan, mode provider, dan versi edit terakhir. Gunakan `PATCH /creative-drafts/{draft_id}` relatif terhadap workspace dengan `expected_version` untuk menyimpan perubahan. Draft menggunakan versi dan ekspor poster #42. Pratinjau katalog #48 dapat menerima `copy_draft: {draft_id, version}` untuk salah satu offering terpilih. Snapshot katalog memuat caption yang dipilih dan masih memerlukan tindakan terbit terpisah oleh pemilik.
+
+SQLite menambahkan kolom `offerings.description` saat startup. Offering lama tetap dapat menghasilkan caption dengan deskripsi kosong. PostgreSQL menambahkan kolom kompatibel lewat migrasi `0003`. Alur Creative Studio mengikuti ketersediaan SQLite dari #42/#48. Rollback aplikasi lokal dapat mempertahankan kolom dan semua draft.
+
+Jalankan `CHROMIUM_PATH=/usr/bin/chromium node scripts/check_ai_copy.cjs /tmp/marketstudio-copy-evidence` dengan Playwright yang tersedia di jalur modul Node. Skrip memakai data sintetis SQLite, membuka Chromium headless pada 390 dan 1440 px, serta menguji mode `stub_valid`, timeout, dan kegagalan provider.

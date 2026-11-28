@@ -140,7 +140,7 @@ class PostgresAdapterUnitTest(unittest.TestCase):
 
     def test_discover_migrations_valid(self) -> None:
         specs = discover_migrations()
-        self.assertEqual([s.version for s in specs], ["0001", "0002"])
+        self.assertEqual([s.version for s in specs], ["0001", "0002", "0003"])
         self.assertEqual(specs[0].name, "initial_schema")
         self.assertEqual(specs[1].name, "rls_and_service_privileges")
         for spec in specs:
@@ -250,10 +250,10 @@ class PostgresIntegrationTest(unittest.TestCase):
 
         # 1. Roll back all applied migrations down to 0000
         rolled_all = rollback_migrations(self.pg_url, to_version="0000")
-        self.assertEqual(rolled_all, ["0002", "0001"])
+        self.assertEqual(rolled_all, ["0003", "0002", "0001"])
         status_empty = get_migration_status(self.pg_url)
         self.assertEqual(status_empty["applied"], [])
-        self.assertEqual(status_empty["pending"], ["0001", "0002"])
+        self.assertEqual(status_empty["pending"], ["0001", "0002", "0003"])
         self.assertFalse(status_empty["current"])
 
         with db_transaction(database_url=self.pg_url) as conn:
@@ -267,7 +267,7 @@ class PostgresIntegrationTest(unittest.TestCase):
 
         # 2. Apply migrations up cleanly + verify idempotent re-run
         applied = apply_migrations(self.pg_url)
-        self.assertEqual(applied, ["0001", "0002"])
+        self.assertEqual(applied, ["0001", "0002", "0003"])
         applied_again = apply_migrations(self.pg_url)
         self.assertEqual(applied_again, [])
         with db_transaction(database_url=self.pg_url) as conn:
@@ -278,7 +278,7 @@ class PostgresIntegrationTest(unittest.TestCase):
 
         status_current = get_migration_status(self.pg_url)
         self.assertTrue(status_current["current"])
-        self.assertEqual([a["version"] for a in status_current["applied"]], ["0001", "0002"])
+        self.assertEqual([a["version"] for a in status_current["applied"]], ["0001", "0002", "0003"])
         self.assertIn("://***@", status_current["target"])
         parsed_pg = urlsplit(self.pg_url)
         if parsed_pg.password:
@@ -329,14 +329,14 @@ class PostgresIntegrationTest(unittest.TestCase):
                 apply_migrations(self.pg_url, migrations_dir=tmp_migs)
 
         # 4. Step rollback (0002) disables RLS cleanly, then re-apply 0002
-        rolled_one = rollback_migrations(self.pg_url, steps=1)
-        self.assertEqual(rolled_one, ["0002"])
+        rolled_one = rollback_migrations(self.pg_url, steps=2)
+        self.assertEqual(rolled_one, ["0003", "0002"])
         with db_transaction(database_url=self.pg_url) as conn:
             rls_sales = conn.execute(
                 "SELECT relrowsecurity FROM pg_class WHERE relname = 'sales'"
             ).fetchone()["relrowsecurity"]
             self.assertFalse(bool(rls_sales))
-        self.assertEqual(apply_migrations(self.pg_url), ["0002"])
+        self.assertEqual(apply_migrations(self.pg_url), ["0002", "0003"])
 
     def test_pg_rls_and_service_pool_privileges_and_503_unavailable(self) -> None:
         import psycopg

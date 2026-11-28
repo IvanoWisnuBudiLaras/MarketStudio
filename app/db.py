@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS offerings (
     offering_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
     name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
     offering_type TEXT NOT NULL CHECK (offering_type IN ('goods', 'service', 'hybrid')),
     unit_price_idr INTEGER NOT NULL CHECK (unit_price_idr >= 0),
     unit TEXT NOT NULL,
@@ -770,6 +771,9 @@ def _init_sqlite_db(db_path: str) -> str:
     with closing(sqlite3.connect(db_path, timeout=10.0)) as conn:
         conn.row_factory = sqlite3.Row
         conn.executescript(SCHEMA_SQL)
+        offering_cols = {r["name"] for r in conn.execute("PRAGMA table_info(offerings)")}
+        if "description" not in offering_cols:
+            conn.execute("ALTER TABLE offerings ADD COLUMN description TEXT NOT NULL DEFAULT ''")
         ws_cols = {r["name"] for r in conn.execute("PRAGMA table_info(workspaces)").fetchall()}
         if "is_demo" not in ws_cols:
             conn.execute("ALTER TABLE workspaces ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")

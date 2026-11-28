@@ -909,7 +909,10 @@
     #catalogPublicLink, #posterCaption { overflow-wrap: anywhere; }
     #catalogPublicLink { width: fit-content; display: flex; align-items: center; min-height: 44px; }
     #publicCatalogCard .btn, #posterCopyCaptionBtn { min-height: 44px; }
-    #catalogArtwork { min-height: 44px; }
+    #catalogArtwork, #catalogCaption, #posterMain button, #posterMain select { min-height: 44px; }
+    #posterCaption { white-space: pre-wrap; }
+    #posterHeadline { overflow-wrap: anywhere; }
+    #posterCaptionInput { width: 100%; resize: vertical; font: inherit; }
 
     .poster-preview-image {
       display: block;
@@ -961,7 +964,8 @@
     input[type="number"],
     input[type="date"],
     input[type="url"],
-    select {
+    select,
+    textarea {
       width: 100%;
       max-width: 100%;
       min-width: 0;
@@ -1826,6 +1830,11 @@
                     <div id="offNameErr" class="field-error"></div>
                   </div>
                   <div class="field">
+                    <label class="field-label" for="offDescription">Deskripsi produk atau jasa (opsional)</label>
+                    <input id="offDescription" type="text" maxlength="240" aria-describedby="offDescriptionErr" />
+                    <div id="offDescriptionErr" class="field-error"></div>
+                  </div>
+                  <div class="field">
                     <label class="field-label" for="offType">Tipe Penawaran</label>
                     <select id="offType" aria-describedby="offTypeHelper offTypeErr">
                       <option value="goods">Barang — melacak stok (WA)</option>
@@ -2306,6 +2315,10 @@
                   <label class="field-label" for="catalogArtwork">Gambar katalog (opsional)</label>
                   <select id="catalogArtwork"></select>
                 </div>
+                <div class="field">
+                  <label class="field-label" for="catalogCaption">Caption tersimpan untuk produk atau jasa pilihan (opsional)</label>
+                  <select id="catalogCaption"></select>
+                </div>
                 <div class="form-actions">
                   <button class="btn btn-primary" id="catalogPreviewBtn" type="button">Pratinjau katalog</button>
                 </div>
@@ -2331,9 +2344,31 @@
             </section>
             <section class="card">
               <header class="card-header">
-                <h2>Draft poster</h2>
+                <h2>Draft promosi</h2>
                 <button id="posterSampleBtn" class="btn btn-secondary" type="button">Buat draft contoh</button>
               </header>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="copyOffering" class="field-label">Produk atau jasa</label>
+                  <select id="copyOffering"></select>
+                </div>
+                <div class="field">
+                  <label for="copyTone" class="field-label">Gaya bahasa</label>
+                  <select id="copyTone">
+                    <option value="friendly">Ramah</option>
+                    <option value="direct">Lugas</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="copyAsset" class="field-label">Aset berizin untuk draft baru</label>
+                  <select id="copyAsset"></select>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button id="generateCopyBtn" class="btn btn-primary" type="button">Buat draft dengan AI</button>
+                <button id="manualCopyBtn" class="btn btn-secondary" type="button">Tulis manual</button>
+                <button id="reloadPosterBtn" class="btn btn-secondary hidden" type="button">Muat ulang daftar draft</button>
+              </div>
               <div class="form-grid">
                 <div class="field">
                   <label for="posterDraftSelect" class="field-label">Draft tersimpan</label>
@@ -2357,8 +2392,23 @@
               </div>
               <div id="posterCaptionPanel" class="hidden">
                 <h3>Caption promosi</h3>
+                <p id="posterCopySource" class="muted"></p>
+                <div class="field">
+                  <label for="posterHeadlineInput" class="field-label">Copy singkat</label>
+                  <input id="posterHeadlineInput" type="text" maxlength="140" />
+                </div>
+                <div class="field">
+                  <label for="posterCaptionInput" class="field-label">Caption</label>
+                  <textarea id="posterCaptionInput" rows="5" maxlength="600"></textarea>
+                </div>
+                <h4>Pratinjau teks</h4>
+                <p id="posterHeadline"></p>
                 <p id="posterCaption"></p>
-                <button id="posterCopyCaptionBtn" class="btn btn-secondary" type="button">Salin caption</button>
+                <div class="form-actions">
+                  <button id="saveCopyBtn" class="btn btn-primary" type="button">Simpan draft</button>
+                  <button id="discardCopyBtn" class="btn btn-secondary" type="button">Batalkan edit</button>
+                  <button id="posterCopyCaptionBtn" class="btn btn-secondary" type="button">Salin caption</button>
+                </div>
                 <p id="posterCopyStatus" class="status" aria-live="polite"></p>
               </div>
               <p id="posterStatus" class="status" aria-live="polite"></p>
@@ -3352,6 +3402,7 @@
 
       const previousSelections = [saleOffering, purOffering, simOffering, benchOffering].map(select => select.value);
       offeringsCache = data.items || [];
+      if (posterLoaded) fillCopyOfferings(offeringsCache);
       catalogWorkspaceId = reqWsId;
       updateHomeAction();
       const stockAlert = document.getElementById("homeStockAlert");
@@ -3815,6 +3866,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
+            description: document.getElementById("offDescription").value.trim(),
             offering_type: offType,
             unit_price_idr: parseInt(rawPrice, 10),
             unit
@@ -3824,12 +3876,14 @@
         if (!res.ok) {
           const fe = data.field_errors || {};
           if (fe.name) setFieldError("offName", "offNameErr", fe.name);
+          if (fe.description) setFieldError("offDescription", "offDescriptionErr", fe.description);
           if (fe.offering_type) setFieldError("offType", "offTypeErr", fe.offering_type);
           if (fe.unit_price_idr) setFieldError("offPrice", "offPriceErr", fe.unit_price_idr);
           if (fe.unit) setFieldError("offUnit", "offUnitErr", fe.unit);
           return setStatus(offStatus, data.message || "Gagal menyimpan offering.", "err");
         }
         document.getElementById("offName").value = "";
+        document.getElementById("offDescription").value = "";
         setStatus(offStatus, `Offering '${data.item.name}' (${fmtIdr(data.item.unit_price_idr)}/${data.item.unit}) tersimpan.`, "ok");
         await loadOfferings();
       } catch {
@@ -4424,6 +4478,7 @@
       }
     });
 
+    const byId = id => document.getElementById(id);
     const posterDraftSelect = document.getElementById("posterDraftSelect");
     const posterAssetSelect = document.getElementById("posterAssetSelect");
     const posterFormat = document.getElementById("posterFormat");
@@ -4433,20 +4488,40 @@
     const posterPreviewImage = document.getElementById("posterPreviewImage");
     const posterPreviewCard = document.getElementById("posterPreviewCard");
     const posterStatus = document.getElementById("posterStatus");
+    const copyOffering = document.getElementById("copyOffering");
+    const copyTone = document.getElementById("copyTone");
+    const copyAsset = document.getElementById("copyAsset");
+    const posterHeadlineInput = document.getElementById("posterHeadlineInput");
+    const posterCaptionInput = document.getElementById("posterCaptionInput");
     let posterDrafts = [];
     let posterPreview = null;
     let posterLoaded = false;
     let posterBusy = false;
     let posterScope = 0;
+    let copyCreateAttempt = null;
+
+    function currentPosterDraft() {
+      return posterDrafts.find(item => item.draft_id === posterDraftSelect.value);
+    }
 
     function updatePosterControls() {
-      posterSampleBtn.disabled = posterBusy;
-      byId("posterCopyCaptionBtn").disabled = posterBusy;
-      posterDraftSelect.disabled = posterBusy || !posterDrafts.length;
-      posterAssetSelect.disabled = posterBusy || !posterDraftSelect.value;
-      posterFormat.disabled = posterBusy;
-      posterPreviewBtn.disabled = posterBusy || !posterDraftSelect.value || !posterAssetSelect.value;
-      posterExportBtn.disabled = posterBusy || !posterPreview;
+      const draft = currentPosterDraft();
+      const dirty = Boolean(draft && (draft.headline !== posterHeadlineInput.value || draft.caption !== posterCaptionInput.value));
+      const blocked = posterBusy || dirty;
+      byId("reloadPosterBtn").disabled = posterBusy;
+      posterSampleBtn.disabled = blocked;
+      for (const control of [copyOffering, copyTone, copyAsset, posterHeadlineInput, posterCaptionInput]) {
+        control.disabled = posterBusy;
+      }
+      byId("generateCopyBtn").disabled = byId("manualCopyBtn").disabled = blocked || !copyOffering.value || !copyAsset.value;
+      byId("saveCopyBtn").disabled = posterBusy || !dirty || posterHeadlineInput.value.trim().length < 2;
+      byId("discardCopyBtn").disabled = posterBusy || !dirty;
+      byId("posterCopyCaptionBtn").disabled = posterBusy || !posterCaptionInput.value.trim();
+      posterDraftSelect.disabled = blocked || !posterDrafts.length;
+      posterAssetSelect.disabled = blocked || !draft;
+      posterFormat.disabled = blocked;
+      posterPreviewBtn.disabled = blocked || !draft || !posterAssetSelect.value;
+      posterExportBtn.disabled = blocked || !posterPreview;
     }
 
     function clearPosterPreview() {
@@ -4463,9 +4538,18 @@
       posterLoaded = false;
       posterBusy = false;
       posterDrafts = [];
+      copyCreateAttempt = null;
       byId("posterCaptionPanel").classList.add("hidden");
+      posterHeadlineInput.value = "";
+      posterCaptionInput.value = "";
+      byId("posterHeadline").textContent = "";
       byId("posterCaption").textContent = "";
+      byId("posterCopySource").textContent = "";
+      copyOffering.replaceChildren();
+      copyAsset.replaceChildren();
+      copyTone.value = "friendly";
       setStatus(byId("posterCopyStatus"), "");
+      byId("reloadPosterBtn").classList.add("hidden");
       posterDraftSelect.replaceChildren();
       posterAssetSelect.replaceChildren();
       posterFormat.value = "svg";
@@ -4479,6 +4563,15 @@
       for (const [label, value] of items) select.add(new Option(label, value));
     }
 
+    function fillCopyOfferings(offerings) {
+      const previous = copyOffering.value;
+      fillPosterOptions(copyOffering, offerings.map(off => [
+        `${off.name} · ${fmtIdr(off.unit_price_idr)} / ${off.unit}`, off.offering_id
+      ]), "Tambahkan produk atau jasa terlebih dahulu");
+      if (offerings.some(off => off.offering_id === previous)) copyOffering.value = previous;
+      updatePosterControls();
+    }
+
     function showPosterDrafts(draftId) {
       fillPosterOptions(
         posterDraftSelect,
@@ -4487,16 +4580,29 @@
       );
       if (draftId) posterDraftSelect.value = draftId;
       selectPosterDraft();
+      const reviewedCopy = catalogDraft?.selection.copy_draft;
+      fillCatalogCaptionOptions(catalogCaption.value || (reviewedCopy ? `${reviewedCopy.draft_id}:${reviewedCopy.version}` : ""));
     }
 
     function selectPosterDraft() {
-      const draft = posterDrafts.find(item => item.draft_id === posterDraftSelect.value);
+      const draft = currentPosterDraft();
       posterAssetSelect.value = draft?.asset_id || "";
-      byId("posterCaption").textContent = draft?.caption || "";
-      byId("posterCaptionPanel").classList.toggle("hidden", !draft?.caption);
+      posterHeadlineInput.value = draft?.headline || "";
+      posterCaptionInput.value = draft?.caption || "";
+      const source = draft?.copy_provenance?.provider_mode;
+      byId("posterCopySource").textContent = source === "stub_test" ? "Simulasi AI (stub)"
+        : source === "live_provider" ? "Draft dari provider AI"
+        : draft?.copy_source === "sample" ? "Draft contoh" : "Draft manual";
+      byId("posterCaptionPanel").classList.toggle("hidden", !draft);
+      renderCopyPreview();
+      setStatus(posterStatus, "");
+    }
+
+    function renderCopyPreview() {
+      byId("posterHeadline").textContent = posterHeadlineInput.value;
+      byId("posterCaption").textContent = posterCaptionInput.value;
       setStatus(byId("posterCopyStatus"), "");
       clearPosterPreview();
-      setStatus(posterStatus, "");
     }
 
     async function posterRequest(path, method = "GET", body = null, headers = {}) {
@@ -4542,23 +4648,74 @@
     function loadPosterStudio() {
       if (posterLoaded) return;
       return runPosterAction("Memuat draft dan aset…", async (root, isCurrent) => {
-        const [drafts, assets] = await Promise.all([
+        byId("reloadPosterBtn").classList.remove("hidden");
+        byId("reloadPosterBtn").disabled = true;
+        const [drafts, assets, offerings] = await Promise.all([
           posterRequest(`${root}/creative-drafts`).then(response => response.json()),
-          posterRequest(`${root}/creative-assets`).then(response => response.json())
+          posterRequest(`${root}/creative-assets`).then(response => response.json()),
+          posterRequest(`${root}/offerings`).then(response => response.json())
         ]);
         if (!isCurrent()) return;
+        byId("reloadPosterBtn").classList.add("hidden");
         posterLoaded = true;
         posterDrafts = drafts.items;
-        fillPosterOptions(
-          posterAssetSelect,
-          assets.items.filter(asset => asset.license_status === "verified")
-            .map(asset => [`${asset.title} · ${asset.asset_license}`, asset.asset_id]),
-          "Belum ada aset berizin"
-        );
+        const verifiedAssets = assets.items.filter(asset => asset.license_status === "verified")
+          .map(asset => [`${asset.title} · ${asset.asset_license}`, asset.asset_id]);
+        fillPosterOptions(posterAssetSelect, verifiedAssets, "Belum ada aset berizin");
+        fillPosterOptions(copyAsset, verifiedAssets, "Belum ada aset berizin");
+        fillCopyOfferings(offerings.items);
         showPosterDrafts();
-        if (!posterDrafts.length) setStatus(posterStatus, "Buat draft contoh untuk mencoba ekspor poster.", "info");
+        if (!posterDrafts.length && !offerings.items.length) {
+          setStatus(posterStatus, "Tambahkan produk atau jasa di Katalog untuk membuat caption.", "info");
+        }
       });
     }
+
+    for (const input of [posterHeadlineInput, posterCaptionInput]) {
+      input.addEventListener("input", renderCopyPreview);
+    }
+    byId("discardCopyBtn").addEventListener("click", selectPosterDraft);
+
+    function createCopyDraft(mode) {
+      const payload = { offering_id: copyOffering.value, asset_id: copyAsset.value, tone: copyTone.value, mode };
+      const signature = JSON.stringify(payload);
+      if (copyCreateAttempt?.signature !== signature) {
+        copyCreateAttempt = { signature, key: crypto.randomUUID() };
+      }
+      return runPosterAction("Menyiapkan draft caption…", async (root, isCurrent) => {
+        const response = await posterRequest(`${root}/creative-drafts/caption`, "POST", payload, {
+          "Idempotency-Key": copyCreateAttempt.key
+        });
+        const { item } = await response.json();
+        if (!isCurrent()) return;
+        copyCreateAttempt = null;
+        posterDrafts = [item, ...posterDrafts.filter(draft => draft.draft_id !== item.draft_id)];
+        showPosterDrafts(item.draft_id);
+        setStatus(posterStatus, "Draft siap disunting.");
+        posterCaptionInput.focus();
+      });
+    }
+
+    byId("generateCopyBtn").addEventListener("click", () => createCopyDraft("ai"));
+    byId("manualCopyBtn").addEventListener("click", () => createCopyDraft("manual"));
+    byId("reloadPosterBtn").addEventListener("click", loadPosterStudio);
+    byId("saveCopyBtn").addEventListener("click", () => {
+      const draft = currentPosterDraft();
+      const edits = {
+        headline: posterHeadlineInput.value,
+        caption: posterCaptionInput.value,
+        expected_version: draft.version
+      };
+      return runPosterAction("Menyimpan draft…", async (root, isCurrent) => {
+        const path = `${root}/creative-drafts/${encodeURIComponent(draft.draft_id)}`;
+        const response = await posterRequest(path, "PATCH", edits);
+        const { item } = await response.json();
+        if (!isCurrent()) return;
+        posterDrafts = [item, ...posterDrafts.filter(entry => entry.draft_id !== item.draft_id)];
+        showPosterDrafts(item.draft_id);
+        setStatus(posterStatus, "Draft tersimpan.");
+      });
+    });
 
     posterSampleBtn.addEventListener("click", async () => {
       if (!posterLoaded) await loadPosterStudio();
@@ -4603,6 +4760,7 @@
         const { item } = await response.json();
         if (!isCurrent()) return;
         posterDrafts = posterDrafts.map(entry => entry.draft_id === item.draft.draft_id ? item.draft : entry);
+        fillCatalogCaptionOptions();
         posterAssetSelect.value = item.draft.asset_id;
         posterPreviewImage.src = item.preview_data_url;
         posterPreviewCard.classList.remove("hidden");
@@ -4654,7 +4812,6 @@
       });
     }
 
-    const byId = id => document.getElementById(id);
     const catalogControls = byId("catalogControls");
     const catalogChoices = byId("catalogChoices");
     const catalogArtwork = byId("catalogArtwork");
@@ -4664,6 +4821,16 @@
     let catalogBusy = false;
     let catalogDraft = null;
     let catalogPublicPath = null;
+    const catalogCaption = byId("catalogCaption");
+
+    function fillCatalogCaptionOptions(value = catalogCaption.value) {
+      fillPosterOptions(catalogCaption, [
+        ["Tanpa caption", ""],
+        ...posterDrafts.filter(draft => draft.offering_id && draft.caption)
+          .map(draft => [`${draft.title} · v${draft.version}`, `${draft.draft_id}:${draft.version}`])
+      ]);
+      catalogCaption.value = [...catalogCaption.options].some(option => option.value === value) ? value : "";
+    }
 
     function showCatalogDraft(draft) {
       catalogDraft = draft;
@@ -4698,6 +4865,7 @@
       catalogControls.disabled = true;
       catalogChoices.replaceChildren();
       catalogArtwork.replaceChildren();
+      catalogCaption.replaceChildren();
       showCatalogState({ draft: null, public_path: null });
       byId("catalogReloadBtn").classList.add("hidden");
       setStatus(catalogStatus, "");
@@ -4756,6 +4924,8 @@
         ]);
         catalogArtwork.value = item.draft?.selection.asset_id || "";
         showCatalogState(item);
+        const copyDraft = item.draft?.selection.copy_draft;
+        fillCatalogCaptionOptions(copyDraft ? `${copyDraft.draft_id}:${copyDraft.version}` : "");
         catalogLoaded = true;
         catalogPreviewBtn.disabled = !offerings.items.length;
         setStatus(catalogStatus, offerings.items.length ? "" : "Tambahkan produk atau jasa di Katalog.");
@@ -4768,7 +4938,7 @@
     }
 
     byId("catalogReloadBtn").addEventListener("click", loadPublicCatalog);
-    for (const control of [catalogChoices, catalogArtwork]) {
+    for (const control of [catalogChoices, catalogArtwork, catalogCaption]) {
       control.addEventListener("change", () => {
         showCatalogDraft(null);
         setStatus(catalogStatus, "Tinjau perubahan sebelum menerbitkan.");
@@ -4783,6 +4953,10 @@
         return;
       }
       const selection = { offering_ids, asset_id: catalogArtwork.value || null };
+      if (catalogCaption.value) {
+        const [draft_id, version] = catalogCaption.value.split(":");
+        selection.copy_draft = { draft_id, version: Number(version) };
+      }
       return runCatalogAction("Menyiapkan pratinjau…", async (root, isCurrent) => {
         const { item } = await catalogJson(`${root}/catalog/preview`, selection);
         if (!isCurrent()) return;

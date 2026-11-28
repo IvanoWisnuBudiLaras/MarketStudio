@@ -102,6 +102,7 @@ class OfferingInput:
     valuation_method: str | None = None
     tax_status: str = "not_assessed"
     tax_reason: str = DEFAULT_TAX_REASON
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -160,6 +161,10 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
     if offering_type not in VALID_OFFERING_TYPES:
         errors["offering_type"] = f"Tipe harus salah satu dari: {', '.join(VALID_OFFERING_TYPES)}."
 
+    description = payload.get("description", "")
+    if not isinstance(description, str) or len(description.strip()) > 240:
+        errors["description"] = "Deskripsi harus berupa teks hingga 240 karakter."
+
     raw_price = payload.get("unit_price_idr")
     if isinstance(raw_price, bool) or not isinstance(raw_price, int) or raw_price < 0 or raw_price > 10**15:
         errors["unit_price_idr"] = "Harga satuan (IDR) harus bilangan bulat 0..10^15."
@@ -215,6 +220,7 @@ def validate_offering_input(payload: dict[str, Any]) -> OfferingInput:
         valuation_method=valuation_method,
         tax_status=tax_status,
         tax_reason=tax_reason,
+        description=description.strip(),
     )
 
 

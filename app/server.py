@@ -41,6 +41,7 @@ _RE_AI_REVIEW_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily/ai-revi
 _RE_CREATIVE_ASSETS = re.compile(r"^/v1/workspaces/([^/]+)/creative-assets$")
 _RE_CREATIVE_DRAFTS = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts$")
 _RE_CREATIVE_DRAFT_SAMPLE = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/sample$")
+_RE_CREATIVE_CAPTION = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/caption$")
 _RE_CREATIVE_DRAFT_DETAIL = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)$")
 _RE_CREATIVE_DRAFT_PREVIEW = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)/preview$")
 _RE_CREATIVE_DRAFT_EXPORT = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/([^/]+)/export$")
@@ -387,6 +388,15 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 body = self._read_json_body()
                 item = self.service.run_daily_ai_review(ws_id, actor_id=actor_id, payload=body)
                 self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_cre_caption = _RE_CREATIVE_CAPTION.match(path)
+            if m_cre_caption:
+                actor_id = self._require_actor()
+                ws_id = m_cre_caption.group(1)
+                self.service.require_poster_access(ws_id, actor_id)
+                status, item = self.service.create_caption_draft(ws_id, actor_id, self._read_json_body(), idem_key)
+                self._send_json(status, {"item": item, "request_id": request_id})
                 return
 
             m_cre_sample = _RE_CREATIVE_DRAFT_SAMPLE.match(path)
