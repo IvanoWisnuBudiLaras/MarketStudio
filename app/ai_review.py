@@ -20,11 +20,17 @@ STUB_MODES = frozenset(
     }
 )
 
+DEFAULT_9ROUTER_URL = "http://127.0.0.1:20128/v1/chat/completions"
+DEFAULT_9ROUTER_MODEL = "ag/gemini-3.8-flash"
+
 _REQUIRED_ENV_VARS = (
     "MARKETSTUDIO_AI_PROVIDER",
     "MARKETSTUDIO_AI_MODEL",
     "GEMINI_API_KEY",
     "GOOGLE_API_KEY",
+    "MARKETSTUDIO_9ROUTER_URL",
+    "MARKETSTUDIO_9ROUTER_MODEL",
+    "MARKETSTUDIO_9ROUTER_API_KEY",
 )
 
 
@@ -32,9 +38,29 @@ def get_ai_provider_config_status() -> dict[str, Any]:
     """Check AI provider env configuration presence without ever reading or exposing secret values."""
     env_values = {key: (os.environ.get(key) or "").strip() for key in _REQUIRED_ENV_VARS}
     env_presence = {key: bool(val) for key, val in env_values.items()}
-    provider = env_values["MARKETSTUDIO_AI_PROVIDER"] or None
-    model = env_values["MARKETSTUDIO_AI_MODEL"] or None
-    has_key = env_presence["GEMINI_API_KEY"] or env_presence["GOOGLE_API_KEY"]
+    provider = env_values.get("MARKETSTUDIO_AI_PROVIDER") or None
+
+    has_9router_url = bool(env_values.get("MARKETSTUDIO_9ROUTER_URL"))
+    if provider == "9router" or (has_9router_url and not provider):
+        provider = "9router"
+        model = (
+            env_values.get("MARKETSTUDIO_9ROUTER_MODEL")
+            or env_values.get("MARKETSTUDIO_AI_MODEL")
+            or DEFAULT_9ROUTER_MODEL
+        )
+        return {
+            "configured": True,
+            "provider": provider,
+            "model": model,
+            "unsupported_provider": False,
+            "env_presence": env_presence,
+            "missing_env_vars": [],
+            "setup_action": "9Router lokal aktif via adapter OpenAI-compatible.",
+            "live_integration_verified": False,
+        }
+
+    model = env_values.get("MARKETSTUDIO_AI_MODEL") or None
+    has_key = env_presence.get("GEMINI_API_KEY") or env_presence.get("GOOGLE_API_KEY")
 
     missing_env_vars: list[str] = []
     if not provider:
@@ -44,7 +70,7 @@ def get_ai_provider_config_status() -> dict[str, Any]:
     if not has_key:
         missing_env_vars.append("GEMINI_API_KEY")
 
-    unsupported_provider = bool(provider and provider != "gemini")
+    unsupported_provider = bool(provider and provider not in ("gemini", "9router"))
     configured = bool(provider == "gemini" and model and has_key)
     return {
         "configured": configured,
@@ -54,11 +80,11 @@ def get_ai_provider_config_status() -> dict[str, Any]:
         "env_presence": env_presence,
         "missing_env_vars": missing_env_vars,
         "setup_action": (
-            f"Provider '{provider}' tidak didukung; gunakan MARKETSTUDIO_AI_PROVIDER=gemini."
+            f"Provider '{provider}' tidak didukung; gunakan MARKETSTUDIO_AI_PROVIDER=9router atau gemini."
             if unsupported_provider
             else (
-                "Set MARKETSTUDIO_AI_PROVIDER=gemini, MARKETSTUDIO_AI_MODEL=gemini-2.5-flash, "
-                "dan GEMINI_API_KEY di environment runtime."
+                "Set MARKETSTUDIO_AI_PROVIDER=9router (atau MARKETSTUDIO_9ROUTER_URL) untuk 9Router lokal, "
+                "atau MARKETSTUDIO_AI_PROVIDER=gemini, MARKETSTUDIO_AI_MODEL=gemini-2.5-flash, dan GEMINI_API_KEY."
             )
         ),
         "live_integration_verified": False,
@@ -265,6 +291,105 @@ def _run_stub_adapter(stub_mode: str, snapshot: dict[str, Any]) -> tuple[dict[st
     }, None
 
 
+def _extract_json_text(text: str) -> str:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        stripped = "\n".join(lines).strip()
+    return stripped
+
+
+def _resolve_9router_endpoint() -> tuple[str, bool]:
+    raw_url = (os.environ.get("MARKETSTUDIO_9ROUTER_URL") or DEFAULT_9ROUTER_URL).strip()
+    if not raw_url.endswith("/v1/chat/completions"):
+        if raw_url.endswith("/v1"):
+            raw_url += "/chat/completions"
+        elif raw_url.endswith("/"):
+            raw_url += "v1/chat/completions"
+        else:
+            raw_url += "/v1/chat/completions"
+    from urllib.parse import urlsplit
+    parsed = urlsplit(raw_url)
+    is_private_origin = (
+        parsed.scheme in ("http", "https")
+        and parsed.hostname in ("127.0.0.1", "localhost", "::1")
+    )
+    return raw_url, is_private_origin
+
+
+def call_9router_json(
+    prompt: str,
+    model: str,
+    timeout_seconds: float = 8.0,
+    url: str | None = None,
+) -> tuple[Any, str | None]:
+    target_url, is_private = _resolve_9router_endpoint() if url is None else (url, True)
+    if not is_private:
+        return None, "provider_error"
+
+    api_key = (os.environ.get("MARKETSTUDIO_9ROUTER_API_KEY") or "").strip()
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    body = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Anda adalah analis bisnis MarketStudio. "
+                        "Kembalikan HANYA JSON valid tanpa teks lain di luar JSON."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+        }
+    ).encode("utf-8")
+
+    req = urllib.request.Request(
+        target_url,
+        data=body,
+        method="POST",
+        headers=headers,
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+            raw_text = resp.read().decode("utf-8")
+        parsed = json.loads(raw_text)
+        content = parsed["choices"][0]["message"]["content"]
+        cleaned_content = _extract_json_text(content)
+        return json.loads(cleaned_content), None
+    except urllib.error.HTTPError as exc:
+        exc.close()
+        return None, "provider_error"
+    except (TimeoutError, urllib.error.URLError):
+        return None, "provider_timeout"
+    except Exception:
+        return None, "provider_error"
+
+
+def _call_9router_adapter(
+    outbound_payload: dict[str, Any],
+    model: str,
+    timeout_seconds: float,
+) -> tuple[dict[str, Any] | None, str | None]:
+    prompt = (
+        "Anda adalah analis bisnis MarketStudio. Kembalikan HANYA JSON valid dengan keys: "
+        "summary (string), highlights (list of strings), missing_data (list of strings), "
+        "numeric_claims (object matching metrics), citations ({snapshot_id, period_date, source_ids}). "
+        "Jangan mengubah angka. Gunakan hanya data berikut:\n"
+        + json.dumps(outbound_payload)
+    )
+    return call_9router_json(prompt, model, timeout_seconds)
+
+
 def _call_gemini_adapter(
     outbound_payload: dict[str, Any],
     model: str,
@@ -344,6 +469,12 @@ def execute_ai_review(
             error_reason = "provider_error"
     elif not config_status["configured"]:
         error_reason = "provider_unconfigured"
+    elif config_status["provider"] == "9router":
+        raw_output, error_reason = _call_9router_adapter(
+            outbound_payload,
+            model=str(config_status["model"]),
+            timeout_seconds=timeout_seconds,
+        )
     else:
         raw_output, error_reason = _call_gemini_adapter(
             outbound_payload,
