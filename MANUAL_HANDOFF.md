@@ -1,11 +1,44 @@
 # MANUAL DEVELOPMENT HANDOFF · MARKETSTUDIO
 
-**Document Version:** 1.0.0 (Post Issue #76 P1–P2 Implementation)  
+**Document Version:** 1.1.0 (V3 P0–P1, Issue #81)
 **Authority:** Product Owner Directive (Section 28)  
 **Primary Target:** Human Developer Onboarding & Continuous Development  
 **Language:** Bahasa Indonesia dengan English technical terminology  
 
 ---
+
+## V3 P0–P1 · Pencatatan dari skema kosong
+
+`web/app/page.tsx` menyediakan Business Studio. Browser mengakses `web/app/api/[...route]/route.ts` melalui origin yang sama. Route handler meneruskan endpoint yang diizinkan ke FastAPI di loopback. `app/v3.py` menerbitkan OpenAPI dan meneruskan operasi ke `BaselineService`, adapter SQLite, dan skema existing.
+
+Jalankan dari root repo dengan Python 3.11+, uv, dan Node 22+. Siapkan direktori lokal baru dan berkas identitas privat mode 0600. Isi JSON dengan pemetaan ID principal ke kode akses unik hasil generator acak, minimal 24 karakter. Hanya berkas konfigurasi lokal ini yang menyimpan kode akses. Gunakan nama berkas SQLite baru untuk perjalanan clean-state.
+
+```sh
+uv sync --locked --extra v3
+npm --prefix web ci
+NEXT_TELEMETRY_DISABLED=1 npm --prefix web run build
+MARKETSTUDIO_ENV=development MARKETSTUDIO_V3_SQLITE=/path/private/business.sqlite3 \
+  MARKETSTUDIO_V3_IDENTITIES=/path/private/identities.json \
+  uv run --locked --extra v3 uvicorn app.v3:app --host 127.0.0.1 --port 8101
+```
+
+Di terminal kedua, jalankan `MARKETSTUDIO_ENV=development MARKETSTUDIO_V3_API_PORT=8101 npm --prefix web start -- --hostname 127.0.0.1 --port 3101`. Buka `http://127.0.0.1:3101`, masuk memakai identitas privat, buat profil usaha, lalu tambah produk dan catat transaksi. API menjalankan inisialisasi skema saat startup. OpenAPI tersedia di `http://127.0.0.1:8101/openapi.json`. Simpan path SQLite agar data tetap tersedia setelah restart.
+
+Komponen `Panel` menggunakan Astryx Card 0.7.17 (MIT) dan stylesheet distribusinya, dengan token MarketStudio di `web/app/style.css`. Tambahkan halaman melalui App Router dan perluas allowlist proxy bersamaan dengan endpoint FastAPI. Gunakan envelope error existing serta `Idempotency-Key` pada write.
+
+Perintah verifikasi:
+
+```sh
+npm --prefix web run typecheck
+uv run --locked --extra v3 python -W error::ResourceWarning -m unittest discover -s tests
+cd web
+npx playwright install chromium
+npx playwright test
+```
+
+Playwright membuat SQLite sementara, file identitas acak privat, dan port loopback sendiri. Dataset bisnis berasal dari form UI. Skenario menguji nilai laporan, kegagalan atomik, submit ganda, respons sukses yang hilang, restart API, relogin dan batas akses tenant. Screenshot tersimpan pada `web/test-results/`. Untuk Chromium lokal, atur `MARKETSTUDIO_TEST_CHROMIUM=/path/to/chromium`.
+
+Rollback lokal memakai commit `2966d968852b1079e688e3596a51bea21b6f944b` di checkout terpisah dan perintah baseline di bawah. Simpan file SQLite V3 sebagai artefak, dan biarkan Docker preview baseline berjalan dengan penyimpanan aslinya. Batch ini menggunakan skema existing. Mode produksi gagal tertutup sampai Supabase Auth tersedia. Integrasi Supabase/PG17 dan rilis menunggu environment terisolasi atau izin deploy. Setelah slice diterima, tugas berikutnya adalah membuktikan satu worksheet Univer editable dengan persistensi dan sumber data laporan yang otoritatif.
 
 ## 1. Cara Menjalankan Aplikasi
 
