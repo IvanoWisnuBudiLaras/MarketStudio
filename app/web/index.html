@@ -894,7 +894,10 @@
     }
 
     #posterMain { display: grid; gap: 16px; }
-    #catalogReview, #catalogPublished, #posterCaptionPanel { margin-top: 16px; }
+    #catalogReview, #catalogPublished, #posterCaptionPanel, #posterImagePanel { margin-top: 16px; }
+    #posterImagePanel { min-width: 0; }
+    #generatedImagePreview { display: block; max-width: min(100%, 360px); height: auto; }
+    #generatedImagePreview.hidden { display: none; }
     .public-catalog-controls { border: 0; padding: 0; margin: 0; min-width: 0; }
     .public-catalog-controls select { max-width: 100%; }
     .catalog-choices { display: grid; gap: 4px; margin: 8px 0 16px; }
@@ -2390,6 +2393,30 @@
                 <button id="posterPreviewBtn" class="btn btn-primary" type="button" disabled>Tampilkan pratinjau</button>
                 <button id="posterExportBtn" class="btn btn-secondary" type="button" disabled>Unduh poster</button>
               </div>
+              <fieldset id="posterImagePanel" class="hidden">
+                <legend>Gambar AI untuk draft</legend>
+                <p class="muted">Brief sintetis memakai kategori produk atau jasa dan gaya visual. Hasil berizin untuk penggunaan internal.</p>
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="imageOffering" class="field-label">Produk atau jasa untuk gambar</label>
+                    <select id="imageOffering"></select>
+                  </div>
+                  <div class="field">
+                    <label for="imageStyle" class="field-label">Gaya brief sintetis</label>
+                    <select id="imageStyle">
+                      <option value="studio">Foto studio</option>
+                      <option value="illustration">Ilustrasi editorial</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button id="generateImageBtn" class="btn btn-primary" type="button">Hasilkan gambar</button>
+                  <button id="cancelImageBtn" class="btn btn-secondary hidden" type="button">Batalkan</button>
+                  <button id="applyImageBtn" class="btn btn-primary hidden" type="button">Pakai gambar di draft</button>
+                </div>
+                <p class="status" id="posterImageStatus" aria-live="polite"></p>
+                <img id="generatedImagePreview" class="hidden" alt="Pratinjau hasil gambar" />
+              </fieldset>
               <div id="posterCaptionPanel" class="hidden">
                 <h3>Caption promosi</h3>
                 <p id="posterCopySource" class="muted"></p>
@@ -4499,6 +4526,12 @@
     let posterBusy = false;
     let posterScope = 0;
     let copyCreateAttempt = null;
+    let imageAttempt = null;
+    let generatedImage = null;
+    const imageOffering = byId("imageOffering");
+    const imageStyle = byId("imageStyle");
+    const imageStatus = byId("posterImageStatus");
+    const imagePreview = byId("generatedImagePreview");
 
     function currentPosterDraft() {
       return posterDrafts.find(item => item.draft_id === posterDraftSelect.value);
@@ -4522,6 +4555,11 @@
       posterFormat.disabled = blocked;
       posterPreviewBtn.disabled = blocked || !draft || !posterAssetSelect.value;
       posterExportBtn.disabled = blocked || !posterPreview;
+      imageOffering.disabled = imageStyle.disabled = blocked || Boolean(imageAttempt);
+      byId("generateImageBtn").disabled = blocked || !draft || !imageOffering.value || Boolean(imageAttempt);
+      byId("cancelImageBtn").classList.toggle("hidden", !imageAttempt);
+      byId("applyImageBtn").classList.toggle("hidden", !generatedImage);
+      byId("applyImageBtn").disabled = blocked || !draft || Boolean(imageAttempt);
     }
 
     function clearPosterPreview() {
@@ -4535,6 +4573,12 @@
 
     function resetPosterStudio() {
       posterScope++;
+      if (imageAttempt) void cancelImageAttempt(imageAttempt).catch(() => {});
+      imageAttempt = null;
+      clearGeneratedImage();
+      byId("posterImagePanel").classList.add("hidden");
+      imageOffering.replaceChildren();
+      imageStyle.value = "studio";
       posterLoaded = false;
       posterBusy = false;
       posterDrafts = [];
@@ -4569,6 +4613,10 @@
         `${off.name} · ${fmtIdr(off.unit_price_idr)} / ${off.unit}`, off.offering_id
       ]), "Tambahkan produk atau jasa terlebih dahulu");
       if (offerings.some(off => off.offering_id === previous)) copyOffering.value = previous;
+      const previousImageOffering = imageOffering.value;
+      fillPosterOptions(imageOffering, offerings.map(off => [off.name, off.offering_id]),
+        "Tambahkan produk atau jasa terlebih dahulu");
+      if (offerings.some(off => off.offering_id === previousImageOffering)) imageOffering.value = previousImageOffering;
       updatePosterControls();
     }
 
@@ -4594,6 +4642,13 @@
         : source === "live_provider" ? "Draft dari provider AI"
         : draft?.copy_source === "sample" ? "Draft contoh" : "Draft manual";
       byId("posterCaptionPanel").classList.toggle("hidden", !draft);
+      byId("posterImagePanel").classList.toggle("hidden", !draft);
+      if (draft?.offering_id && [...imageOffering.options].some(option => option.value === draft.offering_id)) {
+        imageOffering.value = draft.offering_id;
+      }
+      if (imageAttempt) void cancelImageAttempt(imageAttempt).catch(() => {});
+      imageAttempt = null;
+      clearGeneratedImage();
       renderCopyPreview();
       setStatus(posterStatus, "");
     }
@@ -4730,6 +4785,94 @@
         posterDrafts = drafts.items;
         showPosterDrafts(item.draft_id);
         setStatus(posterStatus, "Draft contoh siap dipratinjau.");
+      });
+    });
+
+    function clearGeneratedImage() {
+      generatedImage = null;
+      imagePreview.removeAttribute("src");
+      imagePreview.classList.add("hidden");
+      setStatus(imageStatus, "");
+    }
+
+    async function cancelImageAttempt(attempt) {
+      await posterRequest(`${attempt.path}/cancel`, "POST");
+    }
+
+    for (const control of [imageOffering, imageStyle]) {
+      control.addEventListener("change", () => {
+        clearGeneratedImage();
+        updatePosterControls();
+      });
+    }
+
+    byId("generateImageBtn").addEventListener("click", async () => {
+      clearGeneratedImage();
+      const workspace = encodeURIComponent(activeWorkspaceId);
+      const id = "img_" + Array.from(crypto.getRandomValues(new Uint8Array(16)), byte =>
+        byte.toString(16).padStart(2, "0")).join("");
+      const attempt = { path: `/v1/workspaces/${workspace}/creative-images/${id}` };
+      imageAttempt = attempt;
+      updatePosterControls();
+      setStatus(imageStatus, "Menghasilkan gambar…", "info");
+      try {
+        const response = await posterRequest(`${attempt.path}/generate`, "POST", {
+          offering_id: imageOffering.value,
+          style: imageStyle.value
+        });
+        const { item } = await response.json();
+        if (imageAttempt !== attempt) return;
+        imagePreview.src = item.preview_data_url;
+        await imagePreview.decode();
+        if (imageAttempt !== attempt) return;
+        generatedImage = item;
+        imagePreview.classList.remove("hidden");
+        setStatus(imageStatus, item.title);
+      } catch (error) {
+        if (imageAttempt !== attempt) return;
+        const message = error.message === "Failed to fetch" ? "Gangguan jaringan." : error.message;
+        setStatus(imageStatus, `${message} Coba lagi atau pilih aset berizin pada draft.`, "err");
+      } finally {
+        if (imageAttempt === attempt) {
+          imageAttempt = null;
+          updatePosterControls();
+        }
+      }
+    });
+
+    byId("cancelImageBtn").addEventListener("click", async () => {
+      const attempt = imageAttempt;
+      if (!attempt) return;
+      const scope = posterScope;
+      const draftId = currentPosterDraft()?.draft_id;
+      imageAttempt = null;
+      clearGeneratedImage();
+      updatePosterControls();
+      try {
+        await cancelImageAttempt(attempt);
+        if (scope === posterScope && draftId === currentPosterDraft()?.draft_id && !imageAttempt && !generatedImage) {
+          setStatus(imageStatus, "Pembuatan gambar dibatalkan.", "info");
+        }
+      } catch (error) {
+        if (scope === posterScope && draftId === currentPosterDraft()?.draft_id && !imageAttempt && !generatedImage) {
+          setStatus(imageStatus, "Pembatalan tidak dapat dikonfirmasi. Muat ulang daftar draft untuk melihat aset.", "err");
+        }
+      }
+    });
+
+    byId("applyImageBtn").addEventListener("click", () => {
+      const draft = currentPosterDraft();
+      const asset = generatedImage;
+      return runPosterAction("Memasang gambar ke draft…", async (root, isCurrent) => {
+        const response = await posterRequest(`${root}/creative-drafts/${encodeURIComponent(draft.draft_id)}`, "PATCH", {
+          asset_id: asset.asset_id, expected_version: draft.version
+        });
+        const { item } = await response.json();
+        if (!isCurrent()) return;
+        posterDrafts = posterDrafts.map(entry => entry.draft_id === item.draft_id ? item : entry);
+        posterAssetSelect.add(new Option(`${asset.title} · Penggunaan internal`, asset.asset_id));
+        selectPosterDraft();
+        setStatus(posterStatus, "Gambar dipasang ke draft. Tampilkan pratinjau sebelum mengunduh.");
       });
     });
 
@@ -4920,7 +5063,8 @@
         }));
         fillPosterOptions(catalogArtwork, [
           ["Tanpa gambar", ""],
-          ...assets.items.filter(asset => asset.license_status === "verified").map(asset => [asset.title, asset.asset_id])
+          ...assets.items.filter(asset => asset.license_status === "verified" && asset.asset_source !== "ai_generated")
+            .map(asset => [asset.title, asset.asset_id])
         ]);
         catalogArtwork.value = item.draft?.selection.asset_id || "";
         showCatalogState(item);

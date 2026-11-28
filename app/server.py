@@ -39,6 +39,7 @@ _RE_REPORT_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily$")
 _RE_AI_REVIEW_CONFIG = re.compile(r"^/v1/workspaces/([^/]+)/ai-review/config$")
 _RE_AI_REVIEW_DAILY = re.compile(r"^/v1/workspaces/([^/]+)/reports/daily/ai-review$")
 _RE_CREATIVE_ASSETS = re.compile(r"^/v1/workspaces/([^/]+)/creative-assets$")
+_RE_CREATIVE_IMAGE = re.compile(r"^/v1/workspaces/([^/]+)/creative-images/(img_[0-9a-f]{32})/(generate|cancel)$")
 _RE_CREATIVE_DRAFTS = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts$")
 _RE_CREATIVE_DRAFT_SAMPLE = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/sample$")
 _RE_CREATIVE_CAPTION = re.compile(r"^/v1/workspaces/([^/]+)/creative-drafts/caption$")
@@ -69,7 +70,10 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         path = urlparse(self.path).path
-        if _RE_CATALOG.fullmatch(path) or _RE_CATALOG_ACTION.fullmatch(path):
+        if (_RE_CATALOG.fullmatch(path) or _RE_CATALOG_ACTION.fullmatch(path)
+                or _RE_CREATIVE_IMAGE.fullmatch(path) or _RE_CREATIVE_ASSETS.fullmatch(path)
+                or _RE_CREATIVE_DRAFT_DETAIL.fullmatch(path) or _RE_CREATIVE_DRAFTS.fullmatch(path)
+                or _RE_CREATIVE_DRAFT_PREVIEW.fullmatch(path)):
             self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
@@ -388,6 +392,19 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
                 body = self._read_json_body()
                 item = self.service.run_daily_ai_review(ws_id, actor_id=actor_id, payload=body)
                 self._send_json(200, {"item": item, "request_id": request_id})
+                return
+
+            m_image = _RE_CREATIVE_IMAGE.match(path)
+            if m_image:
+                actor_id = self._require_actor()
+                ws_id, asset_id, action = m_image.groups()
+                self.service.require_poster_access(ws_id, actor_id)
+                if action == "cancel":
+                    self.service.cancel_creative_image(ws_id, actor_id, asset_id)
+                    self._send_json(200, {"request_id": request_id})
+                else:
+                    item = self.service.generate_creative_image(ws_id, actor_id, asset_id, self._read_json_body())
+                    self._send_json(201, {"item": item, "request_id": request_id})
                 return
 
             m_cre_caption = _RE_CREATIVE_CAPTION.match(path)
