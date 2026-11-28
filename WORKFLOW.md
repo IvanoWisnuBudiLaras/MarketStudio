@@ -5,4 +5,6 @@ Idea → discovery → decision → ticket → implementation → test → indep
 
 Jalankan `python3 scripts/check_repository.py` untuk memeriksa dokumen inti, metadata skill, file terlarang yang dilacak Git, dan pola kredensial umum. Aktifkan hook sekali per clone dengan `git config --local core.hooksPath .githooks`. Hook memeriksa snapshot staging sebelum commit.
 
-GitHub Actions menjalankan pemeriksaan yang sama pada PR dan push ke `main`. Setelah aplikasi tersedia, hubungkan test runner dan build aplikasi sesuai scope ticket. Pemeriksaan repository dan bukti test aplikasi dicatat terpisah.
+GitHub Actions menjalankan workflow CI (`.github/workflows/ci.yml`) pada PR dan push ke `main` dengan dua job terpisah:
+1. `repository-checks`: memeriksa dokumen inti, metadata skill, file terlarang, dan pola kredensial melalui `scripts/check_repository.py`.
+2. `build`: membangun paket aplikasi dari clone bersih (`pip wheel` / `pip install`), memverifikasi startup dan impor paket (`app`, `app.server`, `app.service`), serta menjalankan test suite (`unittest discover -s tests`) menggunakan profil default SQLite (live PostgreSQL dilewati di CI tanpa runner eksternal).
