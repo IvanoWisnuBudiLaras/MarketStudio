@@ -39,3 +39,8 @@ Jangan menjalankan semua roadmap sekaligus. Baca ticket yang disetujui dan depen
   python3 scripts/smoke_check.py http://127.0.0.1:8000 --timeout 5.0
   ```
   Lihat [docs/engineering/SMOKE_CHECK.md](docs/engineering/SMOKE_CHECK.md) untuk dokumentasi lengkap dan bukti pengujian.
+- **Stack Benchmark Spike (Issue #29):**
+  ```sh
+  python3 scripts/spike_stack_metrics.py
+  ```
+  Lihat [docs/engineering/STACK_COMPATIBILITY_AND_LICENSES.md](docs/engineering/STACK_COMPATIBILITY_AND_LICENSES.md) untuk analisis opsi stack, verifikasi lisensi resmi, dan hasil ukur kuantitatif alur #1.

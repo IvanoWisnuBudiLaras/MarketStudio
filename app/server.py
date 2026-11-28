@@ -63,7 +63,8 @@ class BaselineHTTPHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         # Keep test output clean; server logs can be enabled via env if needed.
-        if (os.environ.get("MARKETSTUDIO_QUIET_LOGS") == "1"
+        if (getattr(self.server, "quiet_logs", False)
+                or os.environ.get("MARKETSTUDIO_QUIET_LOGS") == "1"
                 or getattr(self, "path", "").startswith("/katalog/")):
             return
         super().log_message(format, *args)
@@ -575,8 +576,11 @@ class MarketStudioHTTPServer(ThreadingHTTPServer):
         server_address: tuple[str, int],
         RequestHandlerClass: type[BaselineHTTPHandler],
         service: BaselineService,
+        *,
+        quiet_logs: bool = False,
     ) -> None:
         self.service = service
+        self.quiet_logs = quiet_logs
         super().__init__(server_address, RequestHandlerClass)
 
     def server_close(self) -> None:
@@ -596,6 +600,7 @@ def create_server(
     auto_migrate: bool | None = None,
     use_pool: bool = True,
     creative_assets_dir: str | Path | None = None,
+    quiet_logs: bool = False,
 ) -> MarketStudioHTTPServer:
     """Create configured ThreadingHTTPServer for MarketStudio baseline."""
     config = resolve_db_config(db_path=db_path, database_url=database_url, backend=backend)
@@ -612,7 +617,7 @@ def create_server(
         pass
 
     _Handler.service = service
-    return MarketStudioHTTPServer((host, port), _Handler, service=service)
+    return MarketStudioHTTPServer((host, port), _Handler, service=service, quiet_logs=quiet_logs)
 
 
 def main() -> None:
